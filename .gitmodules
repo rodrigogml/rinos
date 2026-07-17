@@ -1,0 +1,4 @@
+[submodule "modules/RFW.Platform"]
+	path = modules/RFW.Platform
+	url = git@github.com:rodrigogml/RFW.Platform.git
+	branch = main
