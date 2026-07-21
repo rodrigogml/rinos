@@ -22,12 +22,26 @@ Este documento organiza a sequência recomendada das especificações funcionais
 | 9 | FND-009 | `system-administration` | Iniciativa composta para administração segura da plataforma | FND-006, FND-007 | Decomposta |
 | 9.1 | FND-009A | `system-directory-administration` | Consultar e intervir em usuários e contas globais, inclusive recuperar a administração mínima de conta órfã | FND-001, FND-002, FND-004, FND-005, FND-006, FND-007 | Especificada e clarificada |
 | 9.2 | FND-009B | `platform-operations` | Acompanhar provisionamentos automáticos, migrações no deploy, incompatibilidades, saúde e ocorrências estruturais | FND-007A, FND-007B | Especificada e clarificada |
-| 9.3 | FND-009C | `platform-configuration` | Administrar configurações, políticas e valores operacionais globais com versionamento e auditoria | FND-006, FND-009A | Planejada |
-| 9.4 | FND-009D | `tenant-support-access` | Conceder acesso excepcional, temporário e auditado de suporte ao conteúdo de um tenant | FND-005, FND-006, FND-007, FND-009A | Planejada |
+| 9.3 | FND-009C | `platform-configuration` | Administrar configurações, políticas e valores operacionais globais com versionamento e auditoria | FND-006, FND-009A | Especificada e clarificada |
+| 9.4 | FND-009D | `tenant-support-access` | Conceder acesso excepcional, temporário e auditado de suporte ao conteúdo de um tenant | FND-005, FND-006, FND-007, FND-009A | Especificada e clarificada |
 
-## Próxima Expansão
+## Cadastros Transversais do Tenant
 
-Após a fundação da plataforma, o próximo conjunto de especificações deve decompor o módulo financeiro em capacidades menores, começando por contas financeiras e lançamentos.
+Antes dos módulos de negócio, o sistema deve estabelecer um diretório de pessoas reutilizável por financeiro, CRM, fiscal, compras, vendas, RH e demais contextos.
+
+| Ordem | ID | Feature | Objetivo | Dependências | Status |
+|------:|----|---------|----------|--------------|--------|
+| 10 | FND-010 | `party-registration` | Cadastrar e manter pessoas físicas e jurídicas como registros neutros do tenant, com identificadores, endereços e meios de contato | FND-006, FND-007, FND-007B | Especificada e clarificada |
+| 11 | FND-011 | `party-relationships-roles` | Associar pessoas a papéis e relacionamentos extensíveis, como cliente, fornecedor, colaborador, contato e representante | FND-010 | Especificada e clarificada |
+| 12 | FND-012 | `party-payment-details` | Manter contas bancárias, chaves Pix e demais dados de pagamento das pessoas com finalidade, proteção e auditoria próprias | FND-006, FND-007B, FND-010 | Planejada |
+
+## Módulo Financeiro
+
+O módulo financeiro deve ser decomposto em capacidades menores e reutilizar o diretório de pessoas para representar pagadores, beneficiários, portadores e demais contrapartes.
+
+| Ordem | ID | Feature | Objetivo | Dependências | Status |
+|------:|----|---------|----------|--------------|--------|
+| 13 | FIN-001 | `financial-accounts` | Cadastrar e manter contas financeiras, instituições, moedas, saldos iniciais e ciclo de vida | FND-006, FND-007, FND-008, FND-010 | Planejada |
 
 ## Decisões Encaminhadas para Features Futuras
 
