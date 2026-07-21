@@ -33,7 +33,7 @@ Antes dos módulos de negócio, o sistema deve estabelecer um diretório de pess
 |------:|----|---------|----------|--------------|--------|
 | 10 | FND-010 | `party-registration` | Cadastrar e manter pessoas físicas e jurídicas como registros neutros do tenant, com identificadores, endereços e meios de contato | FND-006, FND-007, FND-007B | Especificada e clarificada |
 | 11 | FND-011 | `party-relationships-roles` | Associar pessoas a papéis e relacionamentos extensíveis, como cliente, fornecedor, colaborador, contato e representante | FND-010 | Especificada e clarificada |
-| 12 | FND-012 | `party-payment-details` | Manter contas bancárias, chaves Pix e demais dados de pagamento das pessoas com finalidade, proteção e auditoria próprias | FND-006, FND-007B, FND-010 | Planejada |
+| 12 | FND-012 | `party-payment-details` | Manter contas bancárias, chaves Pix e demais dados de pagamento das pessoas com finalidade, proteção e auditoria próprias | FND-006, FND-007B, FND-010 | Especificada e clarificada |
 
 ## Módulo Financeiro
 

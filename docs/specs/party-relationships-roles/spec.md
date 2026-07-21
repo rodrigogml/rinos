@@ -158,23 +158,23 @@ Um usuário autorizado encerra um papel ou relacionamento que deixou de ser vál
 - **FR-PRR-SEARCH-002**: Usuário autorizado DEVE poder consultar relacionamentos a partir de qualquer lado, com direção, tipo, estado e vigência claramente apresentados.
 - **FR-PRR-SEARCH-003**: Seleções comuns DEVEM excluir por padrão papéis e relacionamentos futuros, encerrados, cancelados ou ligados a pessoa desativada.
 - **FR-PRR-SEARCH-004**: Consultas históricas autorizadas DEVEM permitir incluir vínculos não vigentes e explicar seus períodos e estados.
-- **FR-PRR-SEARCH-005**: Filtros e seleções DEVEM permanecer limitados ao tenant ativo e NÃO DEVEM confirmar papéis, relações ou associações existentes em outro tenant.
+- **FR-PRR-SEARCH-005**: Filtros e seleções DEVEM permanecer limitados ao tenant ativo e NÃO DEVEM confirmar papéis ou relações existentes em outro tenant.
 - **FR-PRR-SEARCH-006**: Módulo consumidor DEVE poder referenciar a pessoa e, quando necessário ao seu contrato, a atribuição de papel ou o relacionamento específico utilizado.
 - **FR-PRR-SEARCH-007**: Snapshot preservado por operação consumidora NÃO DEVE ser atualizado quando pessoa, papel ou relacionamento mudar posteriormente.
 - **FR-PRR-SEARCH-008**: Quando um módulo exigir determinado papel vigente, o sistema DEVE validar essa condição no momento definido pela própria operação e fornecer motivo compreensível quando a pessoa não for elegível.
 
 ### Ciclo de Vida e Integridade
 
-- **FR-PRR-LIFE-001**: Papéis, relacionamentos e associações já utilizados ou auditáveis NÃO DEVEM ser apagados silenciosamente; correções DEVEM usar cancelamento e operações normais DEVEM usar encerramento.
+- **FR-PRR-LIFE-001**: Papéis e relacionamentos já utilizados ou auditáveis NÃO DEVEM ser apagados silenciosamente; correções DEVEM usar cancelamento e operações normais DEVEM usar encerramento.
 - **FR-PRR-LIFE-002**: Pessoa que possua papel ou relacionamento preservado por esta feature DEVE ser considerada referenciada para a política de exclusão de `party-registration`.
 - **FR-PRR-LIFE-003**: Desativar uma pessoa DEVE impedir novas atribuições e relacionamentos comuns, sem encerrar automaticamente fatos históricos ou alterar autorizações.
 - **FR-PRR-LIFE-004**: Reativar uma pessoa NÃO DEVE reativar automaticamente papel ou relacionamento encerrado ou cancelado.
 - **FR-PRR-LIFE-005**: Alterações concorrentes DEVEM impedir períodos vigentes incompatíveis e produzir resultado determinístico.
-- **FR-PRR-LIFE-006**: O sistema NÃO DEVE promover fusão automática de papéis, relacionamentos ou associações quando detectar pessoas semelhantes.
+- **FR-PRR-LIFE-006**: O sistema NÃO DEVE promover fusão automática de papéis ou relacionamentos quando detectar pessoas semelhantes.
 
 ### Autorização, Privacidade e Auditoria
 
-- **FR-PRR-SEC-001**: Acesso a papéis, relacionamentos e associações DEVE ser negado por padrão e liberado por chaves específicas do tenant.
+- **FR-PRR-SEC-001**: Acesso a papéis e relacionamentos DEVE ser negado por padrão e liberado por chaves específicas do tenant.
 - **FR-PRR-SEC-002**: Consultar, atribuir, alterar, encerrar e cancelar papéis DEVEM poder ser autorizados separadamente das operações equivalentes sobre relacionamentos.
 - **FR-PRR-SEC-003**: A autorização para consultar uma pessoa NÃO DEVE implicar autorização para consultar todos os seus papéis ou relacionamentos.
 - **FR-PRR-SEC-004**: Interfaces e operações internas DEVEM aplicar o mesmo contrato de autorização e isolamento.
@@ -198,7 +198,7 @@ Um usuário autorizado encerra um papel ou relacionamento que deixou de ser vál
 
 - **FR-PRR-INFRA-IDEMP**: Repetição técnica da mesma solicitação confirmada DEVE produzir no máximo uma atribuição, relacionamento ou mudança de estado.
 - **FR-PRR-INFRA-LOCK**: Operações concorrentes DEVEM preservar cardinalidade, vigência, isolamento e histórico determinísticos em todas as instâncias da aplicação.
-- **FR-PRR-INFRA-BACKUP**: Papéis, relacionamentos, associações e respectivas auditorias DEVEM participar dos backups e restaurações do tenant segundo `tenant-data-governance`.
+- **FR-PRR-INFRA-BACKUP**: Papéis, relacionamentos e respectivas auditorias DEVEM participar dos backups e restaurações do tenant segundo `tenant-data-governance`.
 
 ### Key Entities
 
@@ -213,7 +213,7 @@ Um usuário autorizado encerra um papel ou relacionamento que deixou de ser vál
 ### Measurable Outcomes
 
 - **SC-PRR-001**: Em 100% dos testes, atribuir ou remover papel ou relacionamento não altera grupos, chaves, participação nem acesso do usuário.
-- **SC-PRR-002**: Em 100% dos testes cruzados, papéis, relacionamentos e associações de um tenant não são consultados, alterados nem confirmados em outro tenant.
+- **SC-PRR-002**: Em 100% dos testes cruzados, papéis e relacionamentos de um tenant não são consultados, alterados nem confirmados em outro tenant.
 - **SC-PRR-003**: Em 100% dos testes, uma pessoa pode manter simultaneamente os papéis de cliente, fornecedor e colaborador sem duplicação do cadastro-base.
 - **SC-PRR-004**: Em 100% dos testes de relacionamento, origem, destino e apresentação inversa permanecem inequívocos antes e depois de alterações cadastrais nas pessoas.
 - **SC-PRR-005**: Em 100% dos testes, vínculos futuros, vigentes, encerrados e cancelados são corretamente diferenciados nas seleções comuns e consultas históricas.
