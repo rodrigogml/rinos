@@ -21,7 +21,7 @@ Este documento organiza a sequência recomendada das especificações funcionais
 | 8 | FND-008 | `plans-entitlements` | Definir a fundação de planos e direitos por conta, adiando ofertas e valores até a definição das features | FND-004, FND-007 | Especificada e clarificada |
 | 9 | FND-009 | `system-administration` | Iniciativa composta para administração segura da plataforma | FND-006, FND-007 | Decomposta |
 | 9.1 | FND-009A | `system-directory-administration` | Consultar e intervir em usuários e contas globais, inclusive recuperar a administração mínima de conta órfã | FND-001, FND-002, FND-004, FND-005, FND-006, FND-007 | Especificada e clarificada |
-| 9.2 | FND-009B | `platform-operations` | Monitorar e operar provisionamentos, versões, migrações, backups, restaurações e saúde da plataforma | FND-007A, FND-007B | Planejada |
+| 9.2 | FND-009B | `platform-operations` | Acompanhar provisionamentos automáticos, migrações no deploy, incompatibilidades, saúde e ocorrências estruturais | FND-007A, FND-007B | Especificada e clarificada |
 | 9.3 | FND-009C | `platform-configuration` | Administrar configurações, políticas e valores operacionais globais com versionamento e auditoria | FND-006, FND-009A | Planejada |
 | 9.4 | FND-009D | `tenant-support-access` | Conceder acesso excepcional, temporário e auditado de suporte ao conteúdo de um tenant | FND-005, FND-006, FND-007, FND-009A | Planejada |
 
