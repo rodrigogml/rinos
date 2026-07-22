@@ -20,7 +20,7 @@ O lançamento pode ser criado manualmente ou originado por outro módulo. Rascun
 
 ### Session 2026-07-22
 
-- Q: Todo lançamento confirmado deve estar integralmente classificado por categorias? → A: Sim. A soma das parcelas de categoria deve corresponder a 100% do valor do lançamento; eventual categoria “A classificar” será uma categoria comum criada conscientemente pelo tenant, sem tratamento privilegiado do sistema.
+- Q: Todo lançamento confirmado deve estar integralmente classificado por categorias? → A: Todo fato econômico confirmado deve estar integralmente classificado, e eventual categoria “A classificar” será uma categoria comum do tenant. Somente as duas pontas principais estruturalmente originadas por `financial-transfers` dispensam categorias e dimensões, pois representam mudança de custódia, não receita ou despesa.
 - Q: Quais dados um rascunho precisa possuir e preservar? → A: Para ser salvo, o rascunho exige conta, direção, data, valor e descrição; os demais dados finais podem ser preenchidos e preservados progressivamente, ainda incompletos. A validação integral ocorre somente na confirmação, e data futura não agenda confirmação nem afeta saldo.
 - Q: Quem pode estornar ou corrigir lançamento originado por outro módulo? → A: Somente o módulo de origem pode coordenar a correção e solicitar o respectivo estorno financeiro. O financeiro corrige diretamente apenas lançamentos manuais e não oferece atalho administrativo comum para ignorar o ciclo de origem.
 - Q: Como impedir novos efeitos retroativos depois de uma conferência financeira? → A: Cada tenant possui uma única data de fechamento opcional. Datas iguais ou anteriores ficam bloqueadas para novos fatos; retroceder ou remover a data reabre o intervalo correspondente, com chave específica, motivo e auditoria. Não existem períodos financeiros nem snapshots de saldo nesta camada.
@@ -185,7 +185,7 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 
 ### Categorias e Dimensões
 
-- **FR-FTR-CLASS-001**: Todo lançamento confirmado DEVE estar integralmente classificado por categorias, sem parcela monetária implícita ou temporariamente não classificada.
+- **FR-FTR-CLASS-001**: Todo lançamento confirmado que represente fato econômico DEVE estar integralmente classificado por categorias, sem parcela monetária implícita ou temporariamente não classificada. Somente pontas principais vinculadas a uma `financial-transfers` válida DEVEM dispensar categorias e dimensões.
 - **FR-FTR-CLASS-002**: Lançamento DEVE permitir uma ou várias parcelas de categoria, cada uma com categoria e valor próprios na moeda da conta.
 - **FR-FTR-CLASS-003**: Soma de todas as parcelas de categoria DEVE corresponder exatamente ao valor total do lançamento, sem diferença oculta de arredondamento.
 - **FR-FTR-CLASS-004**: Direção do lançamento DEVE ser compatível com cada categoria, exceto em estorno vinculado que preserve a classificação original.
@@ -196,6 +196,7 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-CLASS-009**: Alteração ou desativação cadastral posterior NÃO DEVE reclassificar lançamento confirmado.
 - **FR-FTR-CLASS-010**: Estorno integral DEVE espelhar parcelas e distribuições originais com efeito monetário oposto, sem reaplicar sugestões ou regras atuais.
 - **FR-FTR-CLASS-011**: Tenant PODERÁ criar categoria comum, inclusive neutra, para identificar valores conscientemente mantidos “a classificar”, mas o sistema NÃO DEVE fornecer categoria privilegiada capaz de dispensar regras, dimensões ou autorizações comuns.
+- **FR-FTR-CLASS-012**: A dispensa de classificação das pontas de transferência DEVE decorrer exclusivamente da origem estrutural validada e NÃO DEVE ser selecionável, atribuível ou simulável por lançamento manual ou outro módulo.
 
 ### Contraparte e Memória Histórica
 

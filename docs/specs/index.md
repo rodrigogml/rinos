@@ -46,7 +46,7 @@ O módulo financeiro deve ser decomposto em capacidades menores e reutilizar o d
 | 14.1 | FIN-002A | `financial-dimensions` | Definir dimensões analíticas configuráveis, valores, hierarquias, aplicabilidade e rateios, incluindo centros de custo, projetos e eixos próprios do tenant | FND-006, FND-007, FIN-002 | Especificada e clarificada |
 | 14.2 | FIN-002B | `financial-closing-control` | Controlar uma única data de fechamento por tenant, bloquear novos fatos retroativos e auditar reaberturas | FND-006, FND-007, FIN-001 | Especificada e clarificada |
 | 15 | FIN-003 | `financial-transactions` | Registrar créditos e débitos imutáveis, categorizados e auditáveis que expliquem o saldo interno das contas | FIN-001, FIN-002, FIN-002A, FIN-002B, FND-010 | Especificada e clarificada |
-| 16 | FIN-004 | `financial-transfers` | Movimentar valores entre contas por operações vinculadas, inclusive entre moedas quando houver conversão explícita | FIN-001, FIN-003 | Planejada |
+| 16 | FIN-004 | `financial-transfers` | Movimentar valores entre contas por operações vinculadas, inclusive entre moedas quando houver conversão explícita | FIN-001, FIN-003 | Especificada e clarificada |
 | 17 | FIN-005 | `cash-sessions` | Controlar responsáveis, abertura operacional, contagem, sangria, suprimento e fechamento de caixas físicos | FIN-001, FIN-003 | Planejada |
 | 18 | FIN-006 | `payment-instruments` | Associar instrumentos e canais, como cartões de débito e cheques, às contas que efetivamente mantêm o saldo | FIN-001, FIN-003, FND-010 | Planejada |
 | 19 | FIN-007 | `credit-cards` | Controlar cartões de crédito, portadores, limites, compras, ciclos, faturas e pagamentos sem tratá-los como contas monetárias | FIN-002, FIN-003, FIN-006, FND-010 | Planejada |
