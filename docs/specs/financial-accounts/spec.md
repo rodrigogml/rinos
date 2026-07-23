@@ -6,7 +6,7 @@
 
 ## Escopo
 
-Esta feature estabelece o cadastro das contas financeiras usadas pelo tenant para representar saldos monetários independentes sob seu controle ou acompanhamento, como caixas físicos, contas de depósito ou pagamento, valores monetários custodiados por plataformas e contas monetárias de liquidação em corretoras. Cada conta possui identidade, natureza canônica, moeda, saldo de abertura datado, organização, estado e classificações complementares compatíveis.
+Esta feature estabelece o cadastro das contas financeiras usadas pelo tenant para representar posições financeiras independentes sob seu controle ou acompanhamento. Isso inclui recursos monetários, como caixas, contas de depósito ou pagamento e saldos de liquidação, e também contas especializadas de crédito/passivo, como cartão de crédito. Cada conta possui identidade, natureza canônica, moeda, saldo de abertura datado, organização, estado e classificações complementares compatíveis.
 
 A conta financeira é o local em que lançamentos futuros afetarão saldos. Ela é diferente dos dados de pagamento de uma pessoa, que apenas indicam onde uma contraparte deseja receber valores, e também não representa uma conta do plano contábil.
 
@@ -14,7 +14,7 @@ A conta financeira é o local em que lançamentos futuros afetarão saldos. Ela 
 > O saldo atual não é um campo livre para edição. Ele deve ser explicável pelo saldo de abertura e por todos os eventos financeiros efetivados na conta, preservando precisão, ordem e rastreabilidade.
 
 > [!NOTE]
-> Esta primeira versão não cria lançamentos, transferências, cartões, faturas, conciliação, importação de extratos ou integração bancária. Ela define a conta e os contratos que essas funcionalidades deverão respeitar.
+> Esta primeira versão não cria lançamentos, transferências, compras, parcelas, cartões subordinados, faturas, conciliação, importação de extratos ou integração bancária. Ela define a conta e os contratos que essas funcionalidades deverão respeitar.
 
 ## Clarifications
 
@@ -25,6 +25,10 @@ A conta financeira é o local em que lançamentos futuros afetarão saldos. Ela 
 - Q: Um evento financeiro pode deixar a conta com saldo negativo? → A: Sim. O evento deve ser registrado e o saldo negativo sinalizado para investigação, sem bloqueio baseado apenas no saldo ou em limite de crédito informado.
 - Q: Como classificar contas sem misturar natureza, instituição, produto, liquidez e comportamento, especialmente para carteiras e investimentos? → A: A conta possui natureza monetária canônica e classificações independentes de custodiante, produto, disponibilidade e capacidades. Carteira somente é conta quando mantém saldo próprio; investimentos são posições separadas, e apenas seu saldo monetário de liquidação pertence a esta feature.
 - Q: A titularidade jurídica limita quais contas financeiras podem ser cadastradas? → A: Não. Usuário autorizado possui autonomia para cadastrar e controlar ou acompanhar qualquer conta no tenant; titularidade jurídica e comprovação de propriedade não condicionam o cadastro nem os acessos internos.
+
+### Session 2026-07-22
+
+- Q: Como representar cartão de crédito sem criar um cadastro genérico de instrumentos? → A: Cartão de crédito é conta financeira especializada de crédito/passivo, com saldo normalmente negativo quando houver dívida. Limite, faturas, compras, parcelas e cartões subordinados pertencem a `credit-cards`; cartões de débito e canais sem saldo próprio não exigem cadastro independente.
 
 ## User Scenarios & Testing
 
@@ -49,7 +53,7 @@ Um usuário autorizado cadastra uma conta que o tenant deseja controlar ou acomp
 
 Um usuário autorizado registra que uma conta financeira corresponde a saldo mantido em banco, instituição de pagamento, corretora ou outro custodiante compatível, usando os identificadores aplicáveis ao país e preservando-os de forma protegida.
 
-**Why this priority**: Contas mantidas por instituições são origens e destinos frequentes de movimentações e precisam estar prontas para futuras conciliações e integrações sem serem confundidas com dados de pagamento de contrapartes, instrumentos ou posições de investimento.
+**Why this priority**: Contas mantidas por instituições são origens e destinos frequentes de movimentações e precisam estar prontas para futuras conciliações e integrações sem serem confundidas com dados de pagamento de contrapartes, canais sem saldo ou posições de investimento.
 
 **Independent Test**: Cadastrar uma conta bancária brasileira, uma conta de pagamento e uma conta monetária de liquidação em corretora, verificando campos condicionais, mascaramento e ausência de vínculo automático com dados de pagamento de pessoas ou posições de investimento.
 
@@ -142,22 +146,22 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **FR-FAC-BOUND-007**: Titularidade legal, quando informada como dado descritivo, NÃO DEVE presumir associação entre tenant, usuário, participante ou pessoa do diretório nem determinar autorização interna.
 - **FR-FAC-BOUND-008**: Instrumento de pagamento, canal de acesso, posição de investimento, linha de extrato externo, conexão bancária, correspondência de conciliação, diário e conta contábil DEVEM possuir identidades e ciclos de vida próprios e NÃO DEVEM ser incorporados à identidade da conta financeira.
 - **FR-FAC-BOUND-009**: Um produto somente DEVE ser representado por conta financeira quando mantiver saldo monetário independente, identificável e apto a receber eventos; produto que apenas movimenta ou apresenta saldo mantido em outra conta NÃO DEVE criar uma conta duplicada.
-- **FR-FAC-BOUND-010**: Associações futuras da conta com instrumentos, integrações, diários ou contas contábeis DEVEM preservar a identidade da conta e possuir vigência e histórico próprios quando sua alteração puder reinterpretar operações.
+- **FR-FAC-BOUND-010**: Associações futuras da conta com cartões subordinados, integrações, diários ou contas contábeis DEVEM preservar a identidade da conta e possuir vigência e histórico próprios quando sua alteração puder reinterpretar operações.
 - **FR-FAC-BOUND-011**: Usuário autorizado DEVE poder cadastrar qualquer conta monetária que decida controlar ou acompanhar no tenant, independentemente de titularidade jurídica, vínculo com pessoa cadastrada ou comprovação de propriedade.
 - **FR-FAC-BOUND-012**: O sistema NÃO DEVE validar propriedade, mandato ou legitimidade jurídica como condição do cadastro; a responsabilidade pela decisão de controlar ou acompanhar a conta pertence ao usuário autorizado e DEVE ser atribuível por auditoria.
 - **FR-FAC-BOUND-013**: Autorização interna para consultar ou operar a conta DEVE decorrer exclusivamente dos grupos e chaves do tenant; consentimento, credencial ou autorização exigidos por custodiante externo pertencem à futura feature de conectividade e NÃO DEVEM ser presumidos pelo cadastro.
 
 ### Natureza e Classificação da Conta
 
-- **FR-FAC-TYPE-001**: Toda conta DEVE possuir uma natureza monetária canônica fornecida pelo sistema ou por módulo, com semântica, dados mínimos e comportamentos compatíveis.
-- **FR-FAC-TYPE-002**: A primeira versão DEVE suportar, no mínimo, as naturezas caixa físico, conta de depósito, conta de pagamento ou valor monetário armazenado, conta monetária de liquidação ou custódia e outra conta monetária controlada.
+- **FR-FAC-TYPE-001**: Toda conta DEVE possuir uma natureza financeira canônica fornecida pelo sistema ou por módulo, com semântica, orientação de saldo, dados mínimos e comportamentos compatíveis.
+- **FR-FAC-TYPE-002**: A primeira versão DEVE suportar, no mínimo, as naturezas caixa físico, conta de depósito, conta de pagamento ou valor monetário armazenado, conta monetária de liquidação ou custódia, conta especializada de cartão de crédito e outra conta financeira controlada.
 - **FR-FAC-TYPE-003**: Natureza, categoria do custodiante, produto ou subtipo, disponibilidade e capacidades DEVEM ser classificações independentes; o sistema NÃO DEVE codificar suas combinações em um único tipo funcional.
 - **FR-FAC-TYPE-004**: Tenant NÃO DEVE criar naturezas ou capacidades funcionais arbitrárias; nomes, rótulos, produtos informados e grupos personalizados NÃO alteram a semântica canônica.
 - **FR-FAC-TYPE-005**: Alterar a natureza depois da ativação DEVE ser impedido quando puder reinterpretar dados ou histórico; o usuário deverá encerrar a conta e criar outra quando a natureza tiver mudado.
-- **FR-FAC-TYPE-006**: Cartão de crédito, cartão de débito, cheque, chave de endereçamento, token e demais instrumentos ou canais de pagamento NÃO DEVEM ser tratados como simples natureza de conta nesta feature.
+- **FR-FAC-TYPE-006**: Cartão de débito, cheque, chave de endereçamento, token e demais instrumentos ou canais sem saldo ou posição própria NÃO DEVEM ser tratados como natureza de conta; cartão de crédito somente PODE originar conta pela natureza especializada definida por `credit-cards`.
 - **FR-FAC-TYPE-007**: Custodiante DEVE poder ser classificado, quando aplicável, como banco, instituição de pagamento, corretora, custodiante especializado ou outra categoria canônica, sem presumir que toda conta institucional seja bancária.
 - **FR-FAC-TYPE-008**: Produto ou subtipo DEVE poder distinguir corrente, poupança, pagamento, salário, liquidação e outros produtos canônicos ou declarativos compatíveis, sem definir sozinho o comportamento da conta.
-- **FR-FAC-TYPE-009**: Carteira digital, aplicativo ou plataforma somente DEVE originar conta financeira quando mantiver saldo monetário próprio; quando apenas acessar, apresentar ou movimentar outra conta, DEVE ser modelado futuramente como instrumento, canal ou integração.
+- **FR-FAC-TYPE-009**: Carteira digital ou plataforma somente DEVE originar conta financeira quando mantiver saldo monetário próprio; aplicativo ou canal que apenas acessa, apresenta ou movimenta outra conta NÃO DEVE exigir cadastro independente nesta primeira versão.
 - **FR-FAC-TYPE-010**: Conta mantida em corretora ou plataforma de investimentos DEVE representar nesta feature somente o saldo monetário de liquidação ou custódia, usado para depósitos, aplicações, resgates e transferências.
 - **FR-FAC-TYPE-011**: Ativo ou posição de investimento cujo valor dependa de quantidade, cotação, índice, valorização, vencimento ou evento patrimonial NÃO DEVE ser tratado como saldo de conta financeira, ainda que possua liquidez imediata.
 - **FR-FAC-TYPE-012**: Capacidade de receber, pagar, transferir, contar caixa, importar extrato, conciliar ou conectar-se externamente DEVE possuir semântica canônica fornecida pelo sistema ou módulo e ser habilitada somente quando compatível com natureza, produto e custodiante.
@@ -192,7 +196,7 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **FR-FAC-BAL-008**: Qualquer valor disponível que inclua limite de crédito DEVE ser apresentado separadamente do saldo próprio e identificado como informativo.
 - **FR-FAC-BAL-009**: O sistema NÃO DEVE possuir tipo privilegiado de lançamento de correção de caixa nem permitir mutação direta do saldo atual por fora do fluxo normal de lançamentos.
 - **FR-FAC-BAL-010**: Uma futura funcionalidade de contagem ou conciliação PODERÁ calcular e propor a diferença, mas sua confirmação DEVE gerar lançamento financeiro comum e respeitar categoria, autorização e auditoria.
-- **FR-FAC-BAL-011**: Saldo negativo DEVE ser apresentado de forma inequívoca e sinalizado para investigação, sem alterar automaticamente lançamentos, abertura, limite ou estado da conta.
+- **FR-FAC-BAL-011**: Saldo negativo DEVE ser apresentado de forma inequívoca. Em conta de recurso monetário, DEVE ser sinalizado para investigação; em conta especializada de crédito/passivo, DEVE ser apresentado como dívida esperada, sem alterar automaticamente lançamentos, abertura, limite ou estado.
 - **FR-FAC-BAL-012**: Saldo interno efetivado, saldo conciliado, saldo do extrato externo, saldo disponível informado pelo custodiante, valor bloqueado, valor pendente, saldo projetado, limite e saldo contábil DEVEM ser conceitos distintos e NÃO DEVEM compartilhar um único campo mutável.
 - **FR-FAC-BAL-013**: Esta feature DEVE manter somente abertura e saldo interno derivado; as demais visões de saldo DEVEM declarar fonte, instante de referência e regra de cálculo nas respectivas features.
 - **FR-FAC-BAL-014**: Valor de mercado, custo de aquisição e rendimento de posições de investimento NÃO DEVEM compor o saldo da conta monetária de liquidação antes de evento monetário efetivado, como crédito de rendimento, venda ou resgate liquidado.
@@ -210,6 +214,7 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **FR-FAC-BANK-009**: Integração, consentimento, credencial, token, extrato e estado de conexão com custodiante NÃO fazem parte deste cadastro-base.
 - **FR-FAC-BANK-010**: Identificador externo da conta DEVE possuir esquema, valor protegido, país, custodiante e vigência próprios, sem ser utilizado como identidade interna da conta.
 - **FR-FAC-BANK-011**: Conexões futuras DEVEM poder associar uma autorização externa a uma ou várias contas sem incorporar credenciais, consentimento ou estado de sincronização ao cadastro essencial da conta.
+- **FR-FAC-BANK-012**: Chaves Pix e outros identificadores de endereçamento próprios do tenant DEVEM ser tratados como identificadores externos versionados da conta, sem criar instrumento, saldo ou conta adicional.
 
 ### Identificação e Organização
 
@@ -266,7 +271,7 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **FR-FAC-UX-002**: O formulário DEVE adaptar campos à natureza, custodiante, produto, país e esquema sem exigir informações institucionais para caixas próprios.
 - **FR-FAC-UX-003**: Antes da ativação, o usuário DEVE revisar natureza, custodiante e produto aplicáveis, moeda, data, saldo de abertura e possíveis duplicidades.
 - **FR-FAC-UX-004**: Listagens DEVEM distinguir natureza, custodiante ou produto relevante, moeda, grupo e estado e DEVEM mascarar identificadores institucionais por padrão.
-- **FR-FAC-UX-008**: Ao cadastrar carteira, plataforma ou produto de investimento, a interface DEVE explicar se o usuário está registrando saldo monetário próprio, instrumento de acesso ou posição de ativo e encaminhar somente o primeiro para esta feature.
+- **FR-FAC-UX-008**: Ao cadastrar carteira, plataforma ou produto de investimento, a interface DEVE explicar se o usuário está registrando saldo monetário próprio, mero canal de acesso ou posição de ativo e encaminhar somente o primeiro para esta feature.
 - **FR-FAC-UX-005**: Saldos negativos, conta inativa e conta encerrada DEVEM ser perceptíveis sem depender exclusivamente de cor.
 - **FR-FAC-UX-006**: Jornadas principais DEVEM ser realizáveis por teclado e tecnologias assistivas, com erros associados aos campos correspondentes.
 - **FR-FAC-UX-007**: Operações de correção, inativação, encerramento e reabertura DEVEM apresentar seus efeitos antes da confirmação.
@@ -282,8 +287,8 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 
 ### Key Entities
 
-- **Conta Financeira**: identidade estável de um saldo monetário independente do tenant, com natureza, moeda, estado, organização e contratos de saldo.
-- **Natureza da Conta**: semântica monetária canônica que define o que a conta representa, seus dados mínimos e compatibilidades, sem incorporar custodiante, produto ou canal.
+- **Conta Financeira**: identidade estável de uma posição financeira independente do tenant, de recurso ou crédito/passivo, com natureza, moeda, estado, organização e contratos de saldo.
+- **Natureza da Conta**: semântica financeira canônica que define o que a conta representa, sua orientação de saldo, dados mínimos e compatibilidades, sem incorporar custodiante, produto ou canal.
 - **Custodiante da Conta**: banco, instituição de pagamento, corretora, custodiante especializado ou outra instituição que mantém o saldo, quando aplicável.
 - **Produto da Conta**: classificação complementar, como corrente, poupança, pagamento, salário ou liquidação, sem produzir saldo independente da conta financeira.
 - **Capacidade da Conta**: comportamento canônico disponibilizado por módulo e compatível com a natureza e o produto, como receber, pagar, transferir, contar caixa, importar ou conciliar.
@@ -315,18 +320,18 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **SC-FAC-013**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FAC-014**: Em 100% dos testes multimoeda, cada conta mantém uma única moeda, o agrupador não possui saldo e não ocorre soma ou conversão automática entre as contas.
 - **SC-FAC-015**: Em 100% dos testes, depois do primeiro evento financeiro efetivado, a edição direta do saldo de abertura é rejeitada e qualquer correção afeta o saldo somente por lançamento financeiro comum categorizado.
-- **SC-FAC-016**: Em 100% dos testes, evento financeiro autorizado que produza saldo negativo pode ser registrado, e o resultado é sinalizado sem incorporar limite de crédito ao saldo próprio.
+- **SC-FAC-016**: Em 100% dos testes, evento autorizado que produza saldo negativo pode ser registrado; conta de recurso sinaliza a ocorrência e conta especializada de crédito/passivo a apresenta como dívida, sem incorporar limite ao saldo.
 - **SC-FAC-017**: Em 100% dos testes de classificação, natureza, custodiante, produto e capacidades permanecem dimensões independentes e combinações incompatíveis são rejeitadas.
 - **SC-FAC-018**: Em 100% dos testes, carteira ou plataforma sem saldo monetário próprio não cria conta financeira duplicada.
 - **SC-FAC-019**: Em 100% dos testes, valorização ou cotação de posição de investimento não altera o saldo da conta monetária de liquidação sem evento monetário efetivado.
-- **SC-FAC-020**: Em 100% dos testes de fronteira, instrumentos, conexões, linhas de extrato, conciliações e mapeamentos contábeis mantêm identidade independente da conta financeira.
+- **SC-FAC-020**: Em 100% dos testes de fronteira, cartões subordinados, conexões, linhas de extrato, conciliações e mapeamentos contábeis mantêm identidade independente da conta financeira.
 - **SC-FAC-021**: Em 100% dos testes de cadastro, ausência de titularidade jurídica, vínculo com pessoa ou comprovação de propriedade não impede usuário autorizado de criar a conta, e nenhum usuário sem acesso do tenant passa a consultá-la ou operá-la.
 
 ## Fora do Escopo
 
 - Lançamentos de crédito e débito, transferências e ajustes financeiros comuns.
 - Contas a pagar, contas a receber, parcelas e recorrências.
-- Cartões, compras, limites, faturas e pagamentos de fatura.
+- Compras, parcelas, cartões subordinados, limites, faturas e pagamentos de fatura, embora a natureza especializada da conta pertença a este cadastro-base.
 - Categorias, centros de custo e rateios.
 - Extratos, conciliação, OFX, Open Finance e integrações bancárias.
 - Cotações, conversões cambiais e consolidação entre moedas.

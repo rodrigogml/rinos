@@ -11,7 +11,7 @@ Esta feature permite movimentar valor entre duas contas financeiras do mesmo ten
 Transferências entre contas de moedas diferentes preservam os valores efetivamente retirados e recebidos e a memória explícita da conversão. A operação não representa receita, despesa, pagamento a terceiro, recebimento de cliente nem instrução enviada a banco; esses eventos pertencem às respectivas funcionalidades e podem usar transferências somente quando realmente movimentarem recursos entre contas controladas pelo tenant.
 
 > [!IMPORTANT]
-> Uma transferência confirmada não pode ser editada ou excluída. Correções preservam a operação original e criam efeitos compensatórios vinculados, respeitando o fechamento financeiro vigente.
+> Uma transferência confirmada pode ser revisada atomicamente enquanto todas as datas afetadas estiverem abertas, preservando versões e recalculando ambas as contas. Depois de alcançada pelo fechamento financeiro, torna-se imutável e correções exigem efeitos compensatórios vinculados em datas abertas.
 
 > [!NOTE]
 > Esta feature registra o fato financeiro interno. Execução bancária, agendamento externo, arquivos de remessa, consentimentos, extratos e conciliação permanecem fora deste escopo.
@@ -22,7 +22,7 @@ Transferências entre contas de moedas diferentes preservam os valores efetivame
 
 - Q: As pontas principais de uma transferência devem receber categorias e dimensões? → A: Não. Como o principal transferido não representa receita nem despesa, suas duas pontas dispensam categorias e dimensões. A exceção é estrutural e exclusiva da origem `financial-transfers`; custos adicionais permanecem fatos econômicos separados e integralmente classificados.
 - Q: Como representar transferências debitadas e creditadas em datas diferentes? → A: A transferência pode permanecer `EM_TRÂNSITO`. A saída afeta a origem na data do envio e a entrada afeta o destino somente quando o recebimento é confirmado; o valor em trânsito é apresentado separadamente e não pertence ao saldo de uma conta. Transferências imediatas continuam confirmando ambas as pontas de uma vez.
-- Q: Como registrar tarifas, impostos e outros custos relacionados à transferência? → A: Como lançamentos econômicos comuns, integralmente classificados e vinculados à transferência. Podem ser confirmados atomicamente com a etapa correspondente ou acrescentados posteriormente como novos fatos imutáveis quando descobertos, sem alterar nem reduzir silenciosamente o principal transferido.
+- Q: Como registrar tarifas, impostos e outros custos relacionados à transferência? → A: Como lançamentos econômicos comuns, integralmente classificados e vinculados à transferência. Podem ser confirmados atomicamente com a etapa correspondente ou acrescentados posteriormente como novos fatos; seguem a política geral de revisão em datas abertas e não podem alterar nem reduzir silenciosamente o principal transferido.
 
 ## User Scenarios & Testing
 
@@ -107,17 +107,17 @@ Um usuário autorizado encontra a transferência por seus atributos, consulta o 
 
 ---
 
-### User Story 6 - Estornar ou corrigir uma transferência (Priority: P1)
+### User Story 6 - Revisar ou compensar uma transferência (Priority: P1)
 
-Um usuário autorizado corrige uma transferência confirmada por uma operação compensatória completa e, quando necessário, registra uma nova transferência substituta.
+Um usuário autorizado revisa atomicamente uma transferência em datas abertas ou, quando alguma data estiver bloqueada, corrige-a por operação compensatória completa e eventual substituta.
 
 **Why this priority**: Corrigir somente uma ponta quebraria a rastreabilidade e tornaria os saldos incompatíveis com a intenção da operação.
 
-**Independent Test**: Estornar uma transferência e criar substituta, comprovando a permanência do original, as duas compensações e os vínculos da cadeia de correção.
+**Independent Test**: Revisar transferência em datas abertas e comprovar histórico e recálculo das duas contas; depois bloquear uma data e comprovar que a correção exige compensação.
 
 **Acceptance Scenarios**:
 
-1. **Given** transferência confirmada e elegível, **When** usuário autorizado informa motivo e confirma estorno, **Then** os dois efeitos são compensados atomicamente sem alterar o original.
+1. **Given** transferência confirmada com todas as datas afetadas abertas, **When** usuário autorizado revisa contas, valores, datas ou conversão, **Then** operação e pontas são atualizadas atomicamente, versões anteriores são preservadas e os saldos são recalculados.
 2. **Given** transferência já integralmente estornada, **When** novo estorno é solicitado, **Then** nenhum efeito duplicado é produzido.
 3. **Given** uma das datas necessárias bloqueada pelo fechamento, **When** a correção é solicitada, **Then** a operação exige datas abertas e preserva as datas dos fatos originais.
 
@@ -196,7 +196,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **FR-FTF-CORE-001**: Transferência DEVE possuir identidade técnica estável e imutável, sem exigir código sequencial ou número de negócio exposto ao usuário.
 - **FR-FTF-CORE-002**: Transferência DEVE possuir estados `RASCUNHO`, `EM_TRÂNSITO`, `CONCLUÍDA` e `ESTORNADA`, preservando a cadeia de eventual substituição.
 - **FR-FTF-CORE-003**: Rascunho DEVE poder ser criado, alterado e excluído sem afetar saldos.
-- **FR-FTF-CORE-004**: Transferência confirmada NÃO DEVE ser editada nem excluída por usuário, administrador, módulo ou importação.
+- **FR-FTF-CORE-004**: Transferência confirmada PODE ser revisada ou cancelada logicamente pelo fluxo autorizado enquanto todas as datas afetadas estiverem abertas; com qualquer data bloqueada, NÃO DEVE ser alterada nem excluída.
 - **FR-FTF-CORE-005**: Transferência DEVE preservar descrição, observação opcional, instantes de criação e confirmação, ator ou origem e estado.
 - **FR-FTF-CORE-006**: Usuário autorizado DEVE localizar transferências por contas, datas, valores, moedas, descrição, estado, origem e vínculos de correção.
 - **FR-FTF-CORE-007**: Uma transferência somente DEVE passar de `RASCUNHO` para `EM_TRÂNSITO` quando a saída for confirmada, de `RASCUNHO` para `CONCLUÍDA` quando ambas as pontas forem confirmadas imediatamente e de `EM_TRÂNSITO` para `CONCLUÍDA` quando o recebimento for confirmado.
@@ -235,13 +235,13 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **FR-FTF-FEE-002**: Tarifa, imposto ou diferença econômica NÃO DEVE ser ocultado por redução silenciosa do valor creditado no destino.
 - **FR-FTF-FEE-003**: Cada custo DEVE possuir conta, direção, data, valor, moeda, categoria, dimensões aplicáveis, descrição, ator ou origem e auditoria próprios.
 - **FR-FTF-FEE-004**: Custo conhecido antes da confirmação de uma etapa PODERÁ ser coordenado atomicamente com ela; falha do custo DEVE rejeitar toda aquela etapa quando o usuário os tiver confirmado conjuntamente.
-- **FR-FTF-FEE-005**: Custo descoberto posteriormente DEVE poder ser acrescentado por novo fato imutável vinculado, sem atualizar a transferência, suas pontas, conversão ou custos anteriores.
+- **FR-FTF-FEE-005**: Custo descoberto posteriormente DEVE poder ser acrescentado por novo fato vinculado, sem reduzir silenciosamente o principal transferido.
 - **FR-FTF-FEE-006**: Custo posterior DEVE validar conta, moeda, data, fechamento, categoria, dimensões e autorização no momento de sua própria confirmação; falha NÃO DEVE desfazer uma transferência já concluída.
 - **FR-FTF-FEE-007**: Vínculo com a transferência NÃO DEVE dispensar qualquer regra de classificação ou autorização exigida de um lançamento econômico comum.
 - **FR-FTF-FEE-008**: Custo debitado de conta diferente da origem DEVE exigir acesso explícito à conta escolhida e permanecer no mesmo tenant.
 - **FR-FTF-FEE-009**: Custo denominado em moeda diferente da respectiva conta DEVE preservar memória de conversão conforme `financial-transactions`, sem alterar a conversão do principal.
 - **FR-FTF-FEE-010**: Cada custo DEVE possuir identidade de origem idempotente no escopo da transferência, impedindo duplicação por repetição técnica.
-- **FR-FTF-FEE-011**: Correção ou estorno de custo DEVE ocorrer pelo fluxo da transferência que o originou e criar fatos compensatórios vinculados, sem reescrever o custo confirmado.
+- **FR-FTF-FEE-011**: Revisão, cancelamento, correção ou estorno de custo DEVE ocorrer pelo fluxo da transferência que o originou e seguir a política de datas abertas e bloqueadas de `financial-transactions`.
 
 ### Rascunho e Confirmação
 
@@ -258,9 +258,9 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 
 - **FR-FTF-DATE-001**: Toda ponta DEVE possuir data de efetivação que determine quando seu lançamento afeta o saldo da conta correspondente.
 - **FR-FTF-DATE-002**: Datas e instantes DEVEM possuir interpretação inequívoca no fuso aplicável ao tenant.
-- **FR-FTF-DATE-003**: Cada efeito DEVE respeitar `financial-closing-control` imediatamente antes da confirmação.
-- **FR-FTF-DATE-004**: Data bloqueada NÃO DEVE aceitar nova ponta, estorno ou correção, ainda que a outra data esteja aberta.
-- **FR-FTF-DATE-005**: Retroceder ou remover o fechamento NÃO DEVE alterar transferências existentes nem dispensar as demais validações.
+- **FR-FTF-DATE-003**: Cada confirmação, revisão, cancelamento, estorno ou correção DEVE respeitar `financial-closing-control` imediatamente antes do efeito.
+- **FR-FTF-DATE-004**: Data bloqueada NÃO DEVE aceitar nova ponta, revisão, cancelamento, estorno ou correção, ainda que a outra data esteja aberta.
+- **FR-FTF-DATE-005**: Retroceder ou remover o fechamento NÃO DEVE alterar transferências automaticamente, mas PODE reabrir sua revisão ou cancelamento quando todas as datas afetadas ficarem abertas.
 - **FR-FTF-DATE-006**: Data efetiva de recebimento NÃO DEVE ser anterior à data efetiva de envio.
 - **FR-FTF-DATE-007**: Envio e recebimento DEVEM registrar seus próprios instantes de confirmação e atores ou origens, ainda que possuam a mesma data de efetivação.
 
@@ -275,23 +275,24 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 
 ### Estorno e Correção
 
-- **FR-FTF-REV-001**: Transferência confirmada somente DEVE ser corrigida por novos fatos vinculados, nunca por atualização ou exclusão.
+- **FR-FTF-REV-001**: Transferência em datas abertas DEVE ser corrigível por revisão versionada ou cancelamento lógico atômico; com alguma data bloqueada, somente DEVE ser corrigida por novos fatos vinculados em datas abertas.
 - **FR-FTF-REV-002**: Estorno integral DEVE criar operação inversa que compense atomicamente as duas pontas e preserve valores, moedas, conversão, motivo e vínculos.
 - **FR-FTF-REV-003**: Estorno DEVE exigir autorização aplicável às duas contas, motivo não vazio e prévia dos efeitos.
 - **FR-FTF-REV-004**: Uma transferência NÃO DEVE possuir mais de um estorno integral efetivado nem permanecer parcialmente estornada.
-- **FR-FTF-REV-005**: Correção de conta, valor, data ou conversão DEVE vincular original, estorno e eventual substituta em uma cadeia explicável.
+- **FR-FTF-REV-005**: Revisão de conta, valor, data ou conversão em intervalo aberto DEVE preservar todas as versões; correção de operação bloqueada DEVE vincular original, estorno e eventual substituta em cadeia explicável.
 - **FR-FTF-REV-006**: Dependência de conciliação, caixa, investimento ou outro módulo PODERÁ impedir o estorno até que o vínculo seja legitimamente desfeito no contexto responsável.
-- **FR-FTF-REV-007**: Encerramento posterior de conta NÃO DEVE autorizar reescrita; correção excepcional deverá usar contas e datas permitidas sem ocultar o original.
+- **FR-FTF-REV-007**: Encerramento posterior de conta NÃO DEVE autorizar revisão; correção excepcional deverá usar contas e datas permitidas sem ocultar o original.
+- **FR-FTF-REV-010**: Revisão DEVE exigir que datas anteriores e novas das duas pontas estejam abertas e preservar conteúdo anterior completo, motivo, ator, instante e efeito nos saldos.
 - **FR-FTF-REV-008**: Falha, devolução ou cancelamento depois do envio e antes do recebimento DEVE compensar somente a saída por novo lançamento vinculado e conduzir a operação a `ESTORNADA`, sem criar entrada no destino.
 - **FR-FTF-REV-009**: Depois do recebimento, estorno DEVE compensar as duas pontas; não será permitido tratar transferência concluída como simples cancelamento de trânsito.
 
 ### Autorização, Auditoria e Isolamento
 
 - **FR-FTF-SEC-001**: Acesso DEVE ser negado por padrão e liberado por chaves específicas do tenant.
-- **FR-FTF-SEC-002**: Consultar, criar rascunho, alterar próprio rascunho, alterar qualquer rascunho, confirmar, transferir retroativamente, converter moedas, estornar, corrigir, consultar origem e exportar DEVEM poder ser autorizados separadamente quando o risco diferir.
+- **FR-FTF-SEC-002**: Consultar, criar rascunho, alterar rascunho, confirmar, revisar ou cancelar transferência aberta, transferir retroativamente, converter moedas, estornar fato bloqueado, corrigir, consultar histórico, consultar origem e exportar DEVEM poder ser autorizados separadamente quando o risco diferir.
 - **FR-FTF-SEC-003**: Autorização geral para transferir NÃO DEVE substituir autorização necessária sobre cada conta nem conceder acesso a seus saldos.
 - **FR-FTF-SEC-004**: Interfaces, módulos, importações e operações em lote DEVEM aplicar o mesmo isolamento e contrato de autorização.
-- **FR-FTF-SEC-005**: Criação, alteração e exclusão de rascunho; confirmação, repetição divergente, estorno, correção, retroatividade e negação sensível DEVEM registrar ator, tenant, instante, origem, motivo, resultado e efeitos.
+- **FR-FTF-SEC-005**: Criação, alteração e exclusão de rascunho; confirmação, revisão, cancelamento, repetição divergente, estorno, correção, retroatividade e negação sensível DEVEM registrar ator, tenant, instante, origem, motivo, resultado e efeitos.
 - **FR-FTF-SEC-006**: Usuário sem acesso à outra ponta NÃO DEVE inferir conta, valor, saldo, conversão ou existência por filtros, mensagens, totais, auditoria ou vínculos.
 - **FR-FTF-SEC-007**: Logs, erros e métricas NÃO DEVEM expor valores, saldos, identificadores de contas ou dados pessoais sem finalidade e proteção aprovadas.
 
@@ -303,7 +304,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **FR-FTF-UX-004**: Em moedas diferentes, valores, moedas, taxa, convenção e arredondamento DEVEM ser apresentados sem sugerir igualdade nominal.
 - **FR-FTF-UX-005**: Saldo negativo resultante, fechamento, ausência de autorização, conversão inválida e repetição divergente DEVEM possuir mensagens acionáveis sem revelar dados protegidos.
 - **FR-FTF-UX-006**: Estado, direção, conta e moeda NÃO DEVEM depender somente de cor; jornadas principais DEVEM ser operáveis por teclado e tecnologias assistivas.
-- **FR-FTF-UX-007**: Estorno e correção DEVEM apresentar original, compensação, substituta eventual e resultado líquido antes da confirmação.
+- **FR-FTF-UX-007**: Revisão, cancelamento, estorno e correção DEVEM apresentar conteúdo vigente, alteração ou compensação, substituta eventual e resultado líquido antes da confirmação.
 - **FR-FTF-UX-008**: A interface DEVE distinguir claramente o principal neutro, os recursos em trânsito e cada custo econômico, sem apresentar o valor líquido como se fosse uma única ponta.
 
 ### Decisões de Infraestrutura Auditáveis
@@ -311,14 +312,14 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 > Decisões de infraestrutura: esta feature não executa agendamentos, não mantém tokens externos e não realiza rotação criptográfica própria. Transferências futuras ou instruções bancárias pertencem a funcionalidades específicas.
 
 - **FR-FTF-INFRA-IDEMP**: Cada confirmação de envio, recebimento imediato, recebimento posterior ou compensação DEVE possuir identidade idempotente no tenant e origem, produzindo no máximo o efeito esperado para aquela etapa.
-- **FR-FTF-INFRA-LOCK**: Confirmação, estorno e correção concorrentes DEVEM preservar unicidade, vínculos, fechamento e saldos determinísticos em todas as instâncias da aplicação.
+- **FR-FTF-INFRA-LOCK**: Confirmação, revisão, cancelamento, estorno e correção concorrentes DEVEM preservar unicidade, versões, vínculos, fechamento e saldos determinísticos em todas as instâncias da aplicação.
 - **FR-FTF-INFRA-ATOMIC**: Em cada transição, estado, ponta aplicável, conversão disponível, vínculos e auditoria de sucesso DEVEM ser confirmados ou rejeitados como uma única operação de negócio.
 - **FR-FTF-INFRA-BACKUP**: Rascunhos, transferências, pontas, conversões, vínculos, origens e auditorias DEVEM participar dos backups e restaurações do tenant segundo `tenant-data-governance`.
 
 ### Key Entities
 
 - **Rascunho de Transferência**: preparação mutável e sem efeito em saldo, contendo as contas, data, descrição e valores progressivamente informados.
-- **Transferência Financeira**: operação imutável que coordena duas pontas monetárias entre contas distintas do mesmo tenant.
+- **Transferência Financeira**: operação de identidade estável que coordena duas pontas monetárias e preserva revisões enquanto aberta, tornando-se imutável quando alguma data aplicável é bloqueada.
 - **Ponta da Transferência**: papel de origem ou destino associado ao respectivo lançamento financeiro, conta, moeda, valor e data.
 - **Recurso em Trânsito**: posição derivada da saída confirmada ainda sem entrada ou compensação, discriminada por moeda e sem constituir conta financeira.
 - **Memória de Conversão da Transferência**: evidência que relaciona valores de moedas diferentes pela taxa, convenção, fonte, referência e arredondamento confirmados.
@@ -336,7 +337,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **SC-FTF-003**: Em 100% das repetições equivalentes, no máximo uma transferência é produzida; conteúdo divergente com a mesma origem é rejeitado.
 - **SC-FTF-004**: Em 100% dos testes de mesma moeda, os valores das pontas são idênticos e o efeito líquido conjunto nessa moeda é zero.
 - **SC-FTF-005**: Em 100% dos testes multimoeda, cada conta recebe apenas sua moeda e a memória de conversão reproduz os dois valores confirmados.
-- **SC-FTF-006**: Em 100% dos estornos, original permanece imutável e ambas as pontas são compensadas uma única vez.
+- **SC-FTF-006**: Em 100% das revisões abertas, ambas as pontas e saldos são atualizados atomicamente com histórico; em estornos de fatos bloqueados, ambas são compensadas uma única vez sem alterar o original.
 - **SC-FTF-007**: Em 100% dos testes de fechamento, nenhuma ponta é produzida em data bloqueada e correções preservam as datas originais.
 - **SC-FTF-008**: Em 100% dos testes de autorização parcial, nenhuma ponta é confirmada sem acesso necessário às duas contas e dados protegidos não são inferidos.
 - **SC-FTF-009**: Usuários autorizados concluem uma transferência simples entre contas da mesma moeda em até 60 segundos nos testes de usabilidade.

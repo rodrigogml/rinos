@@ -6,12 +6,12 @@
 
 ## Escopo
 
-Esta feature estabelece uma única data de fechamento financeiro opcional por tenant. Quando informada, a data forma um limite temporal contínuo: nenhum novo fato monetário pode ser confirmado com data de efetivação igual ou anterior a ela. Quando ausente, não há bloqueio temporal próprio do financeiro.
+Esta feature estabelece uma única data de fechamento financeiro opcional por tenant. Quando informada, a data forma um limite temporal contínuo: nenhum fato monetário com data de efetivação igual ou anterior a ela pode ser criado, revisado ou cancelado. Quando ausente, não há bloqueio temporal próprio do financeiro.
 
 O tenant pode avançar a data para proteger todo o histórico até um novo limite ou, mediante autorização reforçada, retrocedê-la ou removê-la para reabrir datas anteriores. Toda mudança é motivada e auditada. O fechamento não altera lançamentos existentes, não cria períodos e não materializa saldos oficiais.
 
 > [!IMPORTANT]
-> A data de fechamento controla novos efeitos retroativos; ela não torna fatos confirmados editáveis. Correções e estornos continuam sendo novos fatos vinculados e imutáveis.
+> A data de fechamento é a fronteira de imutabilidade. Lançamentos posteriores a ela podem ser revisados ou cancelados com histórico completo; lançamentos alcançados pelo limite ficam imutáveis e somente podem ser corrigidos por novos fatos compensatórios em data aberta.
 
 > [!NOTE]
 > Saldos financeiros permanecem derivados do saldo de abertura e dos lançamentos confirmados. Eventuais projeções ou snapshots de desempenho poderão ser introduzidos futuramente como dados reconstruíveis, nunca como fonte de verdade desta feature.
@@ -21,7 +21,8 @@ O tenant pode avançar a data para proteger todo o histórico até um novo limit
 ### Session 2026-07-22
 
 - Q: O controle financeiro precisa cadastrar e fechar períodos? → A: Não. Cada tenant possui somente uma data de fechamento opcional. Avançá-la fecha continuamente todas as datas até o novo limite; retrocedê-la ou removê-la reabre o intervalo correspondente.
-- Q: O fechamento precisa registrar snapshots de saldo para auditoria, extratos ou SPED? → A: Não. O histórico imutável das mudanças do fechamento, combinado com data de efetivação, instante de confirmação, ator, origem e vínculos dos lançamentos, deve identificar fatos introduzidos durante reaberturas. Evidências periódicas contábeis, fiscais e bancárias pertencem às respectivas features futuras.
+- Q: O fechamento precisa registrar snapshots de saldo para auditoria, extratos ou SPED? → A: Não. O histórico imutável das mudanças do fechamento, combinado com datas, versões, confirmações, revisões, cancelamentos, atores e origens dos lançamentos, deve identificar tudo que mudou durante reaberturas. Evidências periódicas contábeis, fiscais e bancárias pertencem às respectivas features futuras.
+- Q: O que a data de fechamento torna imutável? → A: Todo lançamento cuja data de efetivação seja igual ou anterior ao limite. Datas posteriores permanecem editáveis mediante autorização e histórico; retroceder ou remover o limite reabre também a possibilidade de revisar e cancelar lançamentos no intervalo correspondente.
 
 ## User Scenarios & Testing
 
@@ -59,23 +60,23 @@ Um usuário autorizado revisa o intervalo que será protegido e avança a data d
 
 ### User Story 3 - Bloquear efeitos retroativos em todos os módulos (Priority: P1)
 
-Um usuário ou módulo tenta confirmar um lançamento, estorno, correção ou outro fato monetário e recebe uma decisão temporal consistente imediatamente antes da produção do efeito.
+Um usuário ou módulo tenta confirmar, revisar, cancelar, estornar ou corrigir um lançamento e recebe uma decisão temporal consistente imediatamente antes da alteração.
 
 **Why this priority**: Uma regra aplicada somente pela interface financeira poderia ser contornada por integrações ou módulos internos.
 
-**Independent Test**: Tentar produzir fatos na data fechada por origens diferentes e comprovar que todos são rejeitados sem efeitos parciais.
+**Independent Test**: Tentar criar, revisar e cancelar fatos na data fechada por origens diferentes e comprovar que todos são rejeitados sem efeitos parciais.
 
 **Acceptance Scenarios**:
 
-1. **Given** fechamento em determinada data, **When** qualquer módulo tenta confirmar fato nessa data ou antes, **Then** a operação é bloqueada sem efeito monetário parcial.
-2. **Given** fato com data posterior ao fechamento, **When** as demais regras são satisfeitas, **Then** esta feature não impede sua confirmação.
+1. **Given** fechamento em determinada data, **When** qualquer módulo tenta confirmar, revisar ou cancelar fato nessa data ou antes, **Then** a operação é bloqueada sem efeito monetário parcial.
+2. **Given** fato com data posterior ao fechamento, **When** as demais regras são satisfeitas, **Then** esta feature não impede sua confirmação, revisão ou cancelamento.
 3. **Given** fechamento alterado concorrentemente durante uma confirmação, **When** o efeito seria produzido, **Then** a decisão usa o estado vigente de forma atômica e não permite contorno por condição de corrida.
 
 ---
 
 ### User Story 4 - Reabrir datas anteriores (Priority: P1)
 
-Um usuário com autorização específica informa motivo e retrocede ou remove a data de fechamento para permitir novos fatos no intervalo reaberto.
+Um usuário com autorização específica informa motivo e retrocede ou remove a data de fechamento para permitir novos fatos, revisões e cancelamentos no intervalo reaberto.
 
 **Why this priority**: Erros e fatos tardios exigem reabertura controlada, sem apagar a proteção e a responsabilidade históricas.
 
@@ -100,7 +101,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 **Acceptance Scenarios**:
 
 1. **Given** qualquer mudança de fechamento, **When** a auditoria é consultada, **Then** apresenta tenant, valores anterior e novo, ator, instante, origem e motivo.
-2. **Given** intervalo reaberto e fatos retroativos confirmados, **When** a análise é solicitada, **Then** o sistema identifica os fatos pela combinação do histórico de fechamento e dos metadados imutáveis dos lançamentos.
+2. **Given** intervalo reaberto com fatos incluídos, revisados ou cancelados, **When** a análise é solicitada, **Then** o sistema identifica todas as alterações pela combinação do histórico de fechamento e do histórico dos lançamentos.
 3. **Given** novo avanço após reabertura, **When** a auditoria é consultada, **Then** todos os eventos permanecem preservados sem consolidação destrutiva ou snapshot obrigatório.
 
 ### Edge Cases
@@ -113,6 +114,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - Retrocesso seguido imediatamente por novo avanço.
 - Remoção do fechamento seguida de fatos com datas muito antigas.
 - Rascunho existente é alcançado por avanço do fechamento.
+- Lançamento revisado concorre com avanço do fechamento sobre sua data.
 - Estorno de fato antigo precisa ocorrer depois da data fechada.
 - Mudança de fuso do tenant altera a interpretação da data corrente.
 - Módulo de origem tenta reutilizar decisão temporal obtida antes de uma mudança.
@@ -153,22 +155,23 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 
 ### Decisão Temporal
 
-- **FR-FCC-BLOCK-001**: Todo módulo que produza fato monetário DEVE obter e aplicar a decisão temporal imediatamente antes de confirmá-lo.
-- **FR-FCC-BLOCK-002**: Novo fato com data de efetivação igual ou anterior ao fechamento vigente DEVE ser rejeitado sem qualquer efeito parcial.
+- **FR-FCC-BLOCK-001**: Todo módulo que crie, revise, cancele, estorne ou corrija fato monetário DEVE obter e aplicar a decisão temporal imediatamente antes da alteração.
+- **FR-FCC-BLOCK-002**: Criação, revisão ou cancelamento que afete data de efetivação igual ou anterior ao fechamento vigente DEVE ser rejeitado sem qualquer efeito parcial.
 - **FR-FCC-BLOCK-003**: Não DEVE existir contorno operacional comum, administrativo ou de integração capaz de ignorar o fechamento vigente.
 - **FR-FCC-BLOCK-004**: Estorno ou correção de fato em data bloqueada DEVE produzir eventual compensação somente em data posterior ao fechamento, preservando a data do original.
 - **FR-FCC-BLOCK-005**: Novo rascunho NÃO DEVE aceitar data bloqueada. Rascunho preexistente alcançado por avanço do fechamento DEVE permanecer identificável, mas somente poderá ser excluído ou movido para data aberta enquanto o bloqueio persistir.
 - **FR-FCC-BLOCK-006**: Decisão temporal DEVE considerar tenant e data de efetivação explicitamente e NÃO DEVE aceitar contexto implícito de outro tenant.
 - **FR-FCC-BLOCK-007**: A aplicação do bloqueio e a produção do fato monetário DEVEM resistir a alterações concorrentes do fechamento sem permitir condição de corrida.
 - **FR-FCC-BLOCK-008**: Falha ao avaliar o fechamento DEVE impedir a produção do fato, sem assumir permissividade por indisponibilidade ou erro.
+- **FR-FCC-BLOCK-009**: Revisão que altere data de efetivação DEVE ser permitida somente quando as datas anterior e nova estiverem posteriores ao fechamento vigente.
 
 ### Auditoria e Rastreabilidade
 
 - **FR-FCC-AUDIT-001**: Cada mudança efetiva DEVE gerar evento imutável contendo tenant, valor anterior, valor novo, ator, instante, origem e motivo quando exigido.
 - **FR-FCC-AUDIT-002**: O histórico NÃO DEVE permitir edição, exclusão ou substituição destrutiva de eventos.
 - **FR-FCC-AUDIT-003**: Usuário autorizado DEVE poder consultar e filtrar mudanças por intervalo, ator, origem e direção da alteração.
-- **FR-FCC-AUDIT-004**: O sistema DEVE permitir correlacionar cada intervalo reaberto aos fatos confirmados durante sua vigência por data de efetivação, instante de confirmação, ator, origem e vínculos de correção.
-- **FR-FCC-AUDIT-005**: A correlação DEVE distinguir fato retroativo introduzido durante a reabertura de fato preexistente que apenas permaneceu no intervalo.
+- **FR-FCC-AUDIT-004**: O sistema DEVE permitir correlacionar cada intervalo reaberto aos fatos confirmados, revisados ou cancelados durante sua vigência por datas, instantes, versões, atores, origens e vínculos.
+- **FR-FCC-AUDIT-005**: A correlação DEVE distinguir fato introduzido durante a reabertura de fato preexistente revisado, cancelado ou apenas mantido no intervalo.
 - **FR-FCC-AUDIT-006**: Novo avanço do fechamento NÃO DEVE apagar nem consolidar destrutivamente mudanças anteriores ou fatos correlacionados.
 - **FR-FCC-AUDIT-007**: Consultas de auditoria DEVEM respeitar autorização parcial e não revelar valores, descrições, contrapartes ou origens além do permitido.
 
@@ -207,13 +210,13 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 ### Measurable Outcomes
 
 - **SC-FCC-001**: Em 100% dos testes cruzados, o fechamento de um tenant não afeta nem revela o estado de outro.
-- **SC-FCC-002**: Em 100% dos testes, data igual ou anterior ao fechamento rejeita novo fato sem efeito parcial e data posterior não é bloqueada por esta feature.
+- **SC-FCC-002**: Em 100% dos testes, data igual ou anterior ao fechamento rejeita criação, revisão e cancelamento sem efeito parcial, enquanto data posterior não é bloqueada por esta feature.
 - **SC-FCC-003**: Em 100% das mudanças válidas, estado atual e evento de auditoria são persistidos atomicamente.
 - **SC-FCC-004**: Em 100% dos testes concorrentes, avanço do fechamento e confirmação de fato não permitem que um efeito em data bloqueada seja produzido.
 - **SC-FCC-005**: Em 100% dos retrocessos, somente o intervalo maior que a nova data e menor ou igual à anterior é reaberto.
 - **SC-FCC-006**: Em 100% das remoções, nenhuma data permanece bloqueada por esta feature e bloqueios de outros módulos continuam respeitados.
 - **SC-FCC-007**: Em 100% dos testes de auditoria, mudanças exibem valores anterior e novo, ator, instante, origem e motivo exigido sem permitir alteração histórica.
-- **SC-FCC-008**: Em 100% dos cenários de reabertura testados, fatos retroativos novos podem ser distinguidos dos fatos preexistentes sem snapshot de saldo.
+- **SC-FCC-008**: Em 100% dos cenários de reabertura testados, fatos incluídos, revisados e cancelados podem ser distinguidos dos fatos apenas preexistentes sem snapshot de saldo.
 - **SC-FCC-009**: Em 100% dos testes de autorização, somente chaves adequadas permitem visualizar, avançar, retroceder, remover ou auditar o fechamento.
 - **SC-FCC-010**: Usuários autorizados compreendem na prévia quais datas serão bloqueadas ou reabertas e concluem a alteração em até 60 segundos nos testes de usabilidade.
 - **SC-FCC-011**: Todas as jornadas principais podem ser concluídas somente por teclado e sem bloqueios críticos para tecnologias assistivas.
@@ -227,5 +230,5 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - Snapshots autoritativos, saldos consolidados ou tabelas obrigatórias de fechamento.
 - Saldos inicial e final de linhas de extrato, importação bancária e conciliação.
 - Fechamento operacional, contagem ou diferença de caixa físico.
-- Edição ou exclusão de lançamentos confirmados.
+- Regras funcionais de edição, cancelamento, estorno e correção dos lançamentos, que pertencem a `financial-transactions`; esta feature somente decide quais datas estão abertas.
 - Avanço automático do fechamento por agenda ou passagem do tempo.

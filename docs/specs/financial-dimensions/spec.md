@@ -211,7 +211,7 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 - **FR-FDIM-RULE-009**: Quando mais de um modelo explícito corresponder ao contexto, o sistema DEVE apresentar precedência determinística por prioridade e especificidade e NÃO DEVE fundir resultados conflitantes silenciosamente.
 - **FR-FDIM-RULE-010**: Sugestão histórica DEVE ser derivada exclusivamente de distribuições confirmadas no mesmo tenant.
 - **FR-FDIM-RULE-011**: O sistema DEVE normalizar conjuntos históricos pelas proporções e combinações dimensionais, desconsiderar a ordem dos componentes, agrupar conjuntos equivalentes e escalá-los deterministicamente para o valor atual.
-- **FR-FDIM-RULE-012**: A pontuação histórica DEVE exigir a mesma categoria e considerar frequência, recência e semelhança de atributos canônicos compatíveis, como contraparte, contexto de origem, conta financeira e instrumento de pagamento.
+- **FR-FDIM-RULE-012**: A pontuação histórica DEVE exigir a mesma categoria e considerar frequência, recência e semelhança de atributos canônicos compatíveis, como contraparte, contexto de origem, conta financeira e cartão associado quando aplicável.
 - **FR-FDIM-RULE-013**: Cada sugestão histórica DEVE explicar os fatores relevantes de sua posição sem revelar operações de origem que o usuário não esteja autorizado a consultar.
 - **FR-FDIM-RULE-014**: Antes da apresentação, toda sugestão DEVE ser filtrada pelas políticas atuais da categoria, tenant, data, dimensões e valores ativos, vigentes e disponíveis; candidato incompatível DEVE ser descartado.
 - **FR-FDIM-RULE-015**: Frequência histórica NÃO DEVE transformar sugestão em obrigação, regra de negócio nem precedência sobre modelo explícito ou aplicabilidade dimensional.
