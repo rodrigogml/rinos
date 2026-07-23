@@ -8,18 +8,19 @@
 
 Esta feature estabelece uma única data de fechamento financeiro opcional por tenant. Quando informada, a data forma um limite temporal contínuo: nenhum fato monetário com data de efetivação igual ou anterior a ela pode ser criado, revisado ou cancelado. Quando ausente, não há bloqueio temporal próprio do financeiro.
 
-O tenant pode avançar a data para proteger todo o histórico até um novo limite ou, mediante autorização reforçada, retrocedê-la ou removê-la para reabrir datas anteriores. Toda mudança é motivada e auditada. O fechamento não altera lançamentos existentes, não cria períodos e não materializa saldos oficiais.
+O tenant pode avançar a data para proteger todo o histórico até um novo limite ou, mediante autorização reforçada, retrocedê-la ou removê-la para reabrir datas anteriores. Antes de avançar, o sistema exige que não existam rascunhos nem pré-lançamentos pendentes dentro do limite proposto. Toda mudança é motivada e auditada. O fechamento não altera lançamentos existentes, não cria períodos e não materializa saldos oficiais.
 
 > [!IMPORTANT]
 > A data de fechamento é a fronteira de imutabilidade. Lançamentos posteriores a ela podem ser revisados ou cancelados com histórico completo; lançamentos alcançados pelo limite ficam imutáveis e somente podem ser corrigidos por novos fatos compensatórios em data aberta.
 
 > [!NOTE]
-> Saldos financeiros permanecem derivados do saldo de abertura e dos lançamentos confirmados. Eventuais projeções ou snapshots de desempenho poderão ser introduzidos futuramente como dados reconstruíveis, nunca como fonte de verdade desta feature.
+> Saldos financeiros permanecem derivados do saldo de abertura, dos pré-lançamentos e dos lançamentos confirmados. Eventuais projeções ou snapshots de desempenho poderão ser introduzidos futuramente como dados reconstruíveis, nunca como fonte de verdade desta feature.
 
 ## Clarifications
 
 ### Session 2026-07-22
 
+- Q: O fechamento pode avançar quando ainda existem lançamentos incompletos nas datas que seriam protegidas? → A: Não. Qualquer rascunho ou pré-lançamento não cancelado com data igual ou anterior ao limite proposto deve abortar o avanço. A interface apresenta todos os pendentes com identificação funcional mínima e respeita as autorizações de conteúdo; eles precisam ser confirmados, movidos para data aberta ou descartados conforme seu estado antes de nova tentativa.
 - Q: O controle financeiro precisa cadastrar e fechar períodos? → A: Não. Cada tenant possui somente uma data de fechamento opcional. Avançá-la fecha continuamente todas as datas até o novo limite; retrocedê-la ou removê-la reabre o intervalo correspondente.
 - Q: O fechamento precisa registrar snapshots de saldo para auditoria, extratos ou SPED? → A: Não. O histórico imutável das mudanças do fechamento, combinado com datas, versões, confirmações, revisões, cancelamentos, atores e origens dos lançamentos, deve identificar tudo que mudou durante reaberturas. Evidências periódicas contábeis, fiscais e bancárias pertencem às respectivas features futuras.
 - Q: O que a data de fechamento torna imutável? → A: Todo lançamento cuja data de efetivação seja igual ou anterior ao limite. Datas posteriores permanecem editáveis mediante autorização e histórico; retroceder ou remover o limite reabre também a possibilidade de revisar e cancelar lançamentos no intervalo correspondente.
@@ -55,6 +56,7 @@ Um usuário autorizado revisa o intervalo que será protegido e avança a data d
 1. **Given** fechamento ausente ou anterior, **When** usuário autorizado confirma uma data válida, **Then** todas as datas até o novo limite ficam bloqueadas atomicamente.
 2. **Given** alteração ainda não confirmada, **When** o usuário solicita a prévia, **Then** visualiza o limite atual, o proposto e o intervalo que passará a ser bloqueado.
 3. **Given** data proposta futura no calendário local do tenant, **When** a confirmação é solicitada, **Then** o sistema rejeita a alteração sem modificar o fechamento vigente.
+4. **Given** rascunho ou pré-lançamento dentro do limite proposto, **When** usuário tenta avançar o fechamento, **Then** a operação é abortada e apresenta a lista de pendências que precisam ser resolvidas.
 
 ---
 
@@ -113,7 +115,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - Confirmação de fato concorre com avanço do fechamento.
 - Retrocesso seguido imediatamente por novo avanço.
 - Remoção do fechamento seguida de fatos com datas muito antigas.
-- Rascunho existente é alcançado por avanço do fechamento.
+- Rascunho ou pré-lançamento é criado ou alterado concorrentemente durante o avanço do fechamento.
+- Usuário pode alterar o fechamento, mas possui autorização parcial sobre o conteúdo de uma pendência bloqueadora.
 - Lançamento revisado concorre com avanço do fechamento sobre sua data.
 - Estorno de fato antigo precisa ocorrer depois da data fechada.
 - Mudança de fuso do tenant altera a interpretação da data corrente.
@@ -144,7 +147,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 
 ### Alteração e Reabertura
 
-- **FR-FCC-CHANGE-001**: Definir data posterior à vigente, ou definir a primeira data, DEVE bloquear atomicamente todo o intervalo adicional até o novo limite.
+- **FR-FCC-CHANGE-001**: Definir data posterior à vigente, ou definir a primeira data, DEVE bloquear atomicamente todo o intervalo adicional até o novo limite somente quando não houver rascunho nem pré-lançamento pendente nesse intervalo ou em datas anteriores ainda abertas.
 - **FR-FCC-CHANGE-002**: Retroceder a data DEVE reabrir somente o intervalo maior que a nova data e menor ou igual à data anterior.
 - **FR-FCC-CHANGE-003**: Remover a data DEVE reabrir todas as datas quanto a esta feature.
 - **FR-FCC-CHANGE-004**: Retrocesso e remoção DEVEM exigir autorização específica e motivo compreensível antes da confirmação.
@@ -152,6 +155,9 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **FR-FCC-CHANGE-006**: Mudança confirmada DEVE ser atômica e rejeitar concorrência baseada em estado vigente diferente daquele revisado pelo usuário.
 - **FR-FCC-CHANGE-007**: Reabrir datas NÃO DEVE dispensar validações de conta, autorização, classificação, origem ou outros contratos aplicáveis aos novos fatos.
 - **FR-FCC-CHANGE-008**: A feature NÃO DEVE avançar, retroceder ou remover automaticamente a data por agenda, passagem do tempo ou atividade financeira.
+- **FR-FCC-CHANGE-009**: Antes do avanço, o sistema DEVE localizar todos os rascunhos e pré-lançamentos não cancelados cuja data de efetivação seja igual ou anterior ao limite proposto.
+- **FR-FCC-CHANGE-010**: Existindo ao menos uma pendência abrangida, o avanço DEVE ser rejeitado integralmente sem alterar a data vigente nem resolver, mover, confirmar ou cancelar lançamentos automaticamente.
+- **FR-FCC-CHANGE-011**: A verificação de pendências e a alteração da data DEVEM formar uma única decisão concorrente, impedindo criação ou movimentação de rascunho ou pré-lançamento para o intervalo enquanto o avanço é confirmado.
 
 ### Decisão Temporal
 
@@ -159,7 +165,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **FR-FCC-BLOCK-002**: Criação, revisão ou cancelamento que afete data de efetivação igual ou anterior ao fechamento vigente DEVE ser rejeitado sem qualquer efeito parcial.
 - **FR-FCC-BLOCK-003**: Não DEVE existir contorno operacional comum, administrativo ou de integração capaz de ignorar o fechamento vigente.
 - **FR-FCC-BLOCK-004**: Estorno ou correção de fato em data bloqueada DEVE produzir eventual compensação somente em data posterior ao fechamento, preservando a data do original.
-- **FR-FCC-BLOCK-005**: Novo rascunho NÃO DEVE aceitar data bloqueada. Rascunho preexistente alcançado por avanço do fechamento DEVE permanecer identificável, mas somente poderá ser excluído ou movido para data aberta enquanto o bloqueio persistir.
+- **FR-FCC-BLOCK-005**: Novo rascunho ou pré-lançamento NÃO DEVE aceitar data bloqueada, e nenhum rascunho ou pré-lançamento preexistente PODERÁ ser alcançado por avanço válido do fechamento.
 - **FR-FCC-BLOCK-006**: Decisão temporal DEVE considerar tenant e data de efetivação explicitamente e NÃO DEVE aceitar contexto implícito de outro tenant.
 - **FR-FCC-BLOCK-007**: A aplicação do bloqueio e a produção do fato monetário DEVEM resistir a alterações concorrentes do fechamento sem permitir condição de corrida.
 - **FR-FCC-BLOCK-008**: Falha ao avaliar o fechamento DEVE impedir a produção do fato, sem assumir permissividade por indisponibilidade ou erro.
@@ -190,6 +196,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **FR-FCC-UX-003**: Retrocesso ou remoção DEVE apresentar alerta reforçado sobre a possibilidade de novos fatos retroativos antes da confirmação.
 - **FR-FCC-UX-004**: Bloqueio de operação DEVE informar a data efetiva solicitada, o limite aplicável e a ação possível, sem revelar dados protegidos.
 - **FR-FCC-UX-005**: Estado, alertas e direção da mudança NÃO DEVEM depender somente de cor e DEVEM ser operáveis por teclado e tecnologias assistivas.
+- **FR-FCC-UX-006**: Avanço bloqueado DEVE apresentar lista de todos os rascunhos e pré-lançamentos abrangidos, distinguindo seus estados e oferecendo identificação funcional, data e ação possível para resolução.
+- **FR-FCC-UX-007**: Quando o usuário não puder consultar conteúdo protegido de uma pendência, a lista DEVE preservar a existência e os dados mínimos necessários para coordenar sua resolução sem expor valor, descrição, contraparte, categoria ou origem não autorizados.
 
 ### Confiabilidade e Operação
 
@@ -204,6 +212,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **Mudança da Data de Fechamento**: evento imutável com transição anterior e nova, autoria, instante, origem e motivação.
 - **Intervalo Histórico Reaberto**: projeção lógica derivada de um retrocesso ou remoção para identificar quais datas voltaram a aceitar fatos.
 - **Decisão Temporal Financeira**: resultado permitido ou bloqueado para uma data de efetivação em determinado tenant e estado vigente.
+- **Pendência Bloqueadora**: rascunho ou pré-lançamento não cancelado dentro do limite proposto que precisa ser confirmado, movido para data aberta ou descartado antes do avanço.
 
 ## Success Criteria
 
@@ -221,6 +230,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **SC-FCC-010**: Usuários autorizados compreendem na prévia quais datas serão bloqueadas ou reabertas e concluem a alteração em até 60 segundos nos testes de usabilidade.
 - **SC-FCC-011**: Todas as jornadas principais podem ser concluídas somente por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FCC-012**: Logs, erros e métricas examinados não contêm valores financeiros nem dados pessoais sem finalidade e proteção aprovadas.
+- **SC-FCC-013**: Em 100% das tentativas com rascunho ou pré-lançamento abrangido, o avanço é rejeitado, a data vigente permanece inalterada e todas as pendências são enumeradas conforme a autorização do usuário.
+- **SC-FCC-014**: Em 100% dos testes concorrentes, nenhum rascunho ou pré-lançamento consegue entrar no intervalo entre a verificação de pendências e a confirmação do fechamento.
 
 ## Fora do Escopo
 
