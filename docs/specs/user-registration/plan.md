@@ -38,21 +38,27 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 | I. Isolamento Multi-Tenant Inviolável | PASS | A identidade e o cadastro são exclusivamente globais; não há leitura ou escrita de tenant. |
 | II. Autorização Explícita e Contextual | PASS | A ativação concede somente acesso sistêmico mínimo ao próprio painel, sem papel ou permissão de conta. Rotas posteriores permanecem negadas por padrão. |
 | III. Integridade e Rastreabilidade dos Dados | PASS | Unicidade, idempotência, histórico de estados, contratos externos e falhas estão definidos; migrations usarão o updater RFW. |
-| IV. Arquitetura Modular Baseada no RFW | PASS | O Rinos reutiliza e-mail, contratos de verificação e updater do RFW; o cliente Turnstile genérico será acrescentado ao RFW, sem levar regra de cadastro ao framework. |
+| IV. Arquitetura Modular Baseada no RFW | PASS | O Rinos hospedará `RFWAccessComponent` e implementará seus providers; Google, Turnstile, e-mail, verificação, i18n, tema e updater serão reutilizados. Lacunas genéricas seguem [rfw-gap-analysis.md](./rfw-gap-analysis.md). |
 | V. Qualidade Antes de Escopo | PASS | O plano exige testes por camada, acessibilidade, documentação, falha fechada nos controles críticos e redução de escopo em vez de atalhos. |
 
 ## Architecture and Responsibility Boundaries
 
 | Contexto | Responsabilidade |
 |----------|------------------|
-| UI de cadastro | Coletar dados, apresentar consentimentos, preservar entradas não secretas em renovação do desafio e traduzir resultados da facade em feedback acessível. |
-| API/facade Java | Publicar casos de uso completos de início, retorno Google, reenvio, confirmação, cancelamento e consulta de estado seguro. |
+| UI de cadastro | A rota Rinos hospeda `RFWAccessComponent`; configuração, slots e renderers aprovados apresentam a jornada sem substituir sua máquina de estados. |
+| API/facade Java | Implementar os providers do RFW e publicar casos de uso completos de início, retorno Google, reenvio, confirmação, cancelamento e consulta de estado seguro. |
 | Backend `identity` | Normalização de e-mail, lifecycle global do usuário, consentimentos, credenciais, identidades externas e auditoria. |
 | Backend `registration` | Orquestração do cadastro, idempotência, comprovações, limites por origem, expiração e integração com portas externas. |
-| RFW Platform | Entrega de e-mail, contratos técnicos de challenge, atualização de banco e cliente reutilizável do Turnstile. |
+| RFW Platform | `RFWAccessComponent`, providers, estados, Google, Turnstile, e-mail, challenges, i18n, tema, sessão e atualização de banco. |
 | Provedores externos | Cloudflare valida presença humana; Google comprova identidade externa; HIBP informa comprometimento de senha; SMTP entrega a comprovação. |
 | `user-authentication` | Login, sessão, recuperação, 2FA, passkeys e vínculo Google de usuário já ativo. |
 | `user-dashboard` | Conteúdo e operações do painel acessível depois da ativação. |
+
+## RFW Compatibility Gate
+
+O commit `db8756b8b7bae92878144f3341a0ee43973b293a` já fornece o add-in de acesso que deve ser hospedado pelo Rinos. A análise em [rfw-gap-analysis.md](./rfw-gap-analysis.md) encontrou extensões reutilizáveis necessárias para cadastro Google com aceites, issuer tipado, Turnstile condicional, cancelamento e erros por campo.
+
+Essas extensões dependem de autorização explícita antes de qualquer alteração no submódulo. A Interface Design pode consolidar inventário e estrutura geral, mas seus contratos finais e wireframes devem aguardar a resolução deste gate para não documentar APIs inexistentes.
 
 ## Transaction and Failure Strategy
 
@@ -99,7 +105,7 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | `FR-REG-012` a `FR-REG-020` | `Verification`, transação de ativação e contrato SMTP | cenários 1, 6 e 13 |
 | `FR-REG-021` a `FR-REG-027` | retomada pela identidade pendente, cancelamento e job de limpeza | cenários 6, 7, 14 e 15 |
 | `FR-REG-028` a `FR-REG-042` | política por origem, adapter Turnstile e proxy confiável | cenários 8 e 9 |
-| `FR-REG-043` a `FR-REG-052` | OIDC Google, `ExternalAuthAttempt` e `ExternalIdentity` | cenários 10 a 12 |
+| `FR-REG-043` a `FR-REG-052` | Google Identity Services pelo RFW, continuação de cadastro externo e `ExternalIdentity` | cenários 10 a 12 |
 | `SC-UR-001` a `SC-UR-013` | matriz de testes, métricas operacionais e futura Interface Design | suíte end-to-end e checklist de qualidade |
 
 ## Project Structure
@@ -111,6 +117,7 @@ docs/specs/user-registration/
 ├── spec.md
 ├── plan.md
 ├── research.md
+├── rfw-gap-analysis.md
 ├── data-model.md
 ├── quickstart.md
 ├── contracts/
@@ -148,16 +155,17 @@ docs/architecture/           # decisões transversais de arquitetura
 
 ## Implementation Sequencing
 
-1. Criar o esqueleto Maven hospedeiro, configuração exclusiva e banco global compatível com RFW.
-2. Evoluir o RFW com o cliente Turnstile genérico, testes e documentação próprios.
-3. Implementar modelo global, migrations init/update e repositories.
-4. Implementar portas externas, adapters e políticas de senha/origem.
-5. Implementar facades transacionais do cadastro e limpeza agendada.
-6. Implementar as views Vaadin conforme `interface-spec.md`.
-7. Executar testes de segurança, integração, UI e end-to-end; validar build do RFW e do Rinos.
+1. Resolver e autorizar as lacunas reutilizáveis listadas em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
+2. Evoluir o RFW aprovado, com compatibilidade, testes, documentação e showroom próprios; publicar a nova versão e atualizar o ponteiro.
+3. Criar o esqueleto Maven hospedeiro, configuração exclusiva e banco global compatível com RFW.
+4. Implementar modelo global, migrations init/update e repositories.
+5. Implementar providers RFW, facades e políticas de senha/origem.
+6. Compor a rota Vaadin com `RFWAccessComponent` conforme `interface-spec.md`.
+7. Implementar limpeza agendada e observabilidade.
+8. Executar testes de segurança, integração, UI e end-to-end; validar build do RFW e do Rinos.
 
 Essa sequência é arquitetural; a decomposição executável pertence a `tasks.md`.
 
 ## Complexity Tracking
 
-Não há violação da Constitution que exija justificativa. A separação entre adaptação técnica do Turnstile no RFW e política funcional no Rinos evita duplicação sem transformar o framework em módulo de negócio.
+Não há violação da Constitution que exija justificativa. O plano reutiliza o add-in de acesso do RFW e encaminha lacunas genéricas para a plataforma, mantendo políticas e persistência no Rinos.

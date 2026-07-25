@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version: inexistente -> 1.0.0
+- Version: 1.0.0 -> 1.1.0
 - Princípios criados:
   - Isolamento Multi-Tenant Inviolável
   - Autorização Explícita e Contextual
@@ -8,13 +8,15 @@ Sync Impact Report
   - Arquitetura Modular Baseada no RFW
   - Qualidade Antes de Escopo
 - Seções adicionadas:
-  - Restrições de Arquitetura e Segurança
-  - Critérios de Qualidade e Entrega
+  - Regra obrigatória de uso da RFW Platform em interfaces
+  - Protocolo de consulta ao showroom e evolução autorizada do submódulo
 - Seções removidas: nenhuma
 - Artefatos verificados:
   - docs/briefing/20260717-briefing.md: alinhado
-  - AGENTS.md: ausente; criar quando as instruções específicas do projeto forem formalizadas
-  - docs/specs/*/plan.md: inexistentes; os futuros planos devem demonstrar conformidade
+  - AGENTS.md: criado com roteamento obrigatório para a documentação e showroom do RFW
+  - docs/architecture/rfw-platform-usage.md: criado
+  - docs/architecture/interaction-surfaces.md: atualizado
+  - docs/specs/user-registration/plan.md: atualizado
   - docs/specs/*/tasks.md: inexistentes; as futuras tarefas devem incluir os quality gates aplicáveis
 - TODOs pendentes: nenhum para ratificação desta versão
 -->
@@ -37,7 +39,11 @@ Operações financeiras e administrativas DEVEM preservar consistência, precis�
 
 ### IV. Arquitetura Modular Baseada no RFW
 
-O RFW DEVE ser a fundação arquitetural da aplicação e permanecer integrado pelo submódulo `modules/RFW.Platform`. O código do Rinos DEVE ser organizado por funcionalidades e contextos de negócio, com contratos explícitos entre módulos e dependências direcionadas. Capacidades já fornecidas pelo RFW NÃO DEVEM ser duplicadas sem justificativa registrada. Desvios das convenções do RFW, mudanças estruturais relevantes ou adoção de outra fundação técnica exigem ADR, análise de compatibilidade e validação de build e testes.
+O RFW DEVE ser a fundação arquitetural da aplicação e permanecer integrado pelo submódulo `modules/RFW.Platform`. O código do Rinos DEVE ser organizado por funcionalidades e contextos de negócio, com contratos explícitos entre módulos e dependências direcionadas. Capacidades já fornecidas pelo RFW NÃO DEVEM ser duplicadas sem justificativa registrada.
+
+Toda interface humana do Rinos DEVE pesquisar e reutilizar primeiro componentes, factories, providers, slots, renderers, tokens, temas e convenções publicados pelo RFW. Antes de especificar, planejar ou implementar uma interface, o responsável DEVE consultar o README, as instruções aplicáveis, a documentação e os laboratórios do módulo `modules/rfw.showroom`, conforme [Uso da RFW Platform no Rinos](architecture/rfw-platform-usage.md).
+
+Quando uma lacuna for genérica e reutilizável, sua solução DEVE ser proposta no RFW em vez de implementada paralelamente no Rinos. Alterações no submódulo exigem autorização explícita, testes, documentação, atualização do showroom e validação isolada antes de atualizar o ponteiro no Rinos. Desvios das convenções do RFW, componentes locais que dupliquem capacidade genérica, mudanças estruturais relevantes ou adoção de outra fundação técnica exigem ADR, análise de compatibilidade e validação de build e testes.
 
 ### V. Qualidade Antes de Escopo
 
@@ -46,6 +52,7 @@ Segurança, testes e documentação são condições de entrega, não atividades
 ## Restrições de Arquitetura e Segurança
 
 - A stack-base é Java 25, Spring, Vaadin, MySQL 9 e RFW. Versões concretas DEVEM permanecer compatíveis com o RFW; alterações incompatíveis exigem ADR e plano de migração.
+- Customizações visuais DEVEM priorizar configuração, tokens, classes públicas, slots e renderers do RFW. CSS estrutural paralelo ou cópia de componentes reutilizáveis exige justificativa arquitetural.
 - A implantação inicial DEVE gerar um JAR executável para servidor Linux atrás de proxy reverso. Segredos e configurações específicas de ambiente NÃO DEVEM ser versionados.
 - Persistência, cache, arquivos, filas e integrações DEVEM transportar e validar o contexto do tenant quando lidarem com dados de conta.
 - Dados pessoais DEVEM ser tratados segundo os princípios da LGPD: finalidade, necessidade, controle de acesso, rastreabilidade e descarte definido.
@@ -82,4 +89,4 @@ Exceções temporárias somente são permitidas quando registradas em ADR com es
 
 A conformidade DEVE ser revisada sempre que uma feature for especificada, antes de iniciar sua implementação e antes de considerá-la concluída. Mudanças na constituição exigem sincronização dos artefatos afetados no mesmo ciclo ou registro explícito da pendência no relatório de impacto.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-17 | **Last Amended**: 2026-07-17
+**Version**: 1.1.0 | **Ratified**: 2026-07-17 | **Last Amended**: 2026-07-25

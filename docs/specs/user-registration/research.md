@@ -65,11 +65,13 @@ O registro pendente e a comprovação serão confirmados na mesma transação. O
 
 ## Decision 6: Cloudflare Turnstile e controle por origem
 
-**Decision**: adicionar ao RFW um adaptador genérico para a API Siteverify do Cloudflare Turnstile; o Rinos permanece responsável pela política que decide quando exigir o desafio e pelos limites por origem. O token será validado no servidor antes de qualquer persistência, com verificação de `hostname` e `action`, timeout limitado e sem persistência do token.
+**Decision**: reutilizar `RFWTurnstileComponent`, `RFWHumanVerificationProvider` e `RFWTurnstileVerificationService` já fornecidos pelo RFW Platform. O Rinos permanece responsável pela política que decide quando exigir o desafio e pelos limites por origem. O token será validado no servidor antes de qualquer persistência, com verificação de `hostname`, contexto/action, timeout limitado e sem persistência do token.
 
 Os limites por IP usarão janelas persistidas no schema global, identificadas por HMAC do endereço normalizado. A chave HMAC, as credenciais do Turnstile, os limites, as janelas e a lista explícita de proxies confiáveis serão definições exclusivas de `application.properties`. O limiar padrão do Turnstile será zero. Falha do Siteverify será tratada como indisponibilidade e impedirá o cadastro quando o desafio for obrigatório.
 
-**Rationale**: o RFW deve concentrar o contrato técnico reutilizável com o provedor, enquanto regras de cadastro pertencem ao Rinos. O HMAC permite contar uma origem sem conservar o IP em claro. A lista de proxies confiáveis impede aceitar cabeçalhos forjados por clientes diretos.
+O RFW atualmente exige a prova sempre que o provider está presente e valida o hostname, mas ainda não recebe uma decisão dinâmica por operação/origem nem valida `action`. Essas lacunas reutilizáveis devem ser evoluídas no RFW, após autorização, sem criar um segundo adapter no Rinos. A análise completa está em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
+
+**Rationale**: o RFW já concentra o contrato técnico reutilizável com o provedor, enquanto regras de cadastro pertencem ao Rinos. O HMAC permite contar uma origem sem conservar o IP em claro. A lista de proxies confiáveis impede aceitar cabeçalhos forjados por clientes diretos.
 
 **Alternatives considered**:
 
@@ -79,16 +81,17 @@ Os limites por IP usarão janelas persistidas no schema global, identificadas po
 
 ## Decision 7: Cadastro Google
 
-**Decision**: usar OpenID Connect Authorization Code com PKCE e `nonce`. O backend fará a troca do código e validará assinatura, emissor, audiência, validade, `nonce` e `email_verified`. O vínculo persistido será único por `issuer + subject`; tokens Google serão transitórios e nunca serão credenciais locais.
+**Decision**: reutilizar o fluxo Google Identity Services já entregue por `RFWGoogleSignInComponent` e `RFWGoogleIdentityProvider`. O componente gera e gira um `nonce` por tentativa; o backend valida assinatura, emissor, audiência, validade, `nonce` e `email_verified`. O vínculo persistido será único por `issuer + subject`; ID tokens Google serão transitórios e nunca serão credenciais locais.
 
-O Rinos definirá uma porta de identidade externa independente do provedor. O adaptador Google será usado pelo cadastro agora e poderá ser reutilizado posteriormente por `user-authentication`. E-mail igual ao de usuário ativo nunca cria vínculo automático.
+O Rinos implementará `RFWExternalIdentityResolver` para localizar, iniciar ou rejeitar o vínculo conforme o domínio. E-mail igual ao de usuário ativo nunca cria vínculo automático. O RFW precisa expor o emissor validado de forma explícita e oferecer uma continuação genérica para que uma identidade Google nova aceite documentos legais antes da ativação; essas adaptações estão descritas em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
 
-**Rationale**: `sub` é o identificador estável do usuário no emissor; o e-mail pode mudar. PKCE e `nonce` vinculam a resposta à tentativa iniciada pelo navegador e reduzem interceptação e repetição.
+**Rationale**: `sub` é o identificador estável do usuário no emissor; o e-mail pode mudar. O `nonce` server-side do componente vincula o ID token à tentativa iniciada naquela UI e é girado antes de outra submissão.
 
 **Alternatives considered**:
 
 - Vincular somente por e-mail: rejeitada porque o e-mail não é o identificador estável do provedor e permitiria associação indevida.
 - Persistir access token ou ID token: rejeitada porque esta feature precisa somente comprovar a identidade.
+- Criar outro fluxo Google diretamente no Rinos: rejeitada porque duplicaria o protocolo e o componente já fornecidos pelo RFW.
 
 ## Decision 8: Cancelamento, expiração e minimização
 
@@ -103,13 +106,14 @@ O Rinos definirá uma porta de identidade externa independente do provedor. O ad
 
 ## Decision 9: Superfície e limites de módulos
 
-**Decision**: a única superfície humana desta feature será a aplicação web responsiva Vaadin, acessível por desktop, tablet e telefone. A UI chamará facades Java da aplicação; entidades JPA e repositories permanecerão no backend. O fluxo detalhado de telas, estados e acessibilidade será produzido na etapa de Interface Design.
+**Decision**: a única superfície humana desta feature será a aplicação web responsiva Vaadin, acessível por desktop, tablet e telefone. A rota do Rinos hospedará `RFWAccessComponent`; a UI conectará o domínio pelos providers/facades públicos do RFW, enquanto entidades JPA e repositories permanecerão no backend. O fluxo detalhado de telas, estados e acessibilidade será produzido na etapa de Interface Design.
 
 **Rationale**: Vaadin é a tecnologia aprovada e não há aplicativo móvel nativo no escopo. A separação `ui -> api`, com implementação no backend, segue as convenções do projeto.
 
 **Alternatives considered**:
 
 - Criar API pública REST no MVP: rejeitada porque não há consumidor externo definido.
+- Criar componente próprio de acesso no Rinos: rejeitada porque duplicaria `RFWAccessComponent`.
 - Colocar regras de cadastro nas views Vaadin: rejeitada por acoplamento, baixa testabilidade e violação das fronteiras de packages.
 
 ## Referências técnicas consultadas
@@ -119,4 +123,3 @@ O Rinos definirá uma porta de identidade externa independente do provedor. O ad
 - [Google OpenID Connect API Reference](https://developers.google.com/identity/openid-connect/reference)
 - [Have I Been Pwned — Pwned Passwords](https://haveibeenpwned.com/API/v3#PwnedPasswords)
 - [Spring Security — armazenamento de senhas](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)
-

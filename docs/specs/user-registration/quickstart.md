@@ -73,7 +73,7 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 
 ## Scenario 10: Cadastro Google novo
 
-1. Iniciar o fluxo Google e concluir callback com code, PKCE, state, nonce e ID token válidos, contendo e-mail verificado sem usuário correspondente.
+1. Iniciar o fluxo Google e concluir o callback do Google Identity Services com nonce e ID token válidos, contendo e-mail verificado sem usuário correspondente.
 2. Confirmar os documentos legais na UI com e-mail bloqueado.
 3. **Expected**: um usuário ativo é criado com `ExternalIdentity` única por `issuer + sub`, sem senha local e sem confirmação adicional por e-mail; tokens Google não aparecem no banco ou logs.
 
@@ -124,4 +124,3 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 2. Forçar expiração do Turnstile durante o preenchimento e renová-lo.
 3. Continuar a operação real até o e-mail de teste e abrir a confirmação.
 4. **Expected**: os dados não secretos permanecem preenchidos, senha é tratada segundo a decisão da futura Interface Design, foco e erros são anunciados, a identidade fica ativa e o próximo acesso possível é somente o próprio Painel de Usuário.
-

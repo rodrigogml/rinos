@@ -39,21 +39,18 @@ Estes são contratos de saída da aplicação. O Rinos não expõe API REST púb
 
 ## Google OpenID Connect
 
-**Owner técnico**: adapter de identidade externa do Rinos, reutilizável por autenticação  
-**Flow**: Authorization Code + PKCE + `state` + `nonce`  
-**Auth**: client credentials da instalação quando exigidas
+**Owner técnico**: `RFWGoogleSignInComponent` e `RFWGoogleIdentityProvider`, com resolução de domínio pelo Rinos
 
-### Authorization request
+**Flow**: Google Identity Services com ID token efêmero e `nonce` exclusivo por tentativa
+
+**Auth**: client ID público configurado na instalação
+
+### Inicialização do componente Google
 
 | Field | Required | Validation |
 |-------|----------|------------|
 | `client_id` | yes | Origem exclusiva em properties |
-| `redirect_uri` | yes | Match exato da URI cadastrada |
-| `response_type=code` | yes | Valor fixo |
-| `scope=openid email` | yes | Não solicitar outros serviços Google |
-| `state` | yes | Aleatório, armazenado somente como hash |
-| `nonce` | yes | Aleatório, comparado ao ID token |
-| PKCE challenge | yes | S256 |
+| `nonce` | yes | Aleatório, gerado no servidor pelo componente e girado antes de nova tentativa |
 
 ### ID token claims accepted
 
@@ -71,14 +68,14 @@ Estes são contratos de saída da aplicação. O Rinos não expõe API REST púb
 
 | Condition | Rinos result |
 |-----------|--------------|
-| `state`, PKCE ou `nonce` inválido/reutilizado | `EXTERNAL_IDENTITY_REJECTED`; nenhuma escrita de usuário |
+| `nonce` inválido ou token reapresentado em outra tentativa | `EXTERNAL_IDENTITY_REJECTED`; nenhuma escrita de usuário |
 | Assinatura, issuer, audience ou tempo inválido | `EXTERNAL_IDENTITY_REJECTED` |
 | E-mail não verificado | `EXTERNAL_EMAIL_NOT_VERIFIED` |
 | `issuer + sub` já vinculado a outro usuário | `EXTERNAL_IDENTITY_CONFLICT` sem expor o outro usuário |
 | E-mail de usuário ativo sem vínculo | `EXISTING_USER_REAUTHENTICATION_REQUIRED` |
 | Timeout/indisponibilidade | `EXTERNAL_IDENTITY_UNAVAILABLE`; oferecer cadastro local |
 
-Access token, refresh token, ID token e authorization code não são persistidos nem registrados.
+ID token e credenciais Google não são persistidos nem registrados. O Rinos recebe somente a identidade validada pelo provider do RFW.
 
 ## Pwned Passwords Range API
 
@@ -130,4 +127,3 @@ O adapter procura localmente o sufixo restante do SHA-1 entre as linhas `SUFFIX:
 | Reenvio | Nova comprovação invalida anteriores antes do novo dispatch |
 
 O log registra apenas resultado operacional e correlation ID; não registra destinatário completo, conteúdo nem URL secreta.
-

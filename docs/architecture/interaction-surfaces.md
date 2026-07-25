@@ -2,14 +2,14 @@
 
 **Created**: 2026-07-25  
 **Last Updated**: 2026-07-25  
-**Status**: Proposed  
-**Sources**: briefing 2026-07-17, Constitution 1.0.0, plano `user-registration`
+**Status**: Approved
+**Sources**: briefing 2026-07-17, Constitution 1.1.0, plano `user-registration`
 
 ## Surface Catalog
 
 | Surface ID | Type | Users | Platforms and Form Factors | Product Coverage | Technology, Language and Runtime | Delivery Strategy | Design System | Module/Repository | Decision Status |
 |------------|------|-------|----------------------------|------------------|----------------------------------|-------------------|---------------|-------------------|-----------------|
-| `SURF-WEB-RINOS` | WEB | Pessoas não autenticadas, usuários, participantes de contas e administradores autorizados | Navegadores modernos em desktop, tablet e telefone | MVP e evolução; única superfície humana inicial | Java 25, Vaadin 25.0.2, Spring Boot 4.0.1, JAR no servidor | Web responsiva server-side, sem aplicativo nativo | Componentes Vaadin e tema/tokens fornecidos pelo RFW, com customização própria do Rinos | Repositório Rinos; aplicação hospedeira ainda não criada | Proposed |
+| `SURF-WEB-RINOS` | WEB | Pessoas não autenticadas, usuários, participantes de contas e administradores autorizados | Navegadores modernos em desktop, tablet e telefone | MVP e evolução; única superfície humana inicial | Java 25, Vaadin 25.0.2, Spring Boot 4.0.1, JAR no servidor | Web responsiva server-side, sem aplicativo nativo | Componentes, factories, tema, tokens, slots e renderers do RFW; extensões reutilizáveis retornam à plataforma | Repositório Rinos; aplicação hospedeira ainda não criada, RFW em `modules/RFW.Platform` | Approved |
 
 ## Cross-Surface Decisions
 
@@ -25,7 +25,7 @@ Não há API pública REST aprovada no MVP. Se outro consumidor surgir, seu cont
 
 ### Shared Code Strategy
 
-Com uma superfície server-side, domínio e apresentação permanecem no mesmo artefato executável, mas em packages separados. O RFW é compartilhado como dependência pelo submódulo `modules/RFW.Platform`; funcionalidades reutilizáveis e neutras podem evoluir nele, enquanto regras de negócio do Rinos permanecem na aplicação hospedeira.
+Com uma superfície server-side, domínio e apresentação permanecem no mesmo artefato executável, mas em packages separados. O RFW é compartilhado como dependência pelo submódulo `modules/RFW.Platform`. Componentes e capacidades técnicas reutilizáveis DEVEM evoluir nele; regras de negócio do Rinos permanecem na aplicação hospedeira. O procedimento obrigatório está em [Uso da RFW Platform no Rinos](./rfw-platform-usage.md).
 
 ### Accessibility and Input Baseline
 
@@ -44,4 +44,4 @@ Rotas públicas declaram explicitamente as operações anônimas permitidas. Rot
 | Date | Surface ID | Decision | Rationale | Source |
 |------|------------|----------|-----------|--------|
 | 2026-07-25 | `SURF-WEB-RINOS` | Adotar uma aplicação web responsiva Vaadin server-side como única superfície humana do MVP | Stack e operação já aprovadas; reduz duplicação para a equipe inicial | briefing e `user-registration/plan.md` |
-
+| 2026-07-25 | `SURF-WEB-RINOS` | Tornar obrigatório pesquisar e reutilizar o RFW e seu showroom antes de criar interfaces | Centraliza componentes e devolve melhorias reutilizáveis às aplicações hospedeiras | Constitution 1.1.0 e `rfw-platform-usage.md` |

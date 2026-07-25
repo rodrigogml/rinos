@@ -151,7 +151,9 @@ Vínculo estável com provedor externo.
 | `provider` | `VARCHAR(32)` | NOT NULL | Inicialmente `GOOGLE` |
 | `issuer` | `VARCHAR(255)` | NOT NULL | Emissor validado |
 | `subject` | `VARCHAR(255)` | NOT NULL | `sub` validado |
-| `linkedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
+| `status` | `VARCHAR(24)` | NOT NULL | `PENDING` enquanto faltam aceites; `ACTIVE` depois da ativação |
+| `verifiedAt` | `TIMESTAMP(6)` | NOT NULL | Instante da validação criptográfica |
+| `activatedAt` | `TIMESTAMP(6)` | NULL | Preenchido junto da ativação do usuário |
 | `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 | `updatedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 | `version` | `BIGINT` | NOT NULL | Controle otimista |
@@ -162,27 +164,14 @@ Vínculo estável com provedor externo.
 - Índice em `idUser`.
 - O e-mail do provedor não identifica nem integra a chave do vínculo.
 
-## Entity: ExternalAuthAttempt
+### State Transitions
 
-**Tabela proposta**: `identity_externalAuthAttempt`
+```text
+PENDING -> ACTIVE
+PENDING -> removido por cancelamento ou expiração
+```
 
-Estado efêmero iniciado antes do redirecionamento OIDC e consumido no callback.
-
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| `id` | `BIGINT` | PK, auto increment | |
-| `provider` | `VARCHAR(32)` | NOT NULL | `GOOGLE` |
-| `stateHash` | `BINARY(32)` | NOT NULL, UK | Estado retornado pelo navegador |
-| `nonceHash` | `BINARY(32)` | NOT NULL | Vincula o ID token à tentativa |
-| `pkceVerifierCiphertext` | `VARBINARY(1024)` | NOT NULL | Criptografia autenticada com chave da instalação |
-| `status` | `VARCHAR(24)` | NOT NULL | `OPEN`, `USED`, `EXPIRED`, `INVALIDATED` |
-| `expiresAt` | `TIMESTAMP(6)` | NOT NULL | Janela curta, definida pelo adapter |
-| `usedAt` | `TIMESTAMP(6)` | NULL | |
-| `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
-| `updatedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
-| `version` | `BIGINT` | NOT NULL | Controle otimista |
-
-O código de autorização, access token e ID token não são persistidos.
+O e-mail verificado é o e-mail global do `User` pendente. ID token e claims completos não são persistidos.
 
 ## Entity: LegalDocumentVersion
 
@@ -281,7 +270,7 @@ Registro append-only dos eventos exigidos para identidade e cadastro, sem creden
 
 ## Cross-Entity Invariants
 
-1. `User.ACTIVE` exige ao menos uma `LocalCredential.ACTIVE` ou uma `ExternalIdentity` vigente.
+1. `User.ACTIVE` exige ao menos uma `LocalCredential.ACTIVE` ou uma `ExternalIdentity.ACTIVE`.
 2. `Registration.ACTIVE` exige `User.ACTIVE`, todos os documentos obrigatórios vigentes aceitos e nenhuma verificação aberta.
 3. Cadastro `LOCAL` exige credencial local ativa enquanto pendente; cadastro `GOOGLE` não exige senha.
 4. Um `issuer + subject` pertence a no máximo um usuário.
@@ -311,8 +300,6 @@ Registro append-only dos eventos exigidos para identidade e cadastro, sem creden
 |------|-----------|
 | Usuário/registro pendente, credencial, comprovações e consentimentos não ativados | Até completar 15 dias desde a criação; exclusão diária idempotente |
 | Comprovação usada, invalidada ou expirada de cadastro ainda pendente | Até o cadastro terminar ou expirar |
-| `ExternalAuthAttempt` | Até expirar a janela curta; limpeza diária ou mais frequente |
 | `RegistrationOriginWindow` | Até o fim da janela mais margem operacional mínima para execução da limpeza |
 | Tombstone de cancelamento sem PII | 15 dias |
 | Usuário ativo, vínculo externo e consentimentos aplicáveis | Enquanto a identidade estiver vigente ou conforme governança/obrigação futura |
-
