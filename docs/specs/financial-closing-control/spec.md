@@ -6,12 +6,12 @@
 
 ## Escopo
 
-Esta feature estabelece uma única data de fechamento financeiro opcional por tenant. Quando informada, a data forma um limite temporal contínuo: nenhum fato monetário com data de efetivação igual ou anterior a ela pode ser criado, revisado ou cancelado. Quando ausente, não há bloqueio temporal próprio do financeiro.
+Esta feature estabelece uma única data de fechamento financeiro opcional por tenant. Quando informada, a data forma um limite temporal contínuo: nenhum fato monetário, inclusive saldo de abertura datado, com data de efetivação ou referência igual ou anterior a ela pode ser criado, revisado ou cancelado. Quando ausente, não há bloqueio temporal próprio do financeiro.
 
 O tenant pode avançar a data para proteger todo o histórico até um novo limite ou, mediante autorização reforçada, retrocedê-la ou removê-la para reabrir datas anteriores. Antes de avançar, o sistema exige que não existam rascunhos nem pré-lançamentos pendentes dentro do limite proposto. Toda mudança é motivada e auditada. O fechamento não altera lançamentos existentes, não cria períodos e não materializa saldos oficiais.
 
 > [!IMPORTANT]
-> A data de fechamento é a fronteira de imutabilidade. Lançamentos posteriores a ela podem ser revisados ou cancelados com histórico completo; lançamentos alcançados pelo limite ficam imutáveis e somente podem ser corrigidos por novos fatos compensatórios em data aberta.
+> A data de fechamento é a fronteira de imutabilidade. Lançamentos e saldos de abertura posteriores a ela podem ser revisados conforme seus próprios contratos e com histórico completo; fatos alcançados pelo limite ficam imutáveis e somente podem ser corrigidos após reabertura autorizada ou por novos fatos compensatórios em data aberta.
 
 > [!NOTE]
 > Saldos financeiros permanecem derivados do saldo de abertura, dos pré-lançamentos e dos lançamentos confirmados. Eventuais projeções ou snapshots de desempenho poderão ser introduzidos futuramente como dados reconstruíveis, nunca como fonte de verdade desta feature.
@@ -24,6 +24,12 @@ O tenant pode avançar a data para proteger todo o histórico até um novo limit
 - Q: O controle financeiro precisa cadastrar e fechar períodos? → A: Não. Cada tenant possui somente uma data de fechamento opcional. Avançá-la fecha continuamente todas as datas até o novo limite; retrocedê-la ou removê-la reabre o intervalo correspondente.
 - Q: O fechamento precisa registrar snapshots de saldo para auditoria, extratos ou SPED? → A: Não. O histórico imutável das mudanças do fechamento, combinado com datas, versões, confirmações, revisões, cancelamentos, atores e origens dos lançamentos, deve identificar tudo que mudou durante reaberturas. Evidências periódicas contábeis, fiscais e bancárias pertencem às respectivas features futuras.
 - Q: O que a data de fechamento torna imutável? → A: Todo lançamento cuja data de efetivação seja igual ou anterior ao limite. Datas posteriores permanecem editáveis mediante autorização e histórico; retroceder ou remover o limite reabre também a possibilidade de revisar e cancelar lançamentos no intervalo correspondente.
+
+### Session 2026-07-24
+
+- Q: O saldo de abertura pode ser criado ou corrigido diretamente em data já fechada? → A: Não. Sua data de referência participa da mesma decisão temporal. A abertura somente é editável enquanto não houver outro evento efetivado e a data estiver aberta; reabrir a data restaura essa possibilidade limitada, mas depois do primeiro evento qualquer diferença exige lançamento financeiro comum em data aberta.
+- Q: Qual data deve ser validada para bloquear uma parcela de compra em cartão? → A: O vencimento da parcela, que também é sua data de efetivação financeira. A data comum da compra permanece como origem histórica e não faz parcelas futuras serem fechadas antecipadamente.
+- Q: Emissão, competência ou vencimento de conta a pagar ou receber também são bloqueados? → A: Não por si próprios. O fechamento protege fatos monetários por sua data efetiva. Obrigações e direitos sem efeito protegido podem usar datas documentais anteriores; pagamento ou recebimento usa a data real aberta, e um efeito já fechado somente é corrigido por reabertura autorizada ou compensação posterior.
 
 ## User Scenarios & Testing
 
@@ -123,6 +129,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - Módulo de origem tenta reutilizar decisão temporal obtida antes de uma mudança.
 - Usuário pode alterar o fechamento, mas não consultar valores financeiros.
 - Histórico possui múltiplas reaberturas parcialmente sobrepostas ao mesmo intervalo.
+- Uma nova conta informa saldo de abertura com data de referência já fechada.
+- Uma abertura sem eventos posteriores é corrigida durante reabertura e o fechamento avança novamente.
 
 ## Requirements
 
@@ -135,6 +143,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **FR-FCC-BOUND-005**: Fechamentos contábeis, fiscais, bancários, de caixa ou de outros módulos pertencem aos respectivos contextos e PODERÃO acrescentar restrições próprias.
 - **FR-FCC-BOUND-006**: A inexistência ou flexibilização do fechamento financeiro NÃO DEVE relaxar bloqueios adicionais impostos legitimamente por outros módulos.
 - **FR-FCC-BOUND-007**: O tenant NÃO DEVE possuir data inicial obrigatória para uso do módulo financeiro; a admissibilidade de fatos antigos depende do fechamento vigente e das demais regras de negócio.
+- **FR-FCC-BOUND-008**: Saldo de abertura e sua data de referência pertencem a `financial-accounts`, mas DEVEM obedecer à decisão temporal desta feature como fato monetário datado.
+- **FR-FCC-BOUND-009**: Emissão, competência e vencimento de obrigação ou direito NÃO DEVEM ser tratados como data de efetivação monetária nem bloqueados isoladamente por esta feature.
 
 ### Estado do Fechamento
 
@@ -161,8 +171,8 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 
 ### Decisão Temporal
 
-- **FR-FCC-BLOCK-001**: Todo módulo que crie, revise, cancele, estorne ou corrija fato monetário DEVE obter e aplicar a decisão temporal imediatamente antes da alteração.
-- **FR-FCC-BLOCK-002**: Criação, revisão ou cancelamento que afete data de efetivação igual ou anterior ao fechamento vigente DEVE ser rejeitado sem qualquer efeito parcial.
+- **FR-FCC-BLOCK-001**: Todo módulo que crie, revise, cancele, estorne ou corrija fato monetário, inclusive saldo de abertura, DEVE obter e aplicar a decisão temporal imediatamente antes da alteração.
+- **FR-FCC-BLOCK-002**: Criação, revisão ou cancelamento que afete data de efetivação ou de referência igual ou anterior ao fechamento vigente DEVE ser rejeitado sem qualquer efeito parcial.
 - **FR-FCC-BLOCK-003**: Não DEVE existir contorno operacional comum, administrativo ou de integração capaz de ignorar o fechamento vigente.
 - **FR-FCC-BLOCK-004**: Estorno ou correção de fato em data bloqueada DEVE produzir eventual compensação somente em data posterior ao fechamento, preservando a data do original.
 - **FR-FCC-BLOCK-005**: Novo rascunho ou pré-lançamento NÃO DEVE aceitar data bloqueada, e nenhum rascunho ou pré-lançamento preexistente PODERÁ ser alcançado por avanço válido do fechamento.
@@ -170,14 +180,17 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - **FR-FCC-BLOCK-007**: A aplicação do bloqueio e a produção do fato monetário DEVEM resistir a alterações concorrentes do fechamento sem permitir condição de corrida.
 - **FR-FCC-BLOCK-008**: Falha ao avaliar o fechamento DEVE impedir a produção do fato, sem assumir permissividade por indisponibilidade ou erro.
 - **FR-FCC-BLOCK-009**: Revisão que altere data de efetivação DEVE ser permitida somente quando as datas anterior e nova estiverem posteriores ao fechamento vigente.
+- **FR-FCC-BLOCK-012**: Liquidação de obrigação vencida ou recebimento de direito vencido DEVE avaliar a data efetiva real da movimentação; copiar automaticamente o vencimento como data efetiva para contornar ou antecipar o fechamento é proibido.
+- **FR-FCC-BLOCK-010**: Criação ou correção de saldo de abertura DEVE validar sua data de referência como data do fato; se estiver bloqueada, somente retrocesso ou remoção autorizada do fechamento poderá devolver a possibilidade de edição direta ainda permitida por `financial-accounts`.
+- **FR-FCC-BLOCK-011**: Parcela de compra em cartão DEVE ser avaliada pelo próprio vencimento usado como data de efetivação; a data de compra comum NÃO DEVE substituir essa data nem bloquear antecipadamente parcelas futuras.
 
 ### Auditoria e Rastreabilidade
 
 - **FR-FCC-AUDIT-001**: Cada mudança efetiva DEVE gerar evento imutável contendo tenant, valor anterior, valor novo, ator, instante, origem e motivo quando exigido.
 - **FR-FCC-AUDIT-002**: O histórico NÃO DEVE permitir edição, exclusão ou substituição destrutiva de eventos.
 - **FR-FCC-AUDIT-003**: Usuário autorizado DEVE poder consultar e filtrar mudanças por intervalo, ator, origem e direção da alteração.
-- **FR-FCC-AUDIT-004**: O sistema DEVE permitir correlacionar cada intervalo reaberto aos fatos confirmados, revisados ou cancelados durante sua vigência por datas, instantes, versões, atores, origens e vínculos.
-- **FR-FCC-AUDIT-005**: A correlação DEVE distinguir fato introduzido durante a reabertura de fato preexistente revisado, cancelado ou apenas mantido no intervalo.
+- **FR-FCC-AUDIT-004**: O sistema DEVE permitir correlacionar cada intervalo reaberto aos fatos e saldos de abertura criados, confirmados, revisados ou cancelados durante sua vigência por datas, instantes, versões, atores, origens e vínculos.
+- **FR-FCC-AUDIT-005**: A correlação DEVE distinguir fato ou abertura introduzido durante a reabertura de registro preexistente revisado, cancelado ou apenas mantido no intervalo.
 - **FR-FCC-AUDIT-006**: Novo avanço do fechamento NÃO DEVE apagar nem consolidar destrutivamente mudanças anteriores ou fatos correlacionados.
 - **FR-FCC-AUDIT-007**: Consultas de auditoria DEVEM respeitar autorização parcial e não revelar valores, descrições, contrapartes ou origens além do permitido.
 
@@ -219,19 +232,20 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 ### Measurable Outcomes
 
 - **SC-FCC-001**: Em 100% dos testes cruzados, o fechamento de um tenant não afeta nem revela o estado de outro.
-- **SC-FCC-002**: Em 100% dos testes, data igual ou anterior ao fechamento rejeita criação, revisão e cancelamento sem efeito parcial, enquanto data posterior não é bloqueada por esta feature.
+- **SC-FCC-002**: Em 100% dos testes, data de efetivação ou referência igual ou anterior ao fechamento rejeita criação, revisão e cancelamento sem efeito parcial, inclusive de saldo de abertura, enquanto data posterior não é bloqueada por esta feature.
 - **SC-FCC-003**: Em 100% das mudanças válidas, estado atual e evento de auditoria são persistidos atomicamente.
 - **SC-FCC-004**: Em 100% dos testes concorrentes, avanço do fechamento e confirmação de fato não permitem que um efeito em data bloqueada seja produzido.
 - **SC-FCC-005**: Em 100% dos retrocessos, somente o intervalo maior que a nova data e menor ou igual à anterior é reaberto.
 - **SC-FCC-006**: Em 100% das remoções, nenhuma data permanece bloqueada por esta feature e bloqueios de outros módulos continuam respeitados.
 - **SC-FCC-007**: Em 100% dos testes de auditoria, mudanças exibem valores anterior e novo, ator, instante, origem e motivo exigido sem permitir alteração histórica.
-- **SC-FCC-008**: Em 100% dos cenários de reabertura testados, fatos incluídos, revisados e cancelados podem ser distinguidos dos fatos apenas preexistentes sem snapshot de saldo.
+- **SC-FCC-008**: Em 100% dos cenários de reabertura testados, fatos e saldos de abertura incluídos, revisados e cancelados podem ser distinguidos dos registros apenas preexistentes sem snapshot de saldo.
 - **SC-FCC-009**: Em 100% dos testes de autorização, somente chaves adequadas permitem visualizar, avançar, retroceder, remover ou auditar o fechamento.
 - **SC-FCC-010**: Usuários autorizados compreendem na prévia quais datas serão bloqueadas ou reabertas e concluem a alteração em até 60 segundos nos testes de usabilidade.
 - **SC-FCC-011**: Todas as jornadas principais podem ser concluídas somente por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FCC-012**: Logs, erros e métricas examinados não contêm valores financeiros nem dados pessoais sem finalidade e proteção aprovadas.
 - **SC-FCC-013**: Em 100% das tentativas com rascunho ou pré-lançamento abrangido, o avanço é rejeitado, a data vigente permanece inalterada e todas as pendências são enumeradas conforme a autorização do usuário.
 - **SC-FCC-014**: Em 100% dos testes concorrentes, nenhum rascunho ou pré-lançamento consegue entrar no intervalo entre a verificação de pendências e a confirmação do fechamento.
+- **SC-FCC-015**: Em 100% dos testes, datas documentais anteriores ao fechamento não são bloqueadas como fatos monetários, enquanto pagamentos e recebimentos somente produzem efeito em data efetiva aberta.
 
 ## Fora do Escopo
 

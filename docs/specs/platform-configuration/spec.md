@@ -20,6 +20,10 @@ Não inclui credenciais, senhas, chaves privadas, segredos de integrações, dad
 - Q: Como uma nova versão de configuração de origem banco global entra em vigor? -> A: Cada definição declara se sua ativação é dinâmica, dependente de reinício ou condicionada a evento específico.
 - Q: Configurações globais persistidas podem ter ativação agendada para um instante futuro? -> A: Não. A ativação ocorre imediatamente ou após a condição técnica declarada de reinício ou evento específico.
 - Q: Quais regras comuns desta feature são obrigatórias para configurações armazenadas no banco do tenant? -> A: Definição tipada, validação, tenant explícito e auditoria são obrigatórios; a feature consumidora define autorização, lifecycle e necessidade de versionamento.
+
+### Session 2026-07-24
+
+- Q: A regra de que configurações não concedem acesso impede a propriedade usada para criar o primeiro administrador global? -> A: A regra permanece para configurações comuns. `access-control` possui uma única exceção de bootstrap, com origem `PROPERTY_FILE`, padrão `admin@rinos.com.br`, usuário ativo e confirmado, fator forte e marcador ainda não concluído. A propriedade isoladamente não autoriza operações e nunca volta a conceder acesso depois da conclusão.
 - Q: A publicação de configuração global exige aprovação de um segundo administrador? -> A: Não. O próprio administrador autorizado pode concluir a publicação após autenticação forte recente, confirmação, justificativa, validações e auditoria.
 
 ## User Scenarios & Testing
@@ -168,7 +172,7 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - **FR-PC-SCOPE-010**: Banco, servidor, proxy, porta, caminho, backup, restauração, deploy, processo e credencial de infraestrutura somente PODERÃO ser definidos em `application.properties` quando forem configurações reconhecidas da instalação e NÃO DEVEM ser configurados pela interface.
 - **FR-PC-SCOPE-011**: Configurações pertencentes ao Rinos NÃO DEVEM aceitar valor, sobrescrita, precedência, redirecionamento de arquivo, importação de fonte ou ativação de perfil proveniente de variável de ambiente, propriedade de sistema da JVM ou argumento de linha de comando, ainda que a fonte seja reconhecida automaticamente pelo framework.
 - **FR-PC-SCOPE-012**: O `application.properties` NÃO DEVE conter interpolação de variável de ambiente e NÃO DEVE ser editável pela aplicação.
-- **FR-PC-SCOPE-013**: A existência de configuração global NÃO DEVE conceder acesso, grupo, chave, papel, direito de plano ou contexto de tenant.
+- **FR-PC-SCOPE-013**: A existência de configuração NÃO DEVE conceder acesso, grupo, chave, papel, direito de plano ou contexto de tenant por si própria. A única exceção de efeito concessivo permitido é o bootstrap único especificado por `access-control`, condicionado cumulativamente a identidade ativa e confirmada, fator forte compatível, marcador ainda não concluído, persistência atômica e auditoria.
 - **FR-PC-SCOPE-014**: Integração futura com provedor de segredos DEVE possuir contrato próprio e somente poderá expor estado seguro, nunca o valor secreto.
 
 ### Resolução do Valor Efetivo
@@ -298,7 +302,7 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - **SC-PC-014**: Em 100% das restaurações externas testadas, versão incompatível, cancelada ou substituída não se torna efetiva sem revalidação do contrato e da vigência.
 - **SC-PC-015**: Pelo menos 90% dos administradores em teste localizam uma definição e explicam o valor efetivo em até 60 segundos sem ajuda.
 - **SC-PC-016**: Todas as jornadas administrativas podem ser concluídas apenas por teclado e mantêm definição, estado, origem, risco, vigência e diferenças compreensíveis sem depender somente de cor.
-- **SC-PC-017**: Em 100% dos testes, configuração global não concede acesso, não altera plano e não consulta nem modifica valor particular de usuário ou tenant.
+- **SC-PC-017**: Em 100% dos testes, configuração não concede acesso, não altera plano e não consulta nem modifica valor particular de usuário ou tenant, salvo o efeito único, condicionado e auditado do bootstrap explicitamente definido em `access-control`.
 - **SC-PC-018**: Em 100% das definições, existe exatamente uma origem e um escopo; código duplicado entre origens impede a inicialização segura da capacidade afetada.
 - **SC-PC-019**: Em 100% dos testes de configuração do Rinos, variável de ambiente, propriedade JVM e argumento de linha de comando não sobrescrevem valores, redirecionam o arquivo, importam outra fonte nem ativam perfil que altere o `application.properties` explícito.
 - **SC-PC-020**: Em 100% dos testes, leitura de configuração `TENANT_DATABASE` sem tenant explícito é recusada e nunca utiliza valor global, de arquivo ou de outro tenant.

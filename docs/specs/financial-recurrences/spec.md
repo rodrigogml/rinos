@@ -2,7 +2,7 @@
 
 **Feature**: `financial-recurrences`
 **Created**: 2026-07-23
-**Status**: Draft — clarificada
+**Status**: Clarified — pronta para planejamento
 
 ## Escopo
 
@@ -10,7 +10,7 @@ Esta feature permite ao tenant definir séries de compromissos financeiros que s
 
 Uma recorrência descreve direção, finalidade, contraparte, calendário, valor esperado, classificação, dimensões e forma de realização. Ela pode representar tanto um compromisso que exige ação do usuário quanto uma movimentação executada externamente, como débito automático em conta.
 
-No modo de ação manual, a ocorrência calculada aparece na agenda como preparação. O usuário decide quando convertê-la em obrigação ou direito real e segue os fluxos de `accounts-payable` ou `accounts-receivable`. No modo automático externo, o Rinos apenas espera a movimentação em uma conta definida e oferece critérios para que uma futura conciliação reconheça o evento; a recorrência não ordena o pagamento e não altera saldo por expectativa.
+No modo de ação manual, a ocorrência calculada aparece na agenda como preparação. O usuário decide quando criar um rascunho vinculado em `accounts-payable` ou `accounts-receivable`, revisa os dados propostos e somente o confirma pelo fluxo do módulo de destino. No modo automático externo, o Rinos apenas espera a movimentação em uma conta definida e oferece critérios para que uma futura conciliação reconheça o evento; a recorrência não ordena o pagamento e não altera saldo por expectativa.
 
 > [!IMPORTANT]
 > Uma ocorrência projetada não é rascunho, pré-lançamento, obrigação, direito, pagamento, recebimento ou lançamento financeiro. Ela não altera saldo, não bloqueia fechamento e não prova que o evento ocorreu.
@@ -24,6 +24,14 @@ No modo de ação manual, a ocorrência calculada aparece na agenda como prepara
 
 - Q: O sistema deve persistir somente eventos esparsos de ocorrências alteradas, ignoradas, materializadas ou resolvidas, sem gerar registros para todas as ocorrências futuras? -> A: Sim; as ocorrências normais permanecem calculadas, e o cadastro esparso registra apenas desvios ou fatos.
 - Q: Quando um débito ou crédito automático for confirmado na conciliação, qual resultado financeiro deve ser produzido? -> A: Cada série define se a confirmação cria obrigação ou direito com sua liquidação, ou se cria somente lançamento financeiro classificado; sugestão e pontuação nunca substituem a decisão final do usuário.
+
+### Session 2026-07-24
+
+- Q: A pausa desloca o calendário ou apenas suprime ocorrências durante seu intervalo? -> A: Ela suprime as ocorrências cuja data-base esteja no intervalo pausado, sem acumulá-las nem deslocar a cadência. A retomada segue o calendário original; adiar uma ocorrência exige exceção individual e mudar permanentemente a cadência exige nova versão.
+- Q: Preparar uma ocorrência cria documento confirmado ou rascunho? -> A: Sempre cria ou reabre um único rascunho vinculado. Os dados recorrentes são propostas, e somente o fluxo de `accounts-payable` ou `accounts-receivable` pode confirmar o documento e tornar a ocorrência materializada.
+- Q: O que ocorre quando o rascunho preparado é descartado ou o documento confirmado é cancelado? -> A: Descartar o rascunho libera a ocorrência para nova preparação e preserva a tentativa no histórico. Cancelar documento confirmado não reabre a ocorrência: ela permanece materializada com documento cancelado e somente uma substituição explícita, motivada e sem outro vínculo vigente ou efeito incompatível pode gerar novo rascunho.
+- Q: Como tratar exceções futuras quando uma nova versão muda a cadência? -> A: Fatos materializados ou resolvidos não são migrados. Exceção futura permanece apenas quando a identidade continuar inequívoca; em conflito, o usuário deve transferi-la individualmente ou descartá-la antes de confirmar a versão, sem remapeamento automático por proximidade de datas e com auditoria integral.
+- Q: Uma ocorrência automática externa pode ser resolvida manualmente sem conciliação bancária? -> A: Sim. Usuário com acesso aos dois lados pode vinculá-la diretamente a um lançamento, pagamento ou recebimento vigente e compatível do mesmo tenant. Diferenças de data ou valor exigem confirmação; o vínculo não cria efeito financeiro, e cancelamento, estorno ou desvinculação devolve a ocorrência à atenção.
 
 ## Interface Coverage
 
@@ -64,9 +72,12 @@ Um usuário autorizado consulta na agenda compromissos recorrentes futuros que a
 **Acceptance Scenarios**:
 
 1. **Given** série manual ativa, **When** agenda é consultada, **Then** ocorrências futuras aparecem como projeções distinguíveis de obrigações reais.
-2. **Given** ocorrência projetada próxima, **When** usuário solicita preparação, **Then** uma obrigação real é criada uma única vez com proposta baseada na versão aplicável da série.
+2. **Given** ocorrência projetada próxima, **When** usuário solicita preparação, **Then** um único rascunho de obrigação é criado com propostas baseadas na versão aplicável da série.
 3. **Given** ocorrência não materializada com data passada, **When** agenda é consultada, **Then** ela aparece como pendência recorrente vencida sem alterar saldo nem bloquear fechamento.
-4. **Given** projeção já materializada, **When** usuário repete a ação, **Then** o documento existente é apresentado sem duplicação.
+4. **Given** projeção com rascunho em preparação ou documento já materializado, **When** usuário repete a ação, **Then** o registro vinculado existente é apresentado sem duplicação.
+5. **Given** rascunho preparado, **When** usuário o confirma em contas a pagar, **Then** somente esse módulo valida e cria a obrigação efetiva e a ocorrência passa a materializada.
+6. **Given** rascunho preparado e ainda não confirmado, **When** ele é descartado, **Then** a ocorrência volta a permitir preparação explícita e a tentativa anterior permanece auditável.
+7. **Given** documento confirmado posteriormente cancelado, **When** a ocorrência é consultada, **Then** ela aparece materializada com documento cancelado e não cria substituto automaticamente.
 
 ---
 
@@ -84,6 +95,8 @@ Um usuário autorizado configura uma recorrência executada externamente, inform
 2. **Given** valor estimado e janela de data, **When** agenda é consultada, **Then** ocorrência apresenta expectativa e tolerâncias sem afirmar que houve pagamento.
 3. **Given** data esperada ultrapassada além da tolerância sem evento relacionado, **When** acompanhamento é consultado, **Then** ocorrência aparece como não identificada e exige atenção.
 4. **Given** mudança cadastral da conta esperada, **When** histórico é consultado, **Then** versões anteriores continuam explicando onde cada ocorrência era esperada.
+5. **Given** movimentação compatível já registrada manualmente, **When** usuário autorizado a vincula à ocorrência, **Then** a ocorrência fica resolvida sem criar ou alterar efeito financeiro.
+6. **Given** fato vinculado posteriormente cancelado ou estornado, **When** agenda é consultada, **Then** a ocorrência volta a exigir atenção sem recriar a movimentação.
 
 ---
 
@@ -121,6 +134,8 @@ Um usuário autorizado corrige somente uma ocorrência, modifica a série a part
 3. **Given** documentos reais já materializados, **When** série é alterada ou encerrada, **Then** esses documentos permanecem sob seus módulos de origem e não são reescritos.
 4. **Given** ocorrência não aplicável, **When** usuário a ignora com motivo, **Then** ela deixa de aparecer como pendente sem gerar documento financeiro.
 5. **Given** ocorrência futura sem alteração nem fato associado, **When** a agenda é consultada, **Then** ela é calculada sem criar cadastro persistente; somente um desvio ou fato posterior gera registro esparso para sua identidade lógica.
+6. **Given** série mensal pausada durante intervalo que abrange três datas-base, **When** ela é retomada, **Then** essas três ocorrências permanecem suprimidas e a próxima segue a cadência original sem pendências acumuladas.
+7. **Given** nova versão que torna ambígua uma exceção futura, **When** usuário tenta confirmar a alteração, **Then** o sistema exige decisão de transferência ou descarte e não remapeia a exceção por proximidade de data.
 
 ---
 
@@ -134,7 +149,7 @@ Um usuário autorizado usa a mesma fundação para projetar direitos recorrentes
 
 **Acceptance Scenarios**:
 
-1. **Given** série de entrada manual, **When** usuário materializa ocorrência, **Then** um direito real é criado por `accounts-receivable` sem alterar saldo.
+1. **Given** série de entrada manual, **When** usuário prepara ocorrência, **Then** um rascunho de direito é criado por `accounts-receivable` sem alterar saldo; sua confirmação posterior pertence a esse módulo.
 2. **Given** crédito automático externo esperado, **When** projeção é consultada, **Then** conta recebedora e critérios de identificação são apresentados sem criar recebimento.
 3. **Given** ocorrência recebida por valor diferente, **When** feature responsável a resolve, **Then** valor real permanece no recebimento e o valor esperado continua auditável.
 
@@ -169,11 +184,16 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - Um débito bancário resume várias ocorrências ou uma ocorrência aparece dividida em várias linhas.
 - Ocorrência é materializada concorrentemente por dois usuários.
 - Série é pausada, encerrada ou alterada durante uma consulta da agenda.
+- Intervalo de pausa começa ou termina na mesma data-base de uma ocorrência.
 - Ocorrência é ignorada e depois o débito real aparece.
 - Documento materializado é cancelado ou alterado no módulo responsável.
+- Resolução manual encontra diferença de data ou valor entre expectativa e fato efetivo.
+- Fato vinculado manualmente é cancelado, estornado ou deixa de estar acessível ao usuário.
+- Substituição é solicitada enquanto ainda existe rascunho ou documento vigente vinculado à ocorrência.
 - Data de uma projeção fica anterior ao fechamento financeiro.
 - Conta, contraparte, categoria ou dimensão é desativada entre a criação e a ocorrência.
 - Alteração “desta em diante” ocorre após exceções futuras já cadastradas.
+- Nova cadência remove, multiplica ou desloca a ocorrência lógica à qual uma exceção futura estava vinculada.
 
 ## Requirements
 
@@ -183,7 +203,7 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **FR-FREC-BOUND-002**: Série recorrente DEVE ser a fonte das regras futuras e NÃO DEVE ser uma obrigação, direito, lançamento, pagamento, recebimento ou linha de extrato.
 - **FR-FREC-BOUND-003**: Ocorrência futura DEVE ser calculada para o intervalo consultado e NÃO DEVE gerar antecipadamente documentos reais em `accounts-payable`, `accounts-receivable` ou `financial-transactions`.
 - **FR-FREC-BOUND-004**: Projeção recorrente NÃO DEVE alterar saldo, liquidar documento, consumir limite, bloquear fechamento nem comprovar execução externa.
-- **FR-FREC-BOUND-005**: Materialização DEVE criar no máximo um documento real por ocorrência e transferir sua responsabilidade funcional ao módulo de destino.
+- **FR-FREC-BOUND-005**: Preparação DEVE criar ou reutilizar no máximo um rascunho vigente por ocorrência; após confirmação no módulo de destino, a ocorrência DEVE vincular no máximo um documento real vigente e transferir a ele a responsabilidade funcional.
 - **FR-FREC-BOUND-006**: Alterar, pausar ou encerrar série NÃO DEVE alterar ou excluir documentos já materializados nem fatos financeiros relacionados.
 - **FR-FREC-BOUND-007**: Esta feature NÃO DEVE executar pagamento, débito, cobrança, transferência, geração de boleto ou comunicação externa.
 - **FR-FREC-BOUND-008**: Parcelamento de uma obrigação ou direito existente DEVE permanecer sob responsabilidade de contas a pagar ou receber e NÃO DEVE ser representado como recorrência.
@@ -228,16 +248,22 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **FR-FREC-PROJ-005**: Projeção com valor desconhecido NÃO DEVE ser somada como zero nem incluída silenciosamente em total monetário.
 - **FR-FREC-PROJ-006**: Ocorrência em data fechada DEVE permanecer consultável e poderá originar documento não monetário conforme o módulo responsável, mas NÃO DEVE criar efeito financeiro retroativo proibido.
 - **FR-FREC-PROJ-007**: Fechamento financeiro NÃO DEVE ser impedido por projeção recorrente, inclusive vencida, porque ela não constitui rascunho nem pré-lançamento.
+- **FR-FREC-PROJ-008**: Identidade de ocorrência com registro esparso, documento ou fato vinculado DEVE permanecer imutável; projeções futuras nunca persistidas PODERÃO receber outras identidades lógicas quando nova versão alterar a sequência.
 
 ### Materialização Manual
 
-- **FR-FREC-MAT-001**: Ocorrência de ação do usuário somente DEVE ser materializada por ação explícita de usuário ou módulo autorizado, sem geração periódica automática.
-- **FR-FREC-MAT-002**: Materialização de saída DEVE criar obrigação ou rascunho compatível em `accounts-payable`; materialização de entrada DEVE criar direito ou rascunho compatível em `accounts-receivable`.
-- **FR-FREC-MAT-003**: Usuário DEVE revisar os dados propostos e completar informações exigidas pelo módulo de destino antes da confirmação do documento real.
-- **FR-FREC-MAT-004**: Identidade lógica da ocorrência DEVE tornar a materialização idempotente e impedir documentos duplicados por repetição ou concorrência.
+- **FR-FREC-MAT-001**: Ocorrência de ação do usuário somente DEVE ser preparada por ação explícita de usuário ou módulo autorizado, sem geração periódica automática.
+- **FR-FREC-MAT-002**: Preparação de saída DEVE criar rascunho compatível em `accounts-payable`; preparação de entrada DEVE criar rascunho compatível em `accounts-receivable`.
+- **FR-FREC-MAT-003**: Usuário DEVE revisar os dados propostos e completar informações exigidas pelo módulo de destino antes de solicitar a confirmação do documento real.
+- **FR-FREC-MAT-004**: Identidade lógica da ocorrência DEVE tornar preparação e materialização idempotentes, reutilizar o rascunho vigente e impedir documentos duplicados por repetição ou concorrência.
 - **FR-FREC-MAT-005**: Documento materializado DEVE preservar vínculo com série, versão e ocorrência de origem sem permanecer subordinado às mudanças futuras da série.
-- **FR-FREC-MAT-006**: Materializar uma ocorrência NÃO DEVE materializar ocorrências anteriores ou posteriores.
-- **FR-FREC-MAT-007**: Cancelamento do documento real DEVE ser tratado pelo módulo de destino e refletido na agenda sem recriar automaticamente a ocorrência.
+- **FR-FREC-MAT-006**: Preparar ou materializar uma ocorrência NÃO DEVE preparar nem materializar ocorrências anteriores ou posteriores.
+- **FR-FREC-MAT-007**: Cancelamento do documento real DEVE ser tratado pelo módulo de destino e refletido na agenda como ocorrência materializada com documento cancelado, sem reabri-la nem recriar documento automaticamente.
+- **FR-FREC-MAT-008**: A recorrência NÃO DEVE confirmar rascunho nem dispensar validação, autorização, auditoria ou transição de estado pertencente ao módulo de destino.
+- **FR-FREC-MAT-009**: Ocorrência com rascunho vinculado DEVE aparecer como `EM_PREPARAÇÃO`; somente a confirmação válida do documento no módulo de destino DEVE torná-la `MATERIALIZADA`.
+- **FR-FREC-MAT-010**: Descarte de rascunho antes da confirmação DEVE retirar o vínculo vigente, devolver a ocorrência à situação projetada aplicável e permitir nova preparação explícita, preservando a tentativa anterior na auditoria.
+- **FR-FREC-MAT-011**: Ocorrência materializada cujo documento foi cancelado somente PODERÁ preparar substituição por ação explícita e motivada de usuário autorizado, desde que não exista outro rascunho ou documento vigente nem efeito incompatível.
+- **FR-FREC-MAT-012**: Rascunho substituto DEVE preservar vínculo com a ocorrência, com o documento cancelado e com o motivo da substituição, sem apagar nem reutilizar a identidade do documento anterior.
 
 ### Execução Automática Externa
 
@@ -252,6 +278,12 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **FR-FREC-AUTO-009**: Na estratégia de obrigação ou direito, a confirmação DEVE acionar os contratos de `accounts-payable` ou `accounts-receivable`, criar os documentos e alocações aplicáveis e reconhecer exatamente uma movimentação financeira efetiva.
 - **FR-FREC-AUTO-010**: Na estratégia de classificação direta, a confirmação DEVE produzir somente o lançamento financeiro categorizado compatível com a direção e os dados efetivos, sem criar obrigação, direito, liquidação ou recebimento artificial.
 - **FR-FREC-AUTO-011**: Repetição da confirmação ou reprocessamento da mesma linha externa NÃO DEVE duplicar documento, liquidação, lançamento financeiro nem registro esparso da ocorrência.
+- **FR-FREC-AUTO-012**: Usuário autorizado DEVE poder resolver ocorrência automática externa por vínculo manual direto com lançamento, pagamento ou recebimento vigente já existente, sem depender de extrato importado.
+- **FR-FREC-AUTO-013**: Vínculo manual DEVE exigir mesmo tenant, conta financeira compatível, direção compatível e acesso vigente do usuário à recorrência e ao fato selecionado.
+- **FR-FREC-AUTO-014**: Diferença entre datas ou valores esperado e efetivo DEVE ser apresentada explicitamente e exigir confirmação, sem alterar nenhum dos valores.
+- **FR-FREC-AUTO-015**: Criar, repetir ou remover o vínculo manual NÃO DEVE criar, revisar, cancelar, estornar, classificar nem duplicar efeito financeiro.
+- **FR-FREC-AUTO-016**: Cancelamento, estorno, invalidação ou desvinculação do fato relacionado DEVE retirar a resolução vigente e devolver a ocorrência à situação de atenção aplicável, sem recriar movimentação.
+- **FR-FREC-AUTO-017**: Resolução manual direta DEVE vincular uma ocorrência a um fato selecionado; rateios e correspondências entre várias ocorrências e vários fatos pertencem a `bank-statements-reconciliation`.
 
 ### Critérios para Correspondência
 
@@ -271,25 +303,32 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **FR-FREC-CHANGE-001**: Alteração DEVE permitir alcance `SOMENTE_ESTA_OCORRÊNCIA` ou `DESTA_OCORRÊNCIA_EM_DIANTE`.
 - **FR-FREC-CHANGE-002**: Alteração isolada DEVE preservar exceção de data, valor, conta, contraparte, classificação, descrição ou situação sem alterar a regra principal.
 - **FR-FREC-CHANGE-003**: Alteração futura DEVE criar versão efetiva a partir da ocorrência escolhida e manter versões anteriores auditáveis.
-- **FR-FREC-CHANGE-004**: Exceções futuras existentes DEVEM ser reapresentadas ao usuário quando nova versão puder contradizê-las, sem descarte silencioso.
+- **FR-FREC-CHANGE-004**: Exceções futuras existentes DEVEM ser reapresentadas ao usuário quando nova versão puder contradizê-las, e a versão NÃO DEVE ser confirmada enquanto houver conflito sem decisão.
 - **FR-FREC-CHANGE-005**: Usuário DEVE poder adicionar ocorrência extraordinária, ignorar ocorrência prevista ou restaurar ocorrência ignorada enquanto não houver fato incompatível.
 - **FR-FREC-CHANGE-006**: Série DEVE distinguir rascunho, ativa, pausada, encerrada e cancelada.
-- **FR-FREC-CHANGE-007**: Pausa DEVE suprimir projeções durante intervalo definido sem apagar a série; retomada DEVE preservar a sequência segundo política apresentada ao usuário.
+- **FR-FREC-CHANGE-007**: Pausa DEVE suprimir as ocorrências cuja data-base esteja contida no intervalo definido, sem acumulá-las, transferi-las para depois da retomada nem deslocar a cadência original.
 - **FR-FREC-CHANGE-008**: Encerramento DEVE impedir novas ocorrências após o limite; cancelamento DEVE interromper a série sem apagar histórico, exceções ou realizações.
 - **FR-FREC-CHANGE-009**: Reativação ou mudança retroativa NÃO DEVE criar documentos reais automaticamente.
-- **FR-FREC-CHANGE-010**: Sistema DEVE persistir cadastro esparso de ocorrência somente quando sua identidade lógica possuir exceção, inclusão extraordinária, omissão ou restauração deliberada, materialização, resolução ou vínculo com fato efetivo.
+- **FR-FREC-CHANGE-010**: Sistema DEVE persistir cadastro esparso de ocorrência somente quando sua identidade lógica possuir exceção, inclusão extraordinária, omissão ou restauração deliberada, preparação ou descarte de rascunho, materialização, substituição, resolução ou vínculo com fato efetivo.
 - **FR-FREC-CHANGE-011**: Ocorrência projetada sem desvio nem fato associado DEVE permanecer calculada a partir da série e NÃO DEVE gerar registro persistente apenas por ter sido exibida, vencido ou integrada a uma consulta.
 - **FR-FREC-CHANGE-012**: Registro esparso DEVE conservar a identidade lógica da ocorrência, o tipo do evento, seu estado vigente e os dados necessários para reproduzir a diferença em relação à série, sem duplicar os dados invariáveis da série.
+- **FR-FREC-CHANGE-013**: Retomada DEVE voltar a projetar a partir da primeira data-base posterior ao término da pausa segundo o calendário original; adiamento isolado exige exceção e mudança permanente da cadência exige nova versão.
+- **FR-FREC-CHANGE-014**: Pausa NÃO DEVE alterar documento materializado, realização ou fato financeiro já existente, ainda que sua data-base esteja dentro do intervalo posteriormente pausado.
+- **FR-FREC-CHANGE-015**: Exceção futura somente DEVE permanecer vinculada automaticamente quando a mesma identidade lógica continuar inequivocamente presente sob a nova versão.
+- **FR-FREC-CHANGE-016**: Quando a nova cadência remover, multiplicar, deslocar ambiguamente ou substituir a ocorrência, o usuário DEVE decidir individualmente entre transferir a exceção para uma ocorrência escolhida ou descartá-la; proximidade de datas NÃO DEVE determinar a decisão.
+- **FR-FREC-CHANGE-017**: Documento materializado, realização ou fato efetivo NÃO DEVE ser migrado para outra ocorrência por alteração da série; transferência ou descarte de exceção futura DEVE preservar identidade anterior, destino quando houver, ator, instante e motivo.
 
 ### Autorização, Auditoria e Isolamento
 
 - **FR-FREC-SEC-001**: Criar, consultar, alterar, ativar, pausar, encerrar, cancelar, materializar, ignorar, restaurar e auditar DEVEM admitir chaves de acesso distintas quando o risco diferir.
 - **FR-FREC-SEC-002**: Autorização DEVE ser revalidada no tenant ativo e também no módulo de destino durante materialização ou consulta de documento real.
 - **FR-FREC-SEC-003**: Acesso à série NÃO DEVE conceder automaticamente acesso a valores, contas, contrapartes, categorias, dimensões, extratos ou documentos vinculados.
+- **FR-FREC-SEC-005**: Resolver ou desvincular manualmente ocorrência DEVE exigir chaves próprias e autorização simultânea para consultar a ocorrência e o fato financeiro selecionado.
 - **FR-FREC-SEC-004**: Logs, erros, métricas e mensagens NÃO DEVEM expor valores, saldos, dados pessoais ou padrões financeiros além da finalidade autorizada.
 - **FR-FREC-AUD-001**: Mudança de série, versão, exceção, estado, materialização e resolução DEVE registrar tenant, ator ou origem, instante, conteúdo anterior e novo, alcance e motivo quando exigido.
 - **FR-FREC-AUD-002**: Histórico DEVE permitir reproduzir qual versão e exceção produziram qualquer projeção materializada ou resolvida.
 - **FR-FREC-AUD-003**: Auditoria NÃO DEVE transformar projeções nunca utilizadas em fatos persistidos nem afirmar que expectativa calculada existia como documento real.
+- **FR-FREC-AUD-004**: Vínculo manual, confirmação de divergências e desvinculação DEVEM registrar ocorrência, identidade e tipo do fato, ator, instante, valores e datas esperados e efetivos, motivo quando exigido e resultado.
 
 ### Experiência e Acessibilidade
 
@@ -317,16 +356,18 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **Série Recorrente**: fonte de verdade que define calendário, direção, valor esperado, classificação, contraparte e forma de realização.
 - **Versão da Série**: conjunto de regras aplicável a partir de determinada ocorrência sem reescrever versões anteriores.
 - **Ocorrência Projetada**: representação calculada e não financeira de um compromisso em uma data, derivada da série, versão e exceções.
+- **Rascunho Preparado**: rascunho único de obrigação ou direito criado a partir das propostas de uma ocorrência e ainda sujeito às validações e à confirmação do módulo de destino.
 - **Exceção de Ocorrência**: alteração esparsa aplicável somente a uma ocorrência, como mudança, omissão ou inclusão extraordinária.
 - **Registro Esparso da Ocorrência**: cadastro criado somente para uma ocorrência com desvio ou fato, preservando exceção, inclusão extraordinária, omissão, restauração, materialização, resolução ou vínculo com evento efetivo sem criar as ocorrências futuras normais.
 - **Critérios de Correspondência**: conta, direção, data, valor, contraparte, referências e padrões usados para sugerir relação com evento externo.
-- **Documento Materializado**: obrigação ou direito real criado explicitamente a partir de uma ocorrência e controlado por seu módulo financeiro.
+- **Realização Manual**: vínculo auditado e sem efeito monetário próprio entre uma ocorrência automática e um lançamento, pagamento ou recebimento vigente já registrado.
+- **Documento Materializado**: obrigação ou direito confirmado explicitamente a partir do rascunho preparado de uma ocorrência e controlado por seu módulo financeiro.
 
 ## Success Criteria
 
 - **SC-FREC-001**: Em 100% das consultas, ocorrências futuras não materializadas são reproduzidas a partir da série sem criar obrigações, direitos ou lançamentos financeiros.
 - **SC-FREC-002**: Em 100% dos testes, projeção recorrente não altera saldo nem bloqueia fechamento financeiro.
-- **SC-FREC-003**: Em 100% das materializações repetidas ou concorrentes, no máximo um documento real é vinculado à ocorrência.
+- **SC-FREC-003**: Em 100% das preparações ou materializações repetidas e concorrentes, existe no máximo um rascunho vigente e um documento real vigente vinculados à ocorrência.
 - **SC-FREC-004**: Em 100% das alterações isoladas, somente a ocorrência escolhida muda; em alterações futuras, somente ela e as posteriores usam a nova versão.
 - **SC-FREC-005**: Em 100% das séries alteradas ou encerradas, documentos materializados e fatos realizados permanecem inalterados e rastreáveis.
 - **SC-FREC-006**: Em 100% das projeções, valor exato, estimado e desconhecido permanecem distinguíveis e totais não tratam desconhecido como zero.
@@ -341,6 +382,11 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - **SC-FREC-015**: Em 100% das auditorias testadas, série, versão, exceção e realização explicam o resultado sem transformar projeções não utilizadas em fatos históricos.
 - **SC-FREC-016**: Em 100% das sugestões ainda não confirmadas pelo usuário, nenhum documento, vínculo, classificação, liquidação, lançamento ou alteração de saldo é produzido.
 - **SC-FREC-017**: Em 100% dos reprocessamentos de uma confirmação, a linha externa e a ocorrência mantêm no máximo um conjunto vigente de efeitos financeiros.
+- **SC-FREC-018**: Em 100% das pausas testadas, ocorrências abrangidas são suprimidas sem pendências acumuladas, a retomada preserva a cadência original e fatos já existentes permanecem inalterados.
+- **SC-FREC-019**: Em 100% das preparações, recorrências somente criam ou reutilizam rascunhos e nenhuma obrigação ou direito é confirmado fora do fluxo e das validações do módulo de destino.
+- **SC-FREC-020**: Em 100% dos descartes, a ocorrência pode ser preparada novamente sem duplicar vínculo; em 100% dos cancelamentos de documento confirmado, nenhuma substituição é criada sem ação explícita, motivo e ausência de vínculo vigente ou efeito incompatível.
+- **SC-FREC-021**: Em 100% das mudanças de cadência com exceções conflitantes, a versão permanece sem confirmação até todas as decisões explícitas, nenhum fato existente é migrado e cada transferência ou descarte é auditável.
+- **SC-FREC-022**: Em 100% das resoluções manuais, somente vínculo auditado é criado; nenhum efeito financeiro é duplicado, divergências são confirmadas e fato cancelado, estornado ou desvinculado devolve a ocorrência à atenção.
 
 ## Fora do Escopo
 

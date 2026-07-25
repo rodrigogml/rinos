@@ -10,7 +10,7 @@ Esta feature permite ao tenant registrar, organizar e liquidar obrigações de p
 
 Contas a pagar e lançamentos financeiros possuem responsabilidades distintas. A obrigação e suas parcelas explicam **o que deve ser pago e quando**; somente uma liquidação confirmada produz efeito na conta financeira. Previsões, vencimentos e atrasos não alteram saldo por si próprios.
 
-Liquidações podem ser totais ou parciais e devem preservar principal, descontos, juros, multas, tarifas e outros componentes de maneira explicável. O vínculo entre obrigação, parcela, liquidação e lançamento financeiro permite consultar tanto a agenda futura quanto o histórico efetivamente pago sem duplicar efeitos.
+Liquidações podem ser totais ou parciais e devem preservar principal, descontos, juros, multas, tarifas e outros componentes de maneira explicável. Pagamento a credor externo produz uma saída na conta financeira controlada, sem criar uma conta ou ponta de entrada para o destino informado pela contraparte. O vínculo entre obrigação, parcela, liquidação e efeito financeiro permite consultar tanto a agenda futura quanto o histórico efetivamente pago sem duplicar efeitos.
 
 > [!IMPORTANT]
 > Estado da obrigação, estado da parcela e situação de vencimento são conceitos distintos. Uma obrigação pode estar parcialmente liquidada, enquanto algumas parcelas estão vencidas e outras ainda não venceram.
@@ -27,6 +27,13 @@ Liquidações podem ser totais ou parciais e devem preservar principal, desconto
 - Q: Quando recorrências devem gerar novas obrigações? → A: Recorrências de lançamentos, obrigações, direitos e pagamentos serão tratadas em SDD próprio e transversal. A futura feature deverá detalhar frequências semanais, quinzenais, mensais, bimestrais, trimestrais, semestrais, anuais, a cada dois anos e personalizadas, além de exceções, agrupamentos e alterações aplicáveis somente de determinada ocorrência em diante.
 - Q: Uma obrigação total ou parcialmente liquidada pode ser alterada? → A: Sim. Estado pago ou liquidado não cria imutabilidade. Enquanto todas as datas financeiras afetadas estiverem abertas, obrigação, parcelas, liquidações, alocações e lançamentos correspondentes podem ser corrigidos ou cancelados de forma coordenada, atômica e versionada. A única fronteira de imutabilidade financeira é a data de fechamento; depois dela, os fatos protegidos exigem compensação em data aberta.
 - Q: Toda obrigação confirmada deve possuir contraparte credora cadastrada? → A: Sim. A obrigação confirmada exige uma pessoa credora do mesmo tenant, sem requerer papel de fornecedor nem associação com usuário. Rascunhos podem permanecer sem credor; a jornada pode oferecer cadastro rápido, sempre obedecendo `party-registration` e sem criar duplicidades silenciosas.
+
+### Session 2026-07-24
+
+- Q: Pagamento a credor externo deve ser modelado como transferência entre a conta pagadora e o dado bancário da contraparte? → A: Não. Ele gera uma única saída na conta financeira controlada, vinculada à liquidação e às alocações. Conta bancária ou chave Pix do credor permanece somente como instrução preservada, sem saldo nem ponta financeira interna. `financial-transfers` somente é usado quando origem e destino são contas financeiras controladas pelo mesmo tenant; execução bancária permanece fora do MVP.
+- Q: A desativação da pessoa credora impede pagar ou corrigir uma obrigação já confirmada? → A: Não. Ela bloqueia novos vínculos e a confirmação de rascunhos, mas não invalida a obrigação constituída nem impede sua liquidação, correção ou cancelamento. Substituir o credor exige outra pessoa ativa.
+- Q: O fechamento impede cadastrar obrigação cujo vencimento já passou? → A: Não. Emissão, competência e vencimento são datas documentais e podem estar no intervalo fechado enquanto não reescreverem fato monetário protegido. A liquidação usa a data real do pagamento, que deve estar aberta; efeito já fechado somente pode ser corrigido por reabertura autorizada ou compensação em data aberta.
+- Q: Como tratar saída maior que as obrigações liquidadas? → A: A movimentação integral permanece um único lançamento, e toda unidade monetária deve receber destinação explícita entre parcelas e componentes categorizados. O usuário pode classificar a diferença em categoria própria de crédito recuperável ou finalidade equivalente, mas isso não cria conta a receber, cadastro de adiantamento, saldo auxiliar nem controle automático contra a contraparte. Sem distribuição integral válida, a confirmação falha e eventual efeito já reconhecido permanece como pré-lançamento.
 
 ## Interface Coverage
 
@@ -86,6 +93,7 @@ Um usuário autorizado registra pagamento realizado por uma conta financeira, in
 2. **Given** pagamento com desconto ou acréscimo, **When** confirmação é solicitada, **Then** cada componente é explicitado e o valor debitado reconcilia com a liquidação.
 3. **Given** repetição equivalente da confirmação, **When** a solicitação é processada novamente, **Then** nenhum pagamento ou lançamento adicional é produzido.
 4. **Given** várias parcelas compatíveis do mesmo credor, **When** usuário confirma um único pagamento distribuído entre elas, **Then** cada alocação reduz somente seu saldo e a soma reconcilia com a liquidação.
+5. **Given** pagamento destinado a credor externo, **When** a liquidação é confirmada, **Then** somente a conta pagadora recebe lançamento de saída e a instrução do credor é preservada sem criar conta financeira ou entrada de destino.
 
 ---
 
@@ -159,10 +167,11 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **FR-AP-BOUND-001**: Toda obrigação, parcela, liquidação e alocação DEVE pertencer exclusivamente a um tenant.
 - **FR-AP-BOUND-002**: Obrigação DEVE representar compromisso de pagamento e NÃO DEVE alterar saldo de conta financeira antes de uma liquidação confirmada.
 - **FR-AP-BOUND-003**: Parcela DEVE representar parte exigível da obrigação, com valor, vencimento, estado e saldo pendente próprios.
-- **FR-AP-BOUND-004**: Liquidação DEVE representar pagamento efetivamente reconhecido e produzir seu efeito por `financial-transactions` ou `financial-transfers`, conforme o caso.
+- **FR-AP-BOUND-004**: Liquidação a credor externo DEVE representar pagamento efetivamente reconhecido e produzir uma única saída na conta pagadora por `financial-transactions`; `financial-transfers` somente PODERÁ ser usado quando a operação realmente movimentar recursos entre duas contas financeiras controladas pelo mesmo tenant.
 - **FR-AP-BOUND-005**: Conta a pagar NÃO DEVE ser confundida com transferência entre contas próprias, compra de cartão, pedido, contrato, documento fiscal, folha ou lançamento contábil.
 - **FR-AP-BOUND-006**: A feature NÃO DEVE executar ordens bancárias nem afirmar que a instituição externa realizou o pagamento.
 - **FR-AP-BOUND-007**: Situação vencida, a vencer ou em atraso DEVE ser derivada da data de referência, vencimento, saldo pendente e estado, sem transição periódica obrigatória.
+- **FR-AP-BOUND-008**: Conta bancária, chave Pix ou outro dado de pagamento da pessoa credora NÃO DEVE ser tratado como conta financeira, saldo ou destino de lançamento interno.
 
 ### Obrigação e Parcelas
 
@@ -176,10 +185,13 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **FR-AP-OBL-008**: Contraparte DEVE referenciar pessoa do mesmo tenant e preservar apresentação histórica mínima suficiente para que alterações cadastrais não tornem a obrigação incompreensível.
 - **FR-AP-OBL-009**: Instrução selecionada de `party-payment-details` DEVE preservar a versão e o snapshot usados, sem criar autorização ou presumir verificação bancária.
 - **FR-AP-OBL-010**: Valor original, desconto, juros, multa, tarifa, imposto, honorário e outros componentes DEVEM permanecer distinguíveis e reconciliar com o valor vigente aplicável.
-- **FR-AP-OBL-011**: Rascunho PODERÁ ser salvo sem credor, mas toda obrigação confirmada DEVE referenciar exatamente uma pessoa credora apta do mesmo tenant.
+- **FR-AP-OBL-011**: Rascunho PODERÁ ser salvo sem credor ou preservar credor posteriormente desativado, mas toda obrigação confirmada DEVE referenciar exatamente uma pessoa credora ativa do mesmo tenant.
 - **FR-AP-OBL-012**: Pessoa credora NÃO DEVE precisar possuir papel de fornecedor, cliente ou outro papel de negócio, e sua associação à obrigação NÃO DEVE conceder acesso, participação ou permissão.
 - **FR-AP-OBL-013**: Cadastro rápido de credor DEVE aplicar integralmente `party-registration`, inclusive identidade, isolamento, validação, pesquisa prévia de possíveis duplicidades e autorizações próprias.
 - **FR-AP-OBL-014**: Cadastro rápido NÃO DEVE criar automaticamente papel comercial, instrução de pagamento nem relacionamento adicional além da pessoa selecionável como credora.
+- **FR-AP-OBL-015**: Desativação posterior da pessoa credora NÃO DEVE invalidar obrigação confirmada nem impedir sua liquidação, correção ou cancelamento conforme autorizações, dependências e datas financeiras aplicáveis.
+- **FR-AP-OBL-016**: Alteração de obrigação confirmada que substitua a pessoa credora DEVE exigir outra pessoa ativa do mesmo tenant; correção que preserve a credora já vinculada NÃO DEVE exigir sua reativação.
+- **FR-AP-OBL-017**: Emissão, competência ou vencimento igual ou anterior ao fechamento financeiro NÃO DEVE, isoladamente, impedir criação ou correção de obrigação sem efeito monetário protegido; a alteração DEVE permanecer auditada e não poderá reescrever liquidação ou lançamento fechado.
 
 ### Estados
 
@@ -199,12 +211,21 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **FR-AP-PAY-006**: Principal, desconto, juros, multa, imposto, tarifa, honorário e diferença cambial DEVEM ser explicitados de modo que o débito na conta e a redução da obrigação sejam reconciliáveis.
 - **FR-AP-PAY-007**: Componentes econômicos adicionais DEVEM possuir categorias e dimensões próprias quando diferirem da classificação do principal.
 - **FR-AP-PAY-008**: Pagamento em moeda diferente DEVE preservar valor liquidado na moeda da obrigação e memória de conversão do valor efetivado na moeda da conta.
-- **FR-AP-PAY-009**: Pagamento excedente NÃO DEVE ser absorvido silenciosamente; a confirmação deve impedir excesso ou encaminhar a diferença para capacidade explicitamente definida.
+- **FR-AP-PAY-009**: Pagamento excedente NÃO DEVE ser absorvido, descartado nem presumido silenciosamente; a confirmação DEVE exigir sua destinação explícita em componente categorizado do mesmo lançamento.
 - **FR-AP-PAY-010**: Instrução de pagamento serve como memória e orientação e NÃO DEVE ser tratada como prova de execução externa.
 - **FR-AP-PAY-011**: Liquidações futuras ou apenas programadas NÃO DEVEM criar lançamento confirmado nem afetar saldo atual.
 - **FR-AP-PAY-012**: Parcelas reunidas na mesma liquidação DEVEM pertencer ao mesmo tenant, credor e moeda da obrigação; obrigações distintas PODERÃO ser combinadas quando satisfizerem essas condições.
 - **FR-AP-PAY-013**: A soma das alocações NÃO DEVE exceder os saldos pendentes e DEVE reconciliar exatamente a redução das obrigações com principal, descontos e acréscimos da liquidação.
 - **FR-AP-PAY-014**: Pagamentos destinados a credores diferentes DEVEM permanecer liquidações independentes, ainda que uma operação em lote permita prepará-los e confirmá-los conjuntamente.
+- **FR-AP-PAY-015**: Liquidação externa DEVE criar exatamente um lançamento de saída na conta pagadora, sem criar entrada, saldo ou conta interna para o credor.
+- **FR-AP-PAY-016**: Quando um contrato específico usar transferência, origem e destino DEVEM ser contas financeiras distintas do mesmo tenant e a liquidação DEVE vincular a operação coordenada sem duplicar o efeito monetário.
+- **FR-AP-PAY-017**: A instrução de pagamento utilizada DEVE ser preservada como snapshot histórico protegido, mas NÃO DEVE integrar o cálculo de saldo nem provar execução bancária.
+- **FR-AP-PAY-018**: Liquidação DEVE usar a data em que o pagamento foi efetivamente reconhecido, sem copiar automaticamente emissão, competência ou vencimento como data efetiva.
+- **FR-AP-PAY-019**: Pagamento de parcela vencida somente PODERÁ ser confirmado quando sua data efetiva estiver aberta; vencimento em intervalo fechado NÃO exige reabertura, mas alteração de efeito monetário já fechado exige reabertura autorizada ou compensação em data aberta.
+- **FR-AP-PAY-020**: Uma única saída efetiva DEVE permanecer representada por um único lançamento financeiro no valor integral, ainda que seja distribuída entre várias parcelas e componentes explicativos.
+- **FR-AP-PAY-021**: A soma das alocações em obrigações e dos componentes categorizados DEVE corresponder exatamente ao valor integral da saída antes da confirmação.
+- **FR-AP-PAY-022**: Usuário PODERÁ destinar diferença a categoria comum criada ou escolhida para crédito recuperável, adiantamento ou finalidade equivalente; essa classificação NÃO DEVE criar direito a receber, cadastro especializado, saldo auxiliar, compensação futura automática nem controle por contraparte.
+- **FR-AP-PAY-023**: Se a distribuição integral for inválida, a confirmação DEVE falhar atomicamente; quando a saída já existir como pré-lançamento, identidade, estado e efeito anterior DEVEM ser preservados conforme `financial-transactions`.
 
 ### Agenda, Consulta e Operações em Lote
 
@@ -269,7 +290,7 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **Pessoa Credora**: contraparte obrigatória da obrigação confirmada, cadastrada no tenant sem necessidade de papel comercial e preservada por referência e apresentação histórica mínima.
 - **Parcela a Pagar**: parte exigível da obrigação, com sequência, vencimento, componentes, classificação, estado e saldo pendente.
 - **Componente Monetário**: parcela explicativa de principal, desconto, juros, multa, imposto, tarifa, honorário ou outro ajuste.
-- **Liquidação**: reconhecimento de pagamento efetivo, com conta, data, moeda, valor debitado, componentes e lançamento financeiro correspondente.
+- **Liquidação**: reconhecimento de pagamento efetivo, com conta, data, moeda, valor debitado, componentes e efeito financeiro correspondente; em pagamento externo, possui somente a saída da conta controlada.
 - **Alocação de Liquidação**: parte da liquidação atribuída ao saldo de uma parcela específica.
 - **Instrução Preservada de Pagamento**: snapshot da versão do dado indicado para executar o pagamento fora do sistema.
 - **Origem da Obrigação**: usuário ou evento modular responsável pela criação e pelo contrato de correção.
@@ -291,6 +312,10 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **SC-AP-011**: Em 100% das origens modulares testadas, repetição equivalente reutiliza a obrigação e correção protegida não pode ser feita por atalho financeiro.
 - **SC-AP-012**: Logs, erros e métricas examinados não contêm valores, saldos, documentos pessoais ou instruções financeiras sem finalidade e proteção aprovadas.
 - **SC-AP-013**: Em 100% das obrigações confirmadas testadas, existe exatamente uma pessoa credora do mesmo tenant; nenhum cadastro rápido cria papel, acesso ou duplicidade silenciosa.
+- **SC-AP-014**: Em 100% dos pagamentos externos testados, existe uma única saída na conta pagadora, nenhuma conta ou entrada é criada para o credor e a instrução preservada não participa do saldo.
+- **SC-AP-015**: Em 100% dos testes, credor desativado bloqueia a confirmação de nova obrigação, mas não bloqueia liquidação, correção ou cancelamento autorizado de obrigação anteriormente confirmada.
+- **SC-AP-016**: Em 100% dos testes, obrigação vencida em intervalo fechado pode ser cadastrada sem efeito no saldo e sua liquidação usa data efetiva aberta, sem retroceder automaticamente ao vencimento.
+- **SC-AP-017**: Em 100% dos pagamentos excedentes testados, o valor integral produz uma única saída, cada unidade monetária possui destinação explícita e a categoria de crédito recuperável não cria cadastro, saldo ou controle automático contra a contraparte.
 
 ## Fora do Escopo
 

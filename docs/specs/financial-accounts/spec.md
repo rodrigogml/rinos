@@ -30,6 +30,10 @@ A conta financeira é o local em que lançamentos futuros afetarão saldos. Ela 
 
 - Q: Como representar cartão de crédito sem criar um cadastro genérico de instrumentos? → A: Cartão de crédito é conta financeira especializada de crédito/passivo, com saldo normalmente negativo quando houver dívida. Limite, faturas, compras, parcelas e cartões subordinados pertencem a `credit-cards`; cartões de débito e canais sem saldo próprio não exigem cadastro independente.
 
+### Session 2026-07-24
+
+- Q: A correção direta do saldo de abertura pode alterar histórico já protegido pela data de fechamento? → A: Não. O saldo de abertura é um fato monetário datado e respeita `financial-closing-control`. Ele somente pode ser editado diretamente quando não existe outro evento efetivado e sua data de referência está aberta. Se a data estiver fechada, o usuário precisa reabri-la antes da edição; depois do primeiro evento, a abertura permanece definitivamente bloqueada e qualquer diferença deve ser registrada como lançamento financeiro comum, categorizado e em data aberta.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Cadastrar uma conta financeira (Priority: P1)
@@ -129,6 +133,8 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - Moeda que altera sua quantidade aceita de casas decimais.
 - Conta desativada que ainda recebe evento por integração futura.
 - Correção do saldo de abertura depois de existirem lançamentos.
+- Criação ou correção de saldo de abertura cuja data de referência esteja alcançada pelo fechamento.
+- Retrocesso do fechamento torna aberta a data de uma conta que ainda não possui outro evento efetivado.
 - Encerramento com saldo residual ou eventos futuros pendentes.
 - Operações concorrentes alteram estado, grupo ou saldo de abertura.
 - Usuário autorizado a consultar cadastro, mas não saldo ou identificadores institucionais.
@@ -183,9 +189,12 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **FR-FAC-OPEN-001**: Toda conta DEVE possuir um saldo de abertura, inclusive zero, e uma data de referência que delimite o início do controle no sistema.
 - **FR-FAC-OPEN-002**: O saldo de abertura DEVE aceitar valor positivo, zero ou negativo e registrar origem, responsável e instante da declaração.
 - **FR-FAC-OPEN-003**: A data de abertura no sistema PODERÁ ser diferente da data real de abertura na instituição e DEVE representar claramente o início do período controlado.
-- **FR-FAC-OPEN-004**: O saldo de abertura PODERÁ ser corrigido diretamente somente enquanto a conta não possuir outro evento financeiro efetivado; a correção DEVE exigir autorização, motivo e auditoria.
+- **FR-FAC-OPEN-004**: O saldo de abertura PODERÁ ser corrigido diretamente somente enquanto a conta não possuir outro evento financeiro efetivado e sua data de referência estiver posterior à data de fechamento vigente; a correção DEVE exigir autorização, motivo e auditoria.
 - **FR-FAC-OPEN-005**: Depois do primeiro evento financeiro efetivado, o saldo de abertura DEVE ficar bloqueado e NÃO DEVE ser reescrito, nem mesmo por rotinas administrativas ou de conciliação.
-- **FR-FAC-OPEN-006**: Qualquer correção posterior ao bloqueio DEVE ser registrada como lançamento financeiro comum, com data, valor, categoria, ator e motivo, conforme os requisitos da futura feature de lançamentos.
+- **FR-FAC-OPEN-006**: Depois do bloqueio permanente causado pelo primeiro evento, qualquer correção DEVE ser registrada como lançamento financeiro comum, com data aberta, valor, categoria, ator e motivo, conforme `financial-transactions`.
+- **FR-FAC-OPEN-007**: Criar ou corrigir saldo de abertura cuja data de referência seja igual ou anterior ao fechamento vigente DEVE ser rejeitado sem efeito parcial, conforme `financial-closing-control`.
+- **FR-FAC-OPEN-008**: Quando a conta ainda não possuir outro evento efetivado, retroceder ou remover o fechamento de modo que a data de abertura se torne aberta DEVE voltar a permitir sua correção direta; essa reabertura NÃO DEVE remover a auditoria anterior.
+- **FR-FAC-OPEN-009**: Quando o usuário não reabrir a data de uma abertura protegida, eventual diferença somente PODERÁ afetar o saldo por lançamento financeiro comum em data aberta, sem tipo privilegiado de ajuste.
 - **FR-FAC-BAL-001**: O saldo atual DEVE ser explicável pelo saldo de abertura e por todos os eventos financeiros efetivados até a data consultada.
 - **FR-FAC-BAL-002**: Usuário NÃO DEVE editar diretamente o saldo atual.
 - **FR-FAC-BAL-003**: Eventos previstos, pendentes ou não efetivados NÃO DEVEM alterar o saldo atual e deverão compor projeções separadas em feature própria.
@@ -319,11 +328,12 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - **SC-FAC-012**: Logs, mensagens de erro e métricas examinados nos testes não contêm saldos nem identificadores externos completos sem finalidade e proteção aprovadas.
 - **SC-FAC-013**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FAC-014**: Em 100% dos testes multimoeda, cada conta mantém uma única moeda, o agrupador não possui saldo e não ocorre soma ou conversão automática entre as contas.
-- **SC-FAC-015**: Em 100% dos testes, depois do primeiro evento financeiro efetivado, a edição direta do saldo de abertura é rejeitada e qualquer correção afeta o saldo somente por lançamento financeiro comum categorizado.
+- **SC-FAC-015**: Em 100% dos testes, depois do primeiro evento financeiro efetivado, a edição direta do saldo de abertura é rejeitada e qualquer correção afeta o saldo somente por lançamento financeiro comum categorizado em data aberta.
 - **SC-FAC-016**: Em 100% dos testes, evento autorizado que produza saldo negativo pode ser registrado; conta de recurso sinaliza a ocorrência e conta especializada de crédito/passivo a apresenta como dívida, sem incorporar limite ao saldo.
 - **SC-FAC-017**: Em 100% dos testes de classificação, natureza, custodiante, produto e capacidades permanecem dimensões independentes e combinações incompatíveis são rejeitadas.
 - **SC-FAC-018**: Em 100% dos testes, carteira ou plataforma sem saldo monetário próprio não cria conta financeira duplicada.
 - **SC-FAC-019**: Em 100% dos testes, valorização ou cotação de posição de investimento não altera o saldo da conta monetária de liquidação sem evento monetário efetivado.
+- **SC-FAC-022**: Em 100% dos testes, criação ou correção de abertura em data fechada é rejeitada; se não houver outro evento, a correção volta a ser possível depois de reabertura autorizada, motivada e auditada.
 - **SC-FAC-020**: Em 100% dos testes de fronteira, cartões subordinados, conexões, linhas de extrato, conciliações e mapeamentos contábeis mantêm identidade independente da conta financeira.
 - **SC-FAC-021**: Em 100% dos testes de cadastro, ausência de titularidade jurídica, vínculo com pessoa ou comprovação de propriedade não impede usuário autorizado de criar a conta, e nenhum usuário sem acesso do tenant passa a consultá-la ou operá-la.
 

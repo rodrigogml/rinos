@@ -28,6 +28,14 @@ O lançamento pode ser criado manualmente ou originado por outro módulo. Rascun
 - Q: O lançamento precisa de código sequencial ou número legível próprio? → A: Não. O lançamento terá somente identidade técnica interna, sem código sequencial ou número equivalente exposto como identificação de negócio. Usuários o localizarão por data, valor, categoria e demais filtros funcionais.
 - Q: Quando um lançamento confirmado pode ser alterado diretamente? → A: Enquanto sua data de efetivação estiver posterior à data de fechamento financeiro do tenant. Toda alteração preserva identidade e histórico completo, registra autoria, motivo, valores anteriores e novos e recalcula os saldos posteriores. Uma vez bloqueado, somente novos fatos compensatórios em data aberta podem corrigi-lo.
 
+### Session 2026-07-24
+
+- Q: Como corrigir diferença no saldo de abertura quando ele já estiver bloqueado por evento posterior ou pela data de fechamento? → A: Se a abertura não possuir outro evento, sua data pode ser reaberta para permitir correção direta auditada. Depois do primeiro evento, ela permanece imutável e a diferença deve ser registrada como lançamento financeiro comum, categorizado e em data aberta, sem tipo privilegiado de ajuste.
+- Q: Qual data de efetivação deve ser usada pelo lançamento que representa parcela de compra em cartão? → A: O vencimento da parcela é também sua data de efetivação financeira. A data da compra permanece como origem histórica comum e não antecipa o efeito das parcelas futuras no saldo efetivado.
+- Q: O que acontece quando a confirmação de um rascunho ou pré-lançamento falha ou é abandonada? → A: A tentativa não altera o estado nem o efeito anterior. Rascunho permanece rascunho sem efeito; pré-lançamento permanece pré-lançamento com exatamente o efeito já reconhecido. O usuário pode corrigir e tentar novamente; cancelar o registro ou retorná-lo a rascunho é outra ação explícita, autorizada e auditada.
+- Q: Uma contraparte desativada pode permanecer em lançamento já efetivado ou em vínculo econômico previamente constituído? → A: Sim. Ela não pode ser escolhida para novo vínculo nem confirmar rascunho manual, mas permanece nos fatos históricos e não bloqueia efeito financeiro solicitado por obrigação, direito ou outro relacionamento constituído antes da desativação.
+- Q: Classificar uma parcela como crédito recuperável cria controle especializado contra a contraparte? → A: Não. É uma categoria financeira comum, sujeita às mesmas regras e dimensões, que explica a finalidade do valor sem criar conta a receber, cadastro de adiantamento, saldo auxiliar ou compensação automática.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Registrar entrada ou saída efetivada (Priority: P1)
@@ -60,7 +68,8 @@ Um usuário autorizado divide o valor entre uma ou várias categorias e informa 
 
 1. **Given** lançamento com duas parcelas de categoria, **When** a soma corresponde ao valor e cada distribuição é válida, **Then** a confirmação preserva parcelas e componentes dimensionais.
 2. **Given** diferença monetária entre lançamento e parcelas, **When** confirmação é solicitada, **Then** o sistema rejeita a operação e informa a diferença.
-3. **Given** dimensão obrigatória ausente ou dimensão proibida presente em uma parcela, **When** confirmação é solicitada, **Then** o lançamento permanece sem efeito até a correção.
+3. **Given** dimensão obrigatória ausente ou dimensão proibida presente em uma parcela, **When** confirmação de rascunho é solicitada, **Then** ele permanece rascunho sem efeito até a correção.
+4. **Given** a mesma inconsistência em pré-lançamento que já afeta saldo, **When** sua confirmação é rejeitada, **Then** ele permanece pré-lançamento com exatamente o efeito anterior, sem classificação parcial nem movimentação adicional.
 
 ---
 
@@ -135,6 +144,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - Soma correta nas categorias, mas incorreta dentro de uma distribuição dimensional.
 - Dois componentes dimensionais com a mesma combinação.
 - Confirmação concorrente do mesmo rascunho ou evento de origem.
+- Usuário abandona a confirmação depois da validação, mas antes de qualquer alteração persistida.
+- Confirmação de pré-lançamento falha depois de ele já afetar saldos posteriores.
 - Alteração concorrente transforma o mesmo rascunho em pré-lançamento mais de uma vez.
 - Pré-lançamento é corrigido, removido ou devolvido a rascunho depois de já afetar saldos posteriores.
 - Avanço do fechamento encontra rascunhos ou pré-lançamentos dentro do limite proposto.
@@ -163,6 +174,7 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-BOUND-005**: Saldo DEVE ser derivado da abertura da conta e dos pré-lançamentos e lançamentos confirmados aplicáveis; lançamento NÃO DEVE armazenar nem permitir editar um novo saldo arbitrário.
 - **FR-FTR-BOUND-006**: Um lançamento DEVE afetar somente uma conta; operações que exigem efeitos coordenados em duas ou mais contas pertencem a `financial-transfers` ou ao módulo de origem.
 - **FR-FTR-BOUND-007**: Limites comerciais de quantidade, retenção operacional ou funcionalidades pertencem a `plans-entitlements` e NÃO DEVEM comprometer histórico confirmado.
+- **FR-FTR-BOUND-008**: Correção de saldo de abertura bloqueado que produza novo efeito monetário DEVE usar lançamento financeiro comum e cumprir integralmente categoria, dimensões, autorização, data aberta e auditoria, sem subtipo privilegiado de ajuste.
 
 ### Identidade, Direção e Valor
 
@@ -182,7 +194,7 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-POST-001**: Rascunho DEVE poder ser criado, alterado e excluído por usuário autorizado sem afetar saldo ou histórico de fatos confirmados.
 - **FR-FTR-POST-002**: Confirmação DEVE validar atomicamente conta, moeda, data, valor, categoria, dimensões, contraparte, origem, autorização e fechamento financeiro aplicáveis.
 - **FR-FTR-POST-003**: Confirmação bem-sucedida DEVE produzir um único lançamento; quando partir de pré-lançamento, DEVE preservar o efeito já existente sem produzir uma segunda movimentação.
-- **FR-FTR-POST-004**: Falha em qualquer validação ou efeito DEVE preservar o saldo anterior e NÃO DEVE deixar parcelas, distribuições, vínculos ou auditorias de sucesso parciais.
+- **FR-FTR-POST-004**: Falha, recusa ou abandono da confirmação DEVE preservar integralmente o estado e o efeito anteriores e NÃO DEVE deixar parcelas, distribuições, vínculos, transições ou auditorias de sucesso parciais.
 - **FR-FTR-POST-005**: Lançamento confirmado com data aberta PODE ser revisado ou cancelado logicamente por fluxo autorizado; lançamento com data bloqueada NÃO DEVE ser alterado nem excluído por usuário, administrador, módulo consumidor, importação ou conciliação.
 - **FR-FTR-POST-006**: Revisão DEVE preservar a identidade do lançamento, o conteúdo anterior completo, o novo conteúdo, motivo, ator ou origem, instante e efeito nos saldos derivados.
 - **FR-FTR-POST-007**: Conta DEVE estar ativa e apta à operação no momento da confirmação; inativação posterior NÃO DEVE remover o lançamento do histórico.
@@ -200,6 +212,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-POST-019**: Confirmação de pré-lançamento DEVE preservar sua identidade, conta, direção e efeito monetário vigentes, aplicar todas as validações finais e registrar a mudança de estado sem duplicar saldo.
 - **FR-FTR-POST-020**: Enquanto sua data estiver aberta, pré-lançamento PODERÁ ser alterado, cancelado ou devolvido a rascunho por usuário autorizado; toda mudança DEVE ser auditada e recalcular saldos derivados desde a menor data afetada.
 - **FR-FTR-POST-021**: Falha ao confirmar pré-lançamento DEVE mantê-lo no estado anterior e preservar seu efeito vigente, sem produzir classificação, alocação, vínculo ou movimentação parcial adicional.
+- **FR-FTR-POST-022**: Falha ao confirmar rascunho DEVE mantê-lo como rascunho sem efeito, preservando os dados anteriores e sem produzir conteúdo final parcial.
+- **FR-FTR-POST-023**: Abandonar ou cancelar a tentativa de confirmação NÃO DEVE ser confundido com cancelar o registro, devolver pré-lançamento a rascunho ou excluir rascunho; essas transições DEVEM exigir ações próprias, autorização e auditoria.
 
 ### Categorias e Dimensões
 
@@ -210,12 +224,13 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-CLASS-005**: Cada parcela DEVE ser validada separadamente contra regras dimensionais vigentes da categoria na data da confirmação.
 - **FR-FTR-CLASS-006**: Distribuição dimensional conjunta DEVE preservar montantes exatos, combinações e no máximo um valor por dimensão em cada componente.
 - **FR-FTR-CLASS-007**: Sugestões explícitas ou históricas PODERÃO preencher uma proposta, mas NÃO DEVERÃO confirmar nem modificar classificações sem revisão permitida pelo contexto.
-- **FR-FTR-CLASS-008**: Confirmação e revisão DEVEM preservar identidades, versões e apresentação histórica suficiente de categorias, dimensões e valores usados em cada estado do lançamento.
+- **FR-FTR-CLASS-008**: Confirmação e revisão DEVEM preservar as identidades de categorias, dimensões e valores efetivamente usados; categorias são validadas pelo estado atual no instante da confirmação e NÃO POSSUEM versão semântica histórica própria.
 - **FR-FTR-CLASS-009**: Alteração ou desativação cadastral posterior NÃO DEVE reclassificar lançamento sem ação autorizada e auditada sobre ele.
 - **FR-FTR-CLASS-010**: Estorno integral DEVE espelhar parcelas e distribuições originais com efeito monetário oposto, sem reaplicar sugestões ou regras atuais.
 - **FR-FTR-CLASS-011**: Tenant PODERÁ criar categoria comum, inclusive neutra, para identificar valores conscientemente mantidos “a classificar”, mas o sistema NÃO DEVE fornecer categoria privilegiada capaz de dispensar regras, dimensões ou autorizações comuns.
 - **FR-FTR-CLASS-012**: Dispensa de classificação DEVE decorrer exclusivamente de origem estrutural validada de transferência ou reparcelamento de cartão e NÃO DEVE ser selecionável, atribuível ou simulável por lançamento manual ou por módulo sem esse contrato.
 - **FR-FTR-CLASS-013**: Em reparcelamento de cartão, neutralização e reapresentação do principal DEVEM possuir valores correspondentes e vínculo atômico; qualquer diferença econômica DEVE ser explicitada em lançamentos categorizados de juros, multas, impostos, tarifas ou outros encargos.
+- **FR-FTR-CLASS-014**: Nome, finalidade ou uso de categoria como crédito recuperável, adiantamento ou equivalente NÃO DEVE criar por si só direito, obrigação, saldo auxiliar, controle por contraparte nem comportamento privilegiado fora do contrato comum de categorias.
 
 ### Contraparte e Memória Histórica
 
@@ -224,6 +239,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-PARTY-003**: Confirmação com contraparte DEVE preservar referência à identidade e apresentação mínima usada naquele instante, sem copiar dados pessoais desnecessários.
 - **FR-FTR-PARTY-004**: Alteração ou exclusão legítima do cadastro atual NÃO DEVE mudar a apresentação histórica preservada no lançamento.
 - **FR-FTR-PARTY-005**: Lançamento sem contraparte DEVE ser permitido quando a natureza da operação não a exigir.
+- **FR-FTR-PARTY-006**: Rascunho manual que referencie contraparte desativada NÃO DEVE ser confirmado até que ela seja reativada, substituída por pessoa ativa ou removida quando opcional.
+- **FR-FTR-PARTY-007**: Contraparte posteriormente desativada DEVE permanecer válida em lançamento já efetivado e NÃO DEVE, por si só, bloquear efeito financeiro coordenado por relacionamento constituído antes da desativação.
 
 ### Moeda Original e Conversão
 
@@ -278,6 +295,7 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-DATE-013**: Fechamentos contábeis, fiscais ou de módulos futuros PODERÃO impor bloqueios adicionais, mas NÃO DEVERÃO relaxar a data de fechamento financeiro.
 - **FR-FTR-DATE-014**: Data de efetivação, instantes de confirmação e revisão, ator, origem, versões e vínculos de correção DEVEM permitir identificar tudo que foi incluído, alterado ou cancelado em intervalo temporariamente reaberto.
 - **FR-FTR-DATE-015**: Pré-lançamento NÃO DEVE ser alcançado por novo fechamento; antes do avanço ele DEVE ser confirmado, movido para data posterior ao limite ou cancelado por fluxo autorizado. Retorná-lo a rascunho sem removê-lo do intervalo NÃO DEVE deixar de bloquear o fechamento.
+- **FR-FTR-DATE-016**: Lançamento originado por parcela de compra em cartão DEVE usar o vencimento da parcela como data de efetivação e preservar separadamente a data da compra como origem histórica, conforme `credit-cards`.
 
 ### Consulta e Extrato Interno
 
@@ -359,6 +377,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **SC-FTR-018**: Nas jornadas comuns testadas, usuários localizam lançamentos por atributos e filtros funcionais sem depender de código sequencial, número de lançamento ou exposição da identidade técnica como referência de negócio.
 - **SC-FTR-019**: Em 100% das confirmações de pré-lançamento, identidade e efeito monetário são preservados sem duplicação da movimentação.
 - **SC-FTR-020**: Em 100% das tentativas de avanço do fechamento, a existência de rascunho ou pré-lançamento dentro do limite proposto bloqueia a operação sem alterar o fechamento vigente.
+- **SC-FTR-021**: Em 100% das confirmações falhas, recusadas ou abandonadas, rascunho permanece sem efeito e pré-lançamento preserva exatamente seu efeito anterior, sem transição ou conteúdo parcial.
+- **SC-FTR-022**: Em 100% dos testes, contraparte desativada bloqueia novo vínculo manual, permanece identificável em fatos existentes e não bloqueia, isoladamente, efeito solicitado por relacionamento previamente constituído.
 
 ## Fora do Escopo
 

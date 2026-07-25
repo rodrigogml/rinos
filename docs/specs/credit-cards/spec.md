@@ -10,7 +10,7 @@ Esta feature permite controlar cartões de crédito como contas financeiras espe
 
 Uma conta pode possuir cartões físicos, adicionais ou virtuais associados para identificar portadores e origens de compras, mas esse detalhamento é opcional. Todos os cartões associados compartilham a conta, o saldo, o limite e as faturas; nenhum deles cria conta financeira independente.
 
-Compras parceladas originam desde o início um lançamento para cada parcela. Todas preservam a mesma data da compra, enquanto cada parcela possui sua própria data prevista de vencimento, número sequencial, total de parcelas e valor. Isso permite consultar a dívida total assumida, as parcelas futuras e a composição de cada fatura sem depender da configuração atual de fechamento.
+Compras parceladas originam desde o início um lançamento para cada parcela. Todas preservam a mesma data da compra como origem histórica, enquanto cada parcela possui sua própria data de vencimento, que também é sua data de efetivação financeira, além de número sequencial, total de parcelas e valor. Isso permite consultar a dívida total assumida, as parcelas futuras, o saldo efetivado e a composição de cada fatura sem depender da configuração atual de fechamento.
 
 > [!IMPORTANT]
 > O saldo de uma conta de cartão representa uma posição de crédito ou dívida. Limite, valor disponível, dívida futura, fatura atual e saldo efetivado são conceitos relacionados, mas distintos e não podem compartilhar um único valor mutável.
@@ -31,6 +31,10 @@ Compras parceladas originam desde o início um lançamento para cada parcela. To
 - Q: A fatura precisa manter versões próprias quando seus lançamentos são alterados? → A: Não. A fatura é um saldo calculado a partir dos lançamentos atribuídos ao ciclo e reflete seus valores atuais. A rastreabilidade pertence ao histórico de alterações dos lançamentos, sem duplicar versões do total da fatura.
 - Q: O histórico editável antes do fechamento financeiro deve valer somente para parcelas de cartão ou para todo lançamento financeiro? → A: Deve valer para todo lançamento. Lançamentos em datas abertas podem ser revisados ou cancelados com histórico completo e recálculo; lançamentos alcançados pela data de fechamento tornam-se imutáveis e exigem compensação posterior.
 - Q: Como o reparcelamento de saldo deve criar a nova dívida? → A: O acordo deve selecionar somente principal ainda pendente, neutralizá-lo explicitamente por novo fato na data aberta do acordo e criar uma nova operação-pai com seu cronograma. Pagamentos e créditos anteriores ficam fora do principal renegociado; o principal substituído não constitui nova despesa, enquanto juros, multas, impostos e tarifas são fatos econômicos separados e categorizados. Compras, parcelas e demais fatos originais permanecem preservados e vinculados ao acordo.
+
+### Session 2026-07-24
+
+- Q: Entre data da compra e vencimento, qual data da parcela determina saldo efetivado e fechamento financeiro? → A: O vencimento da parcela também é sua data de efetivação financeira. A data da compra permanece como origem histórica comum do conjunto. Todas as parcelas não neutralizadas compõem imediatamente a dívida total e comprometem o limite, mas somente as parcelas cujo vencimento foi alcançado compõem o saldo efetivado; o fechamento financeiro protege cada parcela por seu próprio vencimento.
 
 ## Interface Coverage
 
@@ -181,6 +185,7 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 - Vencimento de parcela cai em data inexistente no mês seguinte.
 - Data de fechamento ou vencimento da conta é alterada com lançamentos já atribuídos a ciclos passados ou futuros.
 - Compra é registrada depois do fechamento com data anterior a ele.
+- Compra antiga possui parcelas futuras cujos vencimentos ainda estão em datas financeiramente abertas.
 - Parcela futura alcança período bloqueado pelo fechamento financeiro do tenant.
 - Pagamento parcial, atrasado, antecipado ou excedente.
 - Pagamento é estornado na conta pagadora.
@@ -226,26 +231,28 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 
 - **FR-CC-PURCH-001**: Compra DEVE preservar conta, data da compra, descrição, valor total, moeda, categoria, dimensões aplicáveis, contraparte opcional e cartão opcional.
 - **FR-CC-PURCH-002**: Compra em parcela única DEVE produzir um lançamento; compra parcelada DEVE produzir um lançamento para cada parcela desde sua confirmação.
-- **FR-CC-PURCH-003**: Todas as parcelas DEVEM preservar a mesma data da compra e possuir sequência, quantidade total, valor e data de vencimento próprios.
+- **FR-CC-PURCH-003**: Todas as parcelas DEVEM preservar a mesma data da compra como origem histórica e possuir sequência, quantidade total, valor e data de vencimento próprios; o vencimento também DEVE ser a data de efetivação financeira do lançamento da parcela.
 - **FR-CC-PURCH-004**: Soma dos valores das parcelas DEVE ser exatamente igual ao total da compra na precisão da moeda.
 - **FR-CC-PURCH-005**: Sistema DEVE sugerir distribuição e vencimentos, mas permitir revisão dos valores e datas dentro das regras ainda abertas.
 - **FR-CC-PURCH-006**: Parcelas DEVEM permanecer consultáveis como conjunto e individualmente, sem depender de descrição textual ou código digitado pelo usuário.
 - **FR-CC-PURCH-007**: Cada parcela DEVE manter classificação suficiente para relatórios; rateio comum da compra PODE ser replicado inicialmente e ajustado enquanto sua data estiver aberta.
-- **FR-CC-PURCH-008**: Parcela futura NÃO DEVE ser apresentada como vencida nem compor saldo efetivado anterior à sua data, mas DEVE compor dívida futura e projeções.
+- **FR-CC-PURCH-008**: Parcela futura NÃO DEVE ser apresentada como vencida nem compor saldo efetivado anterior ao seu vencimento, mas DEVE compor imediatamente dívida futura, limite comprometido e projeções.
 - **FR-CC-PURCH-009**: Confirmação da compra e criação de todas as parcelas DEVEM ocorrer como uma única operação de negócio, sem conjunto parcial.
 - **FR-CC-PURCH-010**: Compra DEVE possuir identidade própria e todas as parcelas, inclusive a primeira, DEVEM referenciá-la diretamente, sem usar uma parcela como raiz estrutural do conjunto.
 - **FR-CC-PURCH-011**: Categoria, dimensões, contraparte e demais classificações comuns definidas na compra DEVEM ser replicadas para cada parcela como campos do lançamento financeiro padrão, sem depender da consulta ao pai para interpretar o lançamento.
 - **FR-CC-PURCH-012**: Parcela DEVE reutilizar os contratos comuns de lançamento financeiro para conta, moeda, valor, descrição, categoria, dimensões, contraparte, datas, estado, auditoria e correção; somente a compra, o vínculo parcelar e a fatura DEVEM acrescentar contexto próprio do cartão.
-- **FR-CC-PURCH-013**: Usuário autorizado DEVE poder alterar valor, vencimento e classificações de parcela cuja data financeira não esteja protegida pelo fechamento financeiro do tenant, independentemente de a fatura estar aberta ou fechada.
+- **FR-CC-PURCH-013**: Usuário autorizado DEVE poder alterar valor, vencimento e classificações de parcela cujo vencimento, usado como data de efetivação financeira, não esteja protegido pelo fechamento financeiro do tenant, independentemente de a fatura estar aberta ou fechada.
 - **FR-CC-PURCH-014**: Alteração de parcela DEVE preservar versão anterior, valores modificados, motivo, ator e instante; a operação NÃO DEVE apagar silenciosamente o lançamento anteriormente conhecido.
-- **FR-CC-PURCH-015**: Parcela com data protegida pelo fechamento financeiro NÃO DEVE aceitar alteração direta; correção posterior DEVE ocorrer por novos fatos vinculados em data aberta.
+- **FR-CC-PURCH-015**: Parcela cujo vencimento esteja protegido pelo fechamento financeiro NÃO DEVE aceitar alteração direta; correção posterior DEVE ocorrer por novos fatos vinculados em data aberta.
+- **FR-CC-PURCH-016**: A data da compra NÃO DEVE substituir o vencimento como data de efetivação, antecipar o saldo efetivado das parcelas futuras nem fazer todas as parcelas serem protegidas simultaneamente pelo fechamento financeiro.
+- **FR-CC-PURCH-017**: Alterar o vencimento de uma parcela DEVE validar tanto a data anterior quanto a nova contra o fechamento financeiro e recalcular, sem dupla contagem, saldo efetivado, dívida futura, limite comprometido e fatura calculada.
 
 ### Saldos, Dívida e Limite
 
-- **FR-CC-BAL-001**: Saldo efetivado em uma data DEVE resultar do saldo de abertura e dos lançamentos aplicáveis efetivados até aquela data.
+- **FR-CC-BAL-001**: Saldo efetivado em uma data DEVE resultar do saldo de abertura e dos lançamentos aplicáveis cuja data de efetivação tenha sido alcançada; para parcelas de compra, essa data é seu vencimento registrado.
 - **FR-CC-BAL-002**: Dívida total DEVE incluir saldo devedor efetivado e parcelas futuras ainda não neutralizadas, sem dupla contagem.
 - **FR-CC-BAL-003**: Sistema DEVE apresentar separadamente saldo efetivado, dívida vencida, fatura atual, dívida futura, crédito, limite total e limite disponível.
-- **FR-CC-BAL-004**: Limite disponível DEVE possuir memória de cálculo e NÃO DEVE ser inferido apenas pela soma do limite com o saldo efetivado.
+- **FR-CC-BAL-004**: Limite disponível DEVE possuir memória de cálculo, considerar todas as parcelas ainda não neutralizadas, inclusive futuras, e NÃO DEVE ser inferido apenas pela soma do limite com o saldo efetivado.
 - **FR-CC-BAL-005**: Usuário NÃO DEVE editar diretamente saldo, dívida total, valor da fatura nem limite disponível calculado.
 - **FR-CC-BAL-006**: Totais de contas de moedas diferentes DEVEM permanecer separados enquanto não houver conversão explícita.
 
@@ -258,6 +265,7 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 - **FR-CC-BILL-005**: Fatura DEVE distinguir cobranças, pagamentos, créditos, saldo pendente, atraso e eventual saldo renegociado sem duplicar seus fatos de origem.
 - **FR-CC-BILL-006**: Referência de fechamento da fatura do cartão NÃO DEVE alterar nem substituir a data de fechamento financeiro do tenant.
 - **FR-CC-BILL-007**: Faturas passadas e futuras DEVEM ser reproduzíveis a partir dos lançamentos e de suas datas atuais, enquanto alterações anteriores permanecem explicáveis pelo histórico de cada lançamento.
+- **FR-CC-BILL-008**: A atribuição da parcela à fatura DEVE utilizar seu vencimento e o ciclo registrado, sem usar a data da compra para antecipá-la a faturas anteriores.
 
 ### Pagamentos, Créditos e Renegociação
 
@@ -298,7 +306,7 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 - **Bandeira de Cartão**: classificação global controlada, com alternativa `OUTRA` descrita na própria conta.
 - **Cartão Associado**: identificação opcional de cartão físico, adicional ou virtual, sem saldo próprio.
 - **Compra de Cartão**: identidade própria que coordena os dados comuns do fato e todas as suas parcelas, sem possuir saldo separado nem substituir os lançamentos.
-- **Parcela de Compra**: lançamento financeiro padrão vinculado diretamente à compra, com data da compra comum, vencimento, valor e posição na sequência.
+- **Parcela de Compra**: lançamento financeiro padrão vinculado diretamente à compra, com data da compra comum como origem histórica, vencimento também usado como data de efetivação financeira, valor e posição na sequência.
 - **Fatura**: visão calculada que agrupa parcelas, créditos, encargos e pagamentos por conta, ciclo e vencimento, sem saldo armazenado nem versionamento próprio.
 - **Pagamento de Fatura**: vínculo entre a fatura e uma transferência ou outro crédito que reduz sua dívida.
 - **Ajuste de Cartão**: crédito ou débito explicativo posterior, como estorno, juros, tarifa ou divergência.
@@ -321,6 +329,8 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 - **SC-CC-011**: Todas as jornadas principais podem ser concluídas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-CC-012**: Em 100% das repetições e disputas concorrentes testadas, nenhuma compra, parcela, fatura, pagamento ou ajuste é duplicado ou perdido.
 - **SC-CC-013**: Em 100% dos reparcelamentos testados, o principal selecionado é neutralizado uma única vez, pagamentos e créditos anteriores são excluídos, o novo cronograma reconcilia exatamente e apenas os encargos produzem nova despesa.
+- **SC-CC-014**: Em 100% das compras parceladas testadas, a data da compra permanece comum, cada vencimento é a data de efetivação da respectiva parcela, a dívida total e o limite comprometido incluem parcelas futuras sem antecipá-las no saldo efetivado.
+- **SC-CC-015**: Em 100% dos testes de fechamento, cada parcela é bloqueada por seu próprio vencimento e não pela data comum da compra.
 
 ## Fora do Escopo
 

@@ -20,6 +20,10 @@ Inclui o registro global da localização do tenant, provisionamento durável e 
 - Q: Como o sistema deve repetir operações após uma falha? -> A: Falhas transitórias de provisionamento recebem até três tentativas automáticas por padrão, com limite configurável; esgotado o limite, exigem solução externa da infraestrutura. Migração falha não é repetida pela aplicação nem pela interface.
 - Q: Qual política deve ser adotada para reversão de migrações? -> A: Migrações são progressivas (`forward-only`) e nunca são desfeitas automaticamente. A infraestrutura soluciona a falha externamente, normalmente por novo update corretivo; eventual restauração de backup também ocorre fora da aplicação.
 
+### Session 2026-07-24
+
+- Q: O cadastro da conta deve aguardar o provisionamento ou aceitar a criação antes de executá-lo? -> A: O cadastro aceita uma intenção durável e idempotente, mantém a conta em `EM_CRIACAO` e enfileira o provisionamento assíncrono. A ativação somente ocorre depois das confirmações obrigatórias; cada etapa é atômica e retomável em seu próprio armazenamento, sem exigir transação distribuída sobre o fluxo completo.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Preparar o armazenamento de uma nova conta (Priority: P1)
@@ -174,6 +178,9 @@ Um administrador do sistema consulta o estado dos armazenamentos, identifica pro
 - **FR-TSP-PROV-012**: Provisionamento aceito depois que migrações já foram enfileiradas DEVE aguardar após essas operações e permanecer claramente identificado como aguardando, não falho.
 - **FR-TSP-PROV-013**: O criador da conta DEVE visualizar somente Aguardando, Preparando, Pronta ou Problema encontrado, com orientação segura e sem detalhes técnicos.
 - **FR-TSP-PROV-014**: A visão do criador NÃO DEVE apresentar localização, versão, scripts, etapas internas, causa técnica ou logs nem oferecer repetição ou correção estrutural.
+- **FR-TSP-PROV-015**: O provisionamento somente DEVE ser enfileirado depois de a intenção idempotente, a conta em `EM_CRIACAO`, a identidade funcional do tenant e o protocolo de acompanhamento estarem persistidos de forma consistente pelo cadastro da conta.
+- **FR-TSP-PROV-016**: Cada etapa DEVE confirmar atomicamente seu próprio resultado durável e ser idempotente; o processo NÃO DEVE depender de transação distribuída entre fila, armazenamento global e armazenamento do tenant.
+- **FR-TSP-PROV-017**: A conclusão física DEVE confirmar armazenamento pronto e compatível ao processo coordenador, mas NÃO DEVE ativar a conta isoladamente sem as confirmações de associação fundadora, concessões mínimas e plano padrão.
 
 ### Falha, Retomada e Reconciliação
 

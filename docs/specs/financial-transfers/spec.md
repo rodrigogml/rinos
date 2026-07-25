@@ -24,6 +24,10 @@ Transferências entre contas de moedas diferentes preservam os valores efetivame
 - Q: Como representar transferências debitadas e creditadas em datas diferentes? → A: A transferência pode permanecer `EM_TRÂNSITO`. A saída afeta a origem na data do envio e a entrada afeta o destino somente quando o recebimento é confirmado; o valor em trânsito é apresentado separadamente e não pertence ao saldo de uma conta. Transferências imediatas continuam confirmando ambas as pontas de uma vez.
 - Q: Como registrar tarifas, impostos e outros custos relacionados à transferência? → A: Como lançamentos econômicos comuns, integralmente classificados e vinculados à transferência. Podem ser confirmados atomicamente com a etapa correspondente ou acrescentados posteriormente como novos fatos; seguem a política geral de revisão em datas abertas e não podem alterar nem reduzir silenciosamente o principal transferido.
 
+### Session 2026-07-24
+
+- Q: Um pagamento a fornecedor pode usar como destino da transferência a conta bancária ou chave Pix cadastrada para a contraparte? → A: Não. Dado de pagamento da contraparte é instrução externa sem saldo. Pagamento externo produz uma única saída coordenada por `accounts-payable`; esta feature somente cria duas pontas quando ambas pertencem a contas financeiras controladas pelo mesmo tenant.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Transferir entre contas da mesma moeda (Priority: P1)
@@ -156,6 +160,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 ### Edge Cases
 
 - Conta de origem igual à conta de destino.
+- Dado bancário ou chave Pix de contraparte é informado indevidamente como conta de destino.
 - Conta inativa, encerrada ou sem capacidade de transferência.
 - Contas pertencentes a tenants diferentes.
 - Usuário pode operar somente uma das contas.
@@ -190,6 +195,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **FR-FTF-BOUND-005**: Criar transferência NÃO DEVE executar movimentação externa nem presumir que a instituição financeira a realizou.
 - **FR-FTF-BOUND-006**: Transferência NÃO DEVE criar conta financeira, contraparte, dado de pagamento, cotação externa ou permissão.
 - **FR-FTF-BOUND-007**: Limites de plano pertencem a `plans-entitlements` e NÃO DEVEM remover ou tornar inexplicável uma transferência confirmada.
+- **FR-FTF-BOUND-008**: Dado de pagamento de contraparte NÃO DEVE ser aceito como conta de destino; pagamentos e recebimentos externos DEVEM produzir somente os efeitos nas contas controladas definidos pelos respectivos módulos.
 
 ### Identidade e Estado
 
@@ -348,6 +354,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - **SC-FTF-014**: Em 100% das falhas ou devoluções em trânsito, a saída é compensada por novo fato vinculado e nenhuma entrada fictícia é criada.
 - **SC-FTF-015**: Em 100% dos custos confirmados, principal e custo permanecem fatos distintos, o custo está integralmente classificado e nenhuma diferença é ocultada nas pontas.
 - **SC-FTF-016**: Em 100% dos custos acrescentados posteriormente, a transferência e seus efeitos anteriores permanecem imutáveis e repetição técnica produz no máximo um novo lançamento.
+- **SC-FTF-017**: Em 100% dos testes, conta bancária, chave Pix ou outro dado de pagamento de contraparte é rejeitado como destino de transferência e não recebe ponta financeira interna.
 
 ## Fora do Escopo
 

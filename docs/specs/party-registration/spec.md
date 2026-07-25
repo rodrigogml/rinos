@@ -21,6 +21,10 @@ O escopo inclui identidade cadastral, nomes, identificadores, endereços, telefo
 - Q: Como deve funcionar a unicidade de CPF, CNPJ e outros identificadores? → A: A política de unicidade é definida pelo tipo e pela autoridade emissora. CPF e CNPJ são estritamente únicos dentro do tenant; outros identificadores seguem a regra declarada para seu tipo.
 - Q: Qual política deve ser aplicada à exclusão, anonimização e retenção? → A: Pessoa sem papel, relacionamento ou referência mantida por outro módulo pode ser excluída definitivamente por usuário autorizado. Pessoa referenciada somente pode ser desativada; anonimização depende do processo de privacidade e das obrigações de retenção aplicáveis.
 
+### Session 2026-07-24
+
+- Q: O que acontece com documentos e operações quando uma pessoa é desativada? → A: A desativação impede criar ou confirmar novos vínculos, inclusive confirmar rascunho que ainda a referencie. Direitos, obrigações e outros relacionamentos já constituídos continuam válidos e podem ser cumpridos, corrigidos ou cancelados conforme as regras do módulo, autorizações e fechamento aplicáveis. Substituir a contraparte exige outra pessoa ativa; a reativação volta a habilitar novos vínculos.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Cadastrar uma pessoa no tenant (Priority: P1)
@@ -155,12 +159,14 @@ Um usuário autorizado retira do uso corrente um cadastro que não deve mais ser
 - **FR-PTY-LIFE-003**: Pessoa desativada NÃO DEVE aparecer nas seleções comuns para novas operações, mas DEVE permanecer consultável quando já referenciada.
 - **FR-PTY-LIFE-004**: Desativação e reativação DEVEM exigir autorização específica, motivo e auditoria.
 - **FR-PTY-LIFE-005**: A existência de referência histórica DEVE impedir eliminação que comprometa integridade ou rastreabilidade.
-- **FR-PTY-LIFE-006**: Módulos consumidores DEVEM decidir se uma operação futura já existente pode continuar vinculada a pessoa posteriormente desativada.
+- **FR-PTY-LIFE-006**: Desativação posterior NÃO DEVE invalidar nem impedir cumprimento, liquidação, correção ou cancelamento de relacionamento já constituído; o módulo consumidor PODE impor impedimento independente do estado cadastral quando seu próprio contrato o exigir.
 - **FR-PTY-LIFE-007**: Alterações cadastrais NÃO DEVEM modificar snapshots ou evidências históricas mantidas legitimamente por módulos consumidores.
 - **FR-PTY-LIFE-008**: Pessoa sem papel, relacionamento ou referência mantida por outro módulo PODERÁ ser excluída definitivamente por usuário autorizado, mediante confirmação e auditoria; pessoa referenciada NÃO DEVE ser excluída pela operação cadastral comum e somente poderá ser desativada.
 - **FR-PTY-LIFE-009**: Snapshot de dados mantido por um módulo consumidor NÃO constitui por si só uma referência à pessoa; cada módulo DEVE definir quando preserva também o relacionamento com a pessoa e, enquanto esse relacionamento existir, a exclusão cadastral comum DEVE permanecer bloqueada.
 - **FR-PTY-LIFE-010**: Anonimização ou eliminação de pessoa referenciada somente PODERÁ ocorrer por processo específico de privacidade, após avaliação das obrigações legais, contratuais e operacionais de retenção definidas em `tenant-data-governance`.
 - **FR-PTY-LIFE-011**: A auditoria de exclusão definitiva DEVE preservar somente as evidências mínimas necessárias para demonstrar a operação, sem conservar desnecessariamente os dados pessoais eliminados.
+- **FR-PTY-LIFE-012**: Pessoa desativada NÃO DEVE ser aceita na criação ou confirmação de novo relacionamento; rascunho que a referencie DEVE permanecer sem confirmação até que ela seja reativada ou substituída por pessoa ativa.
+- **FR-PTY-LIFE-013**: Alteração de relacionamento constituído que substitua sua contraparte DEVE exigir pessoa ativa, sem impedir correções que preservem a contraparte histórica já vinculada.
 
 ### Autorização, Privacidade e Auditoria
 
@@ -222,6 +228,7 @@ Um usuário autorizado retira do uso corrente um cadastro que não deve mais ser
 - **SC-PTY-009**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-PTY-010**: Em 100% dos testes concorrentes e de repetição técnica, cada criação ou alteração confirmada produz no máximo um efeito e preserva as regras de unicidade vigentes.
 - **SC-PTY-011**: Em 100% dos testes, CPF ou CNPJ já utilizado no tenant impede um segundo cadastro e não revela dados da pessoa existente a usuário sem autorização de consulta.
+- **SC-PTY-012**: Em 100% dos testes, pessoa desativada é rejeitada em novos vínculos e na confirmação de rascunhos, enquanto relacionamentos anteriormente constituídos permanecem cumpríveis, corrigíveis ou canceláveis conforme seus próprios contratos.
 
 ## Fora do Escopo
 

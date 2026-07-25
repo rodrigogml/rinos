@@ -22,6 +22,10 @@ Não inclui representação de usuário, login como terceiro, acesso temporário
 - Q: Quais intervenções globais sobre a identidade estarão disponíveis inicialmente? → A: Bloquear ou desbloquear a identidade, invalidar suas sessões e exigir recuperação conduzida pelo próprio usuário. A administração global não poderá desativar, cancelar ou excluir a identidade, trocar seu e-mail, definir senha nem alterar seus fatores de autenticação.
 - Q: O que fazer quando uma intervenção deixaria a plataforma sem administrador global apto? → A: A operação deve ser recusada atomicamente. Deve permanecer ao menos um usuário com identidade ativa, concessões administrativas globais necessárias e 2FA forte compatível; outro administrador apto precisa ser preparado antes da intervenção.
 
+### Session 2026-07-24
+
+- Q: Como é criado o primeiro administrador global ao qual se aplica a proteção de continuidade? → A: O bootstrap único pertence a `access-control`: o e-mail indicado no `application.properties`, com padrão `admin@rinos.com.br`, deve concluir cadastro, confirmação e fator forte antes de receber o grupo global protegido. Um marcador permanente impede nova concessão pela propriedade; esta feature apenas protege e administra identidades depois desse bootstrap.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Localizar usuários e contas no diretório global (Priority: P1)
@@ -187,6 +191,7 @@ Um administrador autorizado consulta ações recentes, solicitações pendentes,
 - **FR-SDA-USER-018**: A proteção do último administrador apto DEVE abranger bloqueio, revogação ou expiração de concessões, retirada de grupo, perda de fator forte e qualquer outra transição administrada pelo sistema que elimine sua aptidão.
 - **FR-SDA-USER-019**: Verificações concorrentes DEVEM preservar o invariante de ao menos um administrador global apto; duas operações individualmente válidas não poderão ser concluídas se o resultado combinado violar esse invariante.
 - **FR-SDA-USER-020**: Tentativa recusada pela proteção do último administrador DEVE preservar integralmente o estado anterior, ser auditada e orientar a preparação prévia de outro administrador apto.
+- **FR-SDA-USER-021**: A ausência de administrador global apto depois de o bootstrap ter sido concluído NÃO DEVE reativar a propriedade inicial nem criar concessão automática; a condição DEVE exigir recuperação operacional específica, externa a esta feature.
 
 ### Intervenções na Conta
 
@@ -257,6 +262,7 @@ Um administrador autorizado consulta ações recentes, solicitações pendentes,
 - **FR-SDA-BOUND-006**: Acesso ao conteúdo de tenant, representação e suporte assistido pertencem à futura `tenant-support-access` e NÃO são concedidos por esta feature.
 - **FR-SDA-BOUND-007**: Provisionamento, migração, restauração e saúde técnica detalhada pertencem a `platform-operations` e às features de armazenamento.
 - **FR-SDA-BOUND-008**: Configurações globais, políticas e valores operacionais pertencem à futura `platform-configuration`.
+- **FR-SDA-BOUND-009**: Criação única do primeiro administrador, grupo protegido e marcador de conclusão pertencem ao bootstrap de `access-control`; esta feature NÃO DEVE repetir ou substituir esse processo.
 
 ### Decisões de Infraestrutura Auditáveis
 

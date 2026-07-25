@@ -6,7 +6,7 @@
 
 ## Escopo
 
-Esta feature define autorização por negação padrão, baseada em chaves de acesso explícitas e agrupadas nos contextos global do sistema e específico de cada conta. Ela permite administrar grupos, associar participantes, atribuir chaves e explicar por que uma operação foi permitida ou negada.
+Esta feature define autorização por negação padrão, baseada em chaves de acesso explícitas e agrupadas nos contextos global do sistema e específico de cada conta. Ela permite administrar grupos, associar participantes, atribuir chaves, realizar uma única vez o bootstrap seguro do primeiro administrador global e explicar por que uma operação foi permitida ou negada.
 
 Papéis de ator não concedem acesso. O plano limita quais funcionalidades podem existir para a conta, mas também não concede autorização ao usuário. Seleção e validação do tenant ativo pertencem a `tenant-context-isolation`; cada decisão desta feature recebe um contexto já explicitamente identificado.
 
@@ -20,6 +20,10 @@ Papéis de ator não concedem acesso. O plano limita quais funcionalidades podem
 ### Session 2026-07-20
 
 - Q: Grupos de acesso podem ser aninhados e como as chaves serão organizadas para navegação? -> A: Grupos de acesso não serão aninhados; o catálogo de chaves terá categorias hierárquicas próprias para organização e UI, sem herança ou efeito na autorização.
+
+### Session 2026-07-24
+
+- Q: Como criar o primeiro administrador global sem transformar o primeiro usuário cadastrado em superusuário nem exigir intervenção direta no banco? -> A: Uma definição exclusiva de origem `PROPERTY_FILE` no `application.properties` indicará o e-mail autorizado ao bootstrap, com `admin@rinos.com.br` como padrão de código. O usuário deverá concluir o cadastro normal, confirmar o e-mail e configurar TOTP ou passkey compatível. Somente enquanto o bootstrap nunca tiver sido concluído, o sistema atribuirá atomicamente a identificação de ator e o grupo global protegido, registrará auditoria e gravará marcador permanente; alterações posteriores da propriedade nunca concederão acesso.
 
 ## User Scenarios & Testing
 
@@ -69,6 +73,9 @@ Um administrador do sistema com concessões suficientes mantém grupos e atribui
 1. **Given** usuário com chave global, **When** executa operação global correspondente, **Then** a operação é autorizada
 2. **Given** o mesmo usuário sem chave em uma conta, **When** tenta acessar seus dados, **Then** o acesso é negado
 3. **Given** usuário apenas identificado como administrador do sistema, **When** não possui chave global exigida, **Then** a operação é negada
+4. **Given** instalação ainda não inicializada e usuário do e-mail configurado ativo, confirmado e com TOTP ou passkey compatível, **When** o bootstrap é avaliado, **Then** o usuário recebe uma única vez a identificação de Administrador do Sistema e o grupo global protegido, com auditoria e marcador durável
+5. **Given** usuário configurado ainda sem fator forte compatível, **When** o bootstrap é avaliado, **Then** nenhuma identificação ou concessão administrativa é criada
+6. **Given** bootstrap já concluído, **When** o e-mail da propriedade é alterado e a aplicação reinicia, **Then** nenhum usuário adicional recebe identificação, grupo ou chave
 
 ---
 
@@ -96,6 +103,10 @@ Um administrador autorizado consulta concessões e alterações para entender de
 - Um administrador tenta conceder a si próprio poder superior ao que pode administrar.
 - A última concessão administrativa mínima da conta é removida.
 - Uma conta é suspensa com concessões vigentes.
+- O usuário indicado para o bootstrap ainda não se cadastrou, não confirmou o e-mail ou não configurou fator forte.
+- Duas instâncias avaliam simultaneamente a elegibilidade do primeiro administrador global.
+- A propriedade do e-mail inicial é alterada depois de o bootstrap ter sido concluído.
+- Uma restauração contém o marcador de bootstrap concluído, mas não contém administrador global apto.
 - Uma restauração contém concessão revogada ou expirada.
 
 ## Requirements
@@ -131,13 +142,30 @@ Um administrador autorizado consulta concessões e alterações para entender de
 - **FR-ACL-GRP-009**: Excluir grupo DEVE remover suas concessões futuras sem apagar o histórico.
 - **FR-ACL-GRP-010**: Chaves sobrepostas em vários grupos DEVEM resultar em uma única capacidade efetiva explicável por todas as origens vigentes.
 
+### Bootstrap da Administração Global
+
+- **FR-ACL-BOOT-001**: O e-mail autorizado ao bootstrap inicial DEVE ser uma definição exclusiva de origem `PROPERTY_FILE`, lida somente do `application.properties`, com o valor padrão de código `admin@rinos.com.br`.
+- **FR-ACL-BOOT-002**: O valor configurado DEVE ser validado e normalizado pelas mesmas regras do e-mail primário de `user-registration`; valor inválido DEVE impedir o bootstrap e produzir diagnóstico operacional seguro.
+- **FR-ACL-BOOT-003**: O bootstrap somente DEVE considerar o usuário cujo e-mail primário normalizado corresponda exatamente ao valor configurado e esteja confirmado em uma identidade ativa.
+- **FR-ACL-BOOT-004**: Antes de qualquer concessão, o usuário elegível DEVE possuir TOTP confirmado ou passkey compatível com verificação local; código por e-mail NÃO DEVE satisfazer essa exigência.
+- **FR-ACL-BOOT-005**: A elegibilidade pelo e-mail NÃO DEVE conceder acesso enquanto qualquer requisito de identidade ou fator forte estiver pendente.
+- **FR-ACL-BOOT-006**: O bootstrap DEVE atribuir conjuntamente a identificação de ator Administrador do Sistema e a associação ao grupo global protegido de bootstrap; o papel continuará sem conceder acesso por si próprio.
+- **FR-ACL-BOOT-007**: O grupo global protegido DEVE possuir conjunto explícito e versionado de chaves globais suficiente para administrar acessos e operar a plataforma, sem curinga nem inclusão implícita de chaves futuras.
+- **FR-ACL-BOOT-008**: Identificação, associação ao grupo, concessões resultantes, auditoria e marcador de conclusão DEVEM ser persistidos atomicamente no armazenamento global.
+- **FR-ACL-BOOT-009**: O marcador durável DEVE distinguir definitivamente uma instalação que nunca concluiu o bootstrap daquela que posteriormente ficou sem administrador apto.
+- **FR-ACL-BOOT-010**: Depois da conclusão, mudança, remoção ou reutilização da propriedade NÃO DEVE criar, restaurar, transferir ou ampliar qualquer acesso, ainda que a plataforma fique sem administrador global apto.
+- **FR-ACL-BOOT-011**: Avaliações concorrentes ou repetidas DEVEM produzir no máximo um primeiro administrador, uma associação ao grupo e um marcador de conclusão.
+- **FR-ACL-BOOT-012**: O bootstrap DEVE registrar origem de sistema, identidade beneficiária, e-mail configurado de forma protegida, grupo, chaves resultantes, fator forte validado sem seu segredo, instante e resultado.
+- **FR-ACL-BOOT-013**: Nenhum usuário diferente do e-mail configurado, inclusive o primeiro usuário cadastrado, DEVE receber administração global automaticamente.
+- **FR-ACL-BOOT-014**: Depois do bootstrap, novos administradores globais DEVEM ser preparados exclusivamente pelos fluxos comuns autorizados de grupos e concessões.
+
 ### Concessões
 
 - **FR-ACL-GRANT-001**: Usuários DEVEM poder receber chaves diretamente e por participação em grupos; a capacidade efetiva DEVE ser a união aditiva de todas as origens vigentes e compatíveis com o contexto.
 - **FR-ACL-GRANT-001A**: Concessão direta DEVE ser identificada destacadamente na administração, explicação e auditoria do acesso, sem aparentar origem em grupo.
 - **FR-ACL-GRANT-002**: Toda concessão DEVE registrar beneficiário, chave ou grupo, escopo, contexto, concedente, criação, vigência e estado.
 - **FR-ACL-GRANT-003**: Concessões DEVEM poder possuir início e término opcionais e deixar de produzir efeito automaticamente fora da vigência.
-- **FR-ACL-GRANT-004**: Somente usuário com chave explícita para administrar o recurso DEVE criar, alterar ou revogar concessão.
+- **FR-ACL-GRANT-004**: Exceto pela concessão sistêmica única e condicionada definida em `FR-ACL-BOOT-*`, somente usuário com chave explícita para administrar o recurso DEVE criar, alterar ou revogar concessão.
 - **FR-ACL-GRANT-005**: Um administrador NÃO DEVE conceder chave fora do escopo que administra nem contornar limites do plano.
 - **FR-ACL-GRANT-006**: O sistema DEVE impedir alterações que deixem a conta sem participante ativo com chaves administrativas mínimas e 2FA compatível.
 - **FR-ACL-GRANT-007**: Suspensão ou encerramento da associação DEVE tornar ineficazes todas as concessões daquela conta sem afetar outras contas.
@@ -175,7 +203,7 @@ Um administrador autorizado consulta concessões e alterações para entender de
 
 - **FR-ACL-INFRA-SCHED**: O sistema DEVE desativar automaticamente concessões temporárias vencidas ao menos a cada minuto e também rejeitá-las no momento da decisão.
 - **FR-ACL-INFRA-LOCK**: Alterações concorrentes de grupos e concessões DEVEM permanecer consistentes entre múltiplas instâncias.
-- **FR-ACL-INFRA-IDEMP**: Repetições da mesma concessão ou revogação DEVEM produzir no máximo um efeito.
+- **FR-ACL-INFRA-IDEMP**: Repetições do bootstrap, da mesma concessão ou da mesma revogação DEVEM produzir no máximo um efeito.
 - **FR-ACL-INFRA-BACKUP**: Catálogo de chaves, grupos, concessões e auditorias DEVEM participar dos backups; restauração NÃO DEVE reativar concessões expiradas ou revogadas.
 - **FR-ACL-INFRA-CACHE**: Qualquer cópia temporária usada na decisão DEVE ser invalidada ou tornada obsoleta imediatamente após mudança sensível, sem ampliar acesso durante falha.
 
@@ -186,6 +214,8 @@ Um administrador autorizado consulta concessões e alterações para entender de
 - **Access Group**: conjunto contextual de chaves utilizado para administrar concessões de forma compreensível.
 - **Group Membership**: vínculo entre usuário ou associação e grupo no contexto permitido.
 - **Access Grant**: atribuição vigente, opcionalmente temporária, que contribui para a capacidade efetiva.
+- **Global Administration Bootstrap**: operação sistêmica única que vincula a identidade elegível ao grupo global protegido e registra de forma durável sua conclusão.
+- **Bootstrap Completion Marker**: evidência global permanente que impede a propriedade de e-mail inicial de voltar a produzir concessões.
 - **Authorization Decision**: resultado permitido ou negado para identidade, chave e contexto, com razões seguras e rastreáveis.
 - **Access Audit Event**: histórico imutável de mudança ou tentativa sensível relacionada à autorização.
 
@@ -204,3 +234,7 @@ Um administrador autorizado consulta concessões e alterações para entender de
 - **SC-ACL-009**: Usuário autorizado identifica em até 30 segundos os grupos e concessões que originam uma chave efetiva.
 - **SC-ACL-010**: Todas as jornadas administrativas podem ser concluídas apenas por teclado e sem bloqueios críticos de acessibilidade.
 - **SC-ACL-011**: Em 100% dos testes, mover, renomear ou reorganizar categorias de chaves não altera qualquer resultado de autorização ou concessão vigente.
+- **SC-ACL-012**: Em 100% das instalações novas sem valor explícito, somente a identidade ativa e confirmada de `admin@rinos.com.br` torna-se elegível ao bootstrap, e nenhuma concessão ocorre antes de TOTP ou passkey compatível.
+- **SC-ACL-013**: Em 100% das avaliações concorrentes ou repetidas, o bootstrap produz no máximo um administrador inicial, uma associação ao grupo protegido e um marcador de conclusão.
+- **SC-ACL-014**: Em 100% dos testes posteriores à conclusão, alterar ou remover a propriedade não concede, restaura nem transfere acesso.
+- **SC-ACL-015**: Em 100% dos testes, o bootstrap concluído possui auditoria correlacionável e não expõe segredo de fator forte.

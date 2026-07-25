@@ -24,11 +24,19 @@ As categorias devem permanecer estáveis e reutilizáveis entre lançamentos man
 - Q: Como relacionar natureza econômica e direção monetária da categoria? → A: Cada categoria possui natureza econômica `RECEITA`, `DESPESA` ou `NEUTRA` e, independentemente, permite direção `ENTRADA`, `SAÍDA` ou `AMBAS`. Estornos e devoluções preservam a natureza original mesmo quando invertem a direção.
 - Q: Como organizar categorias em hierarquias sem limitar perspectivas diferentes? → A: Categorias permanecem independentes e podem participar de múltiplas estruturas versionadas. O tenant mantém uma estrutura principal para navegação, e cada categoria aparece no máximo uma vez em cada versão de estrutura.
 
+### Session 2026-07-24
+
+- Q: Nome, código, natureza, contexto ou posição hierárquica de uma categoria comum podem produzir comportamento funcional, como criar ou controlar crédito recuperável? → A: Não. Categorias comuns criadas pelo tenant são exclusivamente classificatórias. Seus atributos podem orientar seleção, validação de compatibilidade e análise, mas nunca criam, liquidam ou controlam contas a pagar, contas a receber, créditos, dívidas, transferências ou outros objetos funcionais. Qualquer comportamento especial deverá ser definido pelo contrato explícito do módulo responsável, que poderá referenciar a categoria sem transformar seu cadastro em mecanismo de automação.
+- Q: Qual regra da categoria deve validar uma confirmação quando o lançamento possui data financeira retroativa ou foi iniciado antes de uma alteração cadastral? → A: Sempre a regra atual no instante da confirmação, independentemente da data financeira. Categorias não mantêm versões semânticas nem vigência histórica; rascunhos e pré-lançamentos são revalidados contra o estado atual ao serem confirmados.
+- Q: Categorias devem possuir código de negócio apresentado ao usuário? → A: Não. A categoria possui somente identidade técnica interna e nome único no tenant, além de descrição e demais atributos funcionais. A interface deve localizar categorias por partes do nome e da descrição, sem expor código ou identidade técnica. Após o primeiro uso confirmado, a natureza econômica torna-se imutável; mudança de significado exige categoria substituta, enquanto alterações operacionais afetam somente confirmações posteriores.
+- Q: Inativar uma categoria deve impedir a liquidação, correção ou reversão de documento já confirmado que a utilizou? → A: Não. A inativação impede novas classificações, inclusive confirmação de rascunhos, pré-lançamentos e propostas recorrentes ainda não materializadas, mas a categoria original continua válida quando uma operação explicitamente vinculada liquida, corrige ou estorna um fato já confirmado. A substituta apenas orienta novos usos e nunca é aplicada automaticamente.
+- Q: Categorias precisam ser habilitadas individualmente em cada contexto de uso? → A: Não. Categoria ativa fica disponível por padrão em todos os contextos economicamente compatíveis, e o tenant registra apenas proibições específicas. Cada módulo conserva suas restrições funcionais; novos contextos compatíveis tornam-se utilizáveis sem manutenção em massa, e mudanças afetam somente novas classificações e confirmações.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Cadastrar categoria financeira (Priority: P1)
 
-Um usuário autorizado cria uma categoria do tenant com nome, código, descrição e classificação econômica suficientes para que ela seja localizada e utilizada de maneira consistente.
+Um usuário autorizado cria uma categoria do tenant com nome único, descrição e classificação econômica suficientes para que ela seja localizada e utilizada de maneira consistente.
 
 **Why this priority**: Lançamentos sem finalidade identificável produzem saldos, mas não permitem compreender receitas, despesas e demais movimentos financeiros.
 
@@ -37,24 +45,24 @@ Um usuário autorizado cria uma categoria do tenant com nome, código, descriç�
 **Acceptance Scenarios**:
 
 1. **Given** um usuário autorizado no tenant ativo, **When** cadastra uma categoria válida, **Then** o sistema cria uma identidade estável exclusivamente daquele tenant.
-2. **Given** um código já usado por outra categoria do tenant, **When** o usuário tenta confirmar o cadastro, **Then** o sistema rejeita a duplicidade sem alterar a categoria existente.
+2. **Given** um nome normalizado já usado por outra categoria do tenant, **When** o usuário tenta confirmar o cadastro, **Then** o sistema rejeita a duplicidade sem alterar a categoria existente.
 3. **Given** nome semelhante ao de categoria ativa, **When** o usuário confirma que a finalidade é diferente, **Then** o sistema permite o cadastro sem fundir as identidades.
 
 ---
 
 ### User Story 2 - Disponibilizar categorias por contexto de uso (Priority: P1)
 
-Um usuário autorizado define em quais contextos uma categoria pode ser selecionada, enquanto cada módulo declara seus contextos canônicos sem acrescentar novos atributos booleanos ao cadastro.
+Um usuário autorizado restringe contextos específicos quando uma categoria não deve ser selecionada, enquanto cada módulo declara seus contextos canônicos e suas compatibilidades sem acrescentar novos atributos booleanos ao cadastro.
 
 **Why this priority**: A mesma lista indiscriminada em todos os fluxos aumenta erros; campos fixos para cada módulo tornam o cadastro rígido e difícil de evoluir.
 
-**Independent Test**: Habilitar uma categoria para lançamento manual e contas a pagar, desabilitá-la para conciliação e verificar que cada seleção respeita o contexto solicitado.
+**Independent Test**: Criar categoria compatível com lançamento manual, contas a pagar e conciliação, proibi-la para conciliação e verificar a disponibilidade padrão nos demais contextos.
 
 **Acceptance Scenarios**:
 
-1. **Given** uma categoria ativa habilitada para determinado contexto, **When** módulo autorizado solicita categorias elegíveis, **Then** ela é apresentada.
-2. **Given** categoria ativa sem habilitação para o contexto solicitado, **When** o módulo consulta opções, **Then** ela não é apresentada como seleção comum.
-3. **Given** um novo contexto fornecido por módulo instalado, **When** ele é disponibilizado ao tenant, **Then** categorias podem ser associadas a ele sem alteração da identidade ou dos demais contextos.
+1. **Given** uma categoria ativa e economicamente compatível sem proibição para determinado contexto, **When** módulo autorizado solicita categorias elegíveis, **Then** ela é apresentada.
+2. **Given** categoria ativa expressamente proibida para o contexto solicitado, **When** o módulo consulta opções, **Then** ela não é apresentada como seleção comum.
+3. **Given** um novo contexto fornecido por módulo instalado, **When** ele é disponibilizado ao tenant, **Then** categorias ativas e compatíveis ficam disponíveis por padrão sem manutenção em massa nem alteração de identidade.
 
 ---
 
@@ -107,12 +115,12 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 ### Edge Cases
 
 - Categoria com nome igual em estruturas ou finalidades diferentes.
-- Código que difere apenas por caixa, espaços ou pontuação não significativa.
+- Nome que difere apenas por caixa, acentuação ou espaços não significativos.
 - Categoria desativada ainda referenciada por lançamento, recorrência ou regra futura.
 - Categoria substituta posteriormente desativada.
 - Cadeia ou ciclo de substituições.
 - Contexto de uso removido porque um módulo foi desativado.
-- Categoria associada a contexto fornecido por módulo não mais instalado.
+- Categoria com proibição associada a contexto fornecido por módulo não mais instalado.
 - Estrutura que omite categorias ativas.
 - Categoria repetida na mesma estrutura ou em estruturas diferentes.
 - Alteração da classificação econômica após a categoria ter sido utilizada.
@@ -127,17 +135,19 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **FR-FCAT-BOUND-001**: Toda categoria financeira DEVE pertencer exclusivamente a um tenant e somente poderá ser criada, consultada, organizada ou alterada em contexto válido desse tenant.
 - **FR-FCAT-BOUND-002**: Categoria DEVE representar a finalidade econômica de um valor e NÃO DEVE representar conta financeira, forma de pagamento, instrumento, contraparte, documento, centro de custo, projeto, orçamento ou conta contábil.
 - **FR-FCAT-BOUND-003**: Cadastrar categoria NÃO DEVE criar lançamento, saldo, regra contábil, dimensão analítica, permissão ou configuração de outro módulo.
-- **FR-FCAT-BOUND-004**: A identidade da categoria DEVE ser imutável e independente de código, nome, contexto de uso, estrutura, estado ou futura associação contábil.
+- **FR-FCAT-BOUND-004**: A identidade técnica interna da categoria DEVE ser imutável e independente de nome, contexto de uso, estrutura, estado ou futura associação contábil, e NÃO DEVE ser apresentada como código funcional ao usuário.
 - **FR-FCAT-BOUND-005**: Um lançamento futuro DEVE poder preservar separadamente categoria econômica, direção na conta, contraparte, documento de origem e dimensões analíticas.
 - **FR-FCAT-BOUND-006**: Centros de custo e demais dimensões analíticas DEVEM ser especificados em `financial-dimensions`, imediatamente após esta feature e antes de `financial-transactions`.
 - **FR-FCAT-BOUND-007**: O tenant DEVE poder criar dimensões personalizadas e usar dimensões fornecidas por módulos, mas categorias apenas DEVEM declarar sua aplicabilidade; cadastro de dimensão, valores, hierarquias e vínculos com entidades pertencem à feature própria.
+- **FR-FCAT-BOUND-008**: Categoria comum criada pelo tenant DEVE ser exclusivamente classificatória; seu nome, natureza econômica, direção admitida, contexto, estrutura ou posição hierárquica NÃO DEVEM criar, liquidar, transferir nem controlar obrigação, direito, crédito, dívida, saldo ou objeto funcional.
+- **FR-FCAT-BOUND-009**: Comportamento especial associado a uma classificação DEVE pertencer ao contrato explícito do módulo responsável e utilizar referência estável à categoria quando necessário; o sistema NÃO DEVE inferir esse comportamento por texto, rótulo, natureza, contexto ou posição da categoria.
 
 ### Identificação e Classificação Econômica
 
-- **FR-FCAT-ID-001**: Toda categoria DEVE possuir nome apresentável, código único no tenant e PODERÁ possuir descrição, cor, ícone, rótulos e ordem preferencial.
-- **FR-FCAT-ID-002**: Código DEVE ser normalizado para unicidade e permanecer estável depois do primeiro uso; alteração posterior exige substituição ou procedimento excepcional auditado que preserve referências.
-- **FR-FCAT-ID-003**: Nomes iguais ou semelhantes DEVEM gerar alerta e permanecer permitidos quando código e finalidade distinguirem as categorias.
-- **FR-FCAT-ID-004**: Código, nome e descrição NÃO DEVEM incorporar a identidade de conta financeira, pessoa, centro de custo ou módulo consumidor.
+- **FR-FCAT-ID-001**: Toda categoria DEVE possuir nome apresentável e único no tenant e PODERÁ possuir descrição, cor, ícone, rótulos e ordem preferencial.
+- **FR-FCAT-ID-002**: O sistema NÃO DEVE exigir nem apresentar código de negócio, número sequencial ou identidade técnica como identificador funcional da categoria.
+- **FR-FCAT-ID-003**: Nome DEVE ser normalizado para unicidade desconsiderando diferenças de caixa, acentuação e espaços não significativos; nomes apenas semelhantes, mas não equivalentes após normalização, DEVEM gerar alerta e permanecer permitidos.
+- **FR-FCAT-ID-004**: Nome e descrição NÃO DEVEM incorporar a identidade de conta financeira, pessoa, centro de custo ou módulo consumidor.
 - **FR-FCAT-NATURE-001**: Categoria DEVE declarar classificação econômica suficiente para distinguir entradas econômicas, saídas econômicas e movimentos que não representam receita nem despesa.
 - **FR-FCAT-NATURE-002**: A direção de crédito ou débito na conta financeira DEVE permanecer independente da classificação econômica da categoria.
 - **FR-FCAT-NATURE-003**: Estorno, devolução ou reversão DEVE preservar referência à operação original e NÃO DEVE exigir que a categoria seja reinterpretada apenas porque a direção monetária foi invertida.
@@ -152,12 +162,13 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 
 - **FR-FCAT-CTX-001**: Contexto de uso DEVE possuir chave canônica estável, nome apresentável, módulo provedor, descrição e estado.
 - **FR-FCAT-CTX-002**: Sistema e módulos DEVEM poder fornecer contextos como lançamento manual, contas a pagar, contas a receber, cartão, conciliação, correção, diferença de caixa, tributo, folha e transferência sem acrescentar campo específico à categoria.
-- **FR-FCAT-CTX-003**: Categoria ativa DEVE poder ser habilitada para zero, um ou vários contextos compatíveis.
-- **FR-FCAT-CTX-004**: Ausência de habilitação para um contexto DEVE impedir seleção comum nesse contexto, mas NÃO DEVE invalidar referências históricas existentes.
+- **FR-FCAT-CTX-003**: Categoria ativa DEVE estar disponível por padrão em todo contexto economicamente compatível, salvo proibição específica do tenant ou restrição expressa do módulo consumidor.
+- **FR-FCAT-CTX-004**: Tenant DEVE poder proibir uma categoria em zero, um ou vários contextos; ausência de proibição DEVE manter a disponibilidade padrão quando as demais compatibilidades forem satisfeitas.
 - **FR-FCAT-CTX-005**: Contexto indisponível ou inativo NÃO DEVE apagar associações nem categorias; deve impedir novos usos enquanto preservar histórico e permitir futura reativação compatível.
 - **FR-FCAT-CTX-006**: Módulo consumidor DEVE solicitar categorias por chave de contexto e tenant e NÃO DEVE inferir aplicabilidade por nome, posição ou campo específico de outro módulo.
 - **FR-FCAT-CTX-007**: Contextos DEVEM poder restringir naturezas econômicas compatíveis e informar quando a categoria é obrigatória, opcional ou indisponível para o fluxo consumidor.
-- **FR-FCAT-CTX-008**: Alteração de aplicabilidade DEVE produzir auditoria e afetar somente novas seleções, sem remover a categoria de operações existentes.
+- **FR-FCAT-CTX-008**: Inclusão ou remoção de proibição contextual DEVE produzir auditoria e afetar somente novas seleções e confirmações, sem remover a categoria de operações existentes.
+- **FR-FCAT-CTX-009**: Novo contexto fornecido por módulo DEVE tornar categorias ativas e compatíveis disponíveis por padrão, sem exigir habilitação individual ou manutenção em massa, preservadas autorização e restrições funcionais do provedor.
 
 ### Estruturas e Hierarquias
 
@@ -189,7 +200,7 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **FR-FCAT-ALLOC-011**: A política DEVE ser validada por parcela de categoria; em um mesmo lançamento dividido, uma categoria poderá exigir dimensão que outra torne opcional ou proibida.
 - **FR-FCAT-ALLOC-012**: Dimensão recém-criada DEVE aplicar sua política padrão às categorias sem regra específica, e usuário autorizado DEVE poder revisar e sobrescrever essa política por categoria.
 - **FR-FCAT-ALLOC-013**: Regra específica da categoria DEVE prevalecer sobre a política padrão da dimensão, sem impedir que o contexto consumidor aplique restrição adicional expressamente definida em sua própria feature.
-- **FR-FCAT-ALLOC-014**: Alteração de política dimensional DEVE possuir vigência, afetar somente novas confirmações e NÃO DEVE invalidar ou modificar classificações históricas.
+- **FR-FCAT-ALLOC-014**: Alteração de política dimensional DEVE passar a valer para confirmações posteriores, inclusive de rascunhos, pré-lançamentos ou operações com data financeira retroativa, e NÃO DEVE modificar distribuições já confirmadas.
 - **FR-FCAT-ALLOC-015**: Dimensão desativada ou indisponível NÃO DEVE permitir nova confirmação quando ainda for obrigatória para a categoria; a inconsistência DEVE ser resolvida explicitamente antes do uso.
 
 ### Ciclo de Vida e Versionamento
@@ -202,17 +213,23 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **FR-FCAT-LIFE-006**: Substituição NÃO DEVE reclassificar silenciosamente lançamentos, recorrências, regras ou documentos existentes.
 - **FR-FCAT-LIFE-007**: Cadeia de substituição DEVE terminar em categoria ativa, NÃO DEVE admitir ciclos e DEVE ser apresentada ao usuário antes da confirmação de novo uso.
 - **FR-FCAT-LIFE-008**: Nome, descrição, cor, ícone, rótulos e ordem PODERÃO mudar sem criar nova identidade, preservando auditoria quando relevante.
-- **FR-FCAT-LIFE-009**: Alteração de código, natureza econômica ou outra semântica depois do primeiro uso DEVE preservar vigência e versão anterior ou exigir categoria substituta; NÃO DEVE reinterpretar silenciosamente o histórico.
+- **FR-FCAT-LIFE-009**: Categoria DEVE manter um único estado semântico atual, sem versão funcional ou vigência histórica; depois do primeiro uso confirmado, sua natureza econômica DEVE permanecer imutável e mudança de significado DEVE exigir nova categoria, facultada a indicação de substituta.
+- **FR-FCAT-LIFE-010**: Rascunho e pré-lançamento NÃO DEVEM fixar regras de categoria; no momento da confirmação, o módulo consumidor DEVE revalidá-los integralmente contra o estado atual da categoria, ainda que tenham sido criados antes da alteração ou possuam data financeira retroativa.
+- **FR-FCAT-LIFE-011**: Nome, descrição e apresentação DEVEM permanecer alteráveis, enquanto direção admitida, contextos e políticas dimensionais DEVEM poder ser alterados para confirmações posteriores sem invalidar operações já confirmadas; todas essas alterações DEVEM produzir auditoria.
+- **FR-FCAT-LIFE-012**: Categoria inativa NÃO DEVE ser admitida em nova classificação nem na confirmação de rascunho, pré-lançamento ou proposta recorrente ainda não materializada; o usuário DEVE resolver explicitamente a classificação antes de confirmar.
+- **FR-FCAT-LIFE-013**: Liquidação, correção ou estorno explicitamente vinculado a documento ou fato já confirmado DEVE poder preservar sua categoria original mesmo inativa, quando isso for necessário para manter a continuidade e a simetria da operação.
+- **FR-FCAT-LIFE-014**: A exceção para continuidade de fato confirmado NÃO DEVE disponibilizar categoria inativa em seleção livre nem autorizar seu uso em fato novo e independente.
 
 ### Uso por Outros Módulos e Contabilidade Futura
 
-- **FR-FCAT-USE-001**: Módulo consumidor DEVE referenciar a identidade imutável e, quando aplicável, a versão vigente da categoria no mesmo tenant.
+- **FR-FCAT-USE-001**: Módulo consumidor DEVE referenciar a identidade imutável da categoria no mesmo tenant, sem depender de versão semântica ou vigência histórica.
 - **FR-FCAT-USE-002**: Seleção DEVE retornar somente categorias ativas, autorizadas e compatíveis com contexto, natureza e data exigidos pelo consumidor.
-- **FR-FCAT-USE-003**: Operação histórica DEVE continuar exibindo a categoria e a classificação vigentes quando foi confirmada, mesmo que cadastro atual tenha sido alterado ou desativado.
+- **FR-FCAT-USE-003**: Operação confirmada DEVE preservar a identidade da categoria originalmente referenciada, mesmo que o cadastro atual seja alterado, desativado ou indique substituta; nenhuma mudança cadastral DEVE trocar automaticamente essa referência.
 - **FR-FCAT-USE-004**: Categoria PODERÁ participar de futuro mapeamento contábil, mas a associação DEVE possuir identidade, vigência e regras próprias.
 - **FR-FCAT-USE-005**: Mapeamento contábil futuro DEVE poder considerar categoria, conta financeira, contexto, contraparte, dimensões, tributos e operação de origem; NÃO DEVE presumir relação fixa de uma categoria para uma única conta contábil.
 - **FR-FCAT-USE-006**: Categoria NÃO DEVE conter campos específicos de documentos fiscais, formas de pagamento ou provedores; esses módulos DEVEM usar contextos ou contratos próprios.
-- **FR-FCAT-USE-007**: Importação futura de categorias DEVE detectar conflitos de código e identidade e NÃO DEVE fundir registros silenciosamente.
+- **FR-FCAT-USE-007**: Importação futura de categorias DEVE detectar conflitos de nome normalizado e identidade técnica e NÃO DEVE fundir registros silenciosamente.
+- **FR-FCAT-USE-008**: Categoria substituta DEVE ser apenas orientação para novos usos; módulo consumidor NÃO DEVE aplicá-la automaticamente a documento confirmado, recorrência, rascunho, pré-lançamento, liquidação, correção ou estorno.
 
 ### Autorização, Auditoria e Isolamento
 
@@ -224,7 +241,7 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 
 ### Pesquisa, Experiência e Acessibilidade
 
-- **FR-FCAT-UX-001**: Usuário autorizado DEVE poder pesquisar e filtrar categorias por código, nome, natureza, contexto, estado e substituta.
+- **FR-FCAT-UX-001**: Usuário autorizado DEVE poder localizar categorias por correspondência parcial e tolerante no nome e na descrição e filtrá-las por natureza, contexto, estado e substituta, sem depender de código ou identidade técnica.
 - **FR-FCAT-UX-002**: Listagens e seleções DEVEM distinguir categoria, agrupador de estrutura e dimensão analítica e NÃO DEVEM apresentar nó totalizador como categoria.
 - **FR-FCAT-UX-003**: Formulário DEVE explicar a diferença entre natureza econômica e direção do dinheiro na conta.
 - **FR-FCAT-UX-004**: Antes de alteração semântica, desativação ou substituição, a interface DEVE apresentar o impacto sobre novos usos e a preservação do histórico.
@@ -237,15 +254,14 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 > Decisões de infraestrutura: não há agendamento, token externo nem rotação criptográfica próprios desta feature. Todas as mudanças ocorrem por operações transacionais explícitas.
 
 - **FR-FCAT-INFRA-IDEMP**: Repetição técnica da mesma solicitação confirmada DEVE produzir no máximo uma categoria, associação de contexto, versão de estrutura ou mudança de estado.
-- **FR-FCAT-INFRA-LOCK**: Operações concorrentes DEVEM preservar unicidade de código, ausência de ciclos, versão ativa única por estrutura, substituições válidas e histórico determinístico em todas as instâncias da aplicação.
+- **FR-FCAT-INFRA-LOCK**: Operações concorrentes DEVEM preservar unicidade de nome normalizado, ausência de ciclos, versão ativa única por estrutura, substituições válidas e histórico determinístico em todas as instâncias da aplicação.
 - **FR-FCAT-INFRA-BACKUP**: Categorias, contextos, estruturas, versões, estados, substituições e auditorias DEVEM participar dos backups e restaurações do tenant segundo `tenant-data-governance`.
 
 ### Key Entities
 
 - **Categoria Financeira**: identidade estável da finalidade econômica atribuível a parcelas de lançamentos do tenant.
-- **Versão da Categoria**: semântica e vigência preservadas quando alteração relevante não pode reinterpretar o histórico.
 - **Contexto de Uso da Categoria**: capacidade canônica fornecida pelo sistema ou módulo para declarar onde uma categoria pode ser selecionada.
-- **Aplicabilidade da Categoria**: associação entre categoria e contexto, com estado e compatibilidades para novos usos.
+- **Proibição Contextual da Categoria**: exceção administrada pelo tenant que impede novos usos da categoria em determinado contexto compatível, sem invalidar referências existentes.
 - **Estrutura de Categorias**: apresentação versionada destinada a navegação, totalização ou relatório, sem receber lançamentos.
 - **Nó da Estrutura**: agrupador hierárquico com ordem e ação de apresentação, capaz de referenciar subnós e categorias.
 - **Substituição de Categoria**: orientação auditável de uma categoria inativa para outra ativa em novos usos, sem reclassificação automática.
@@ -259,22 +275,27 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 ### Measurable Outcomes
 
 - **SC-FCAT-001**: Em 100% dos testes cruzados, categoria, contexto, estrutura ou substituição de um tenant não é consultado, alterado nem referenciado por outro tenant.
-- **SC-FCAT-002**: Usuários autorizados cadastram uma categoria simples e a habilitam para um contexto em até 90 segundos durante testes de usabilidade.
-- **SC-FCAT-003**: Em 100% dos testes, código normalizado permanece único no tenant e nomes semelhantes não provocam fusão automática.
+- **SC-FCAT-002**: Usuários autorizados cadastram uma categoria simples, encontram sua disponibilidade padrão e registram eventual proibição contextual em até 90 segundos durante testes de usabilidade.
+- **SC-FCAT-003**: Em 100% dos testes, nome normalizado permanece único no tenant, nomes apenas semelhantes não provocam fusão automática e nenhuma jornada comum exige código ou expõe identidade técnica.
 - **SC-FCAT-004**: Em 100% das seleções testadas, somente categorias ativas e compatíveis com tenant, contexto, natureza e data solicitados são oferecidas.
-- **SC-FCAT-005**: Novo contexto fornecido por módulo pode ser associado a categorias sem acrescentar atributo funcional específico ao cadastro da categoria.
-- **SC-FCAT-006**: Em 100% dos testes históricos, desativação, substituição ou nova versão não altera a categoria originalmente referenciada.
+- **SC-FCAT-005**: Novo contexto fornecido por módulo disponibiliza categorias ativas e compatíveis por padrão, sem acrescentar atributo funcional específico nem exigir atualização individual dos cadastros.
+- **SC-FCAT-006**: Em 100% dos testes históricos, alteração, desativação ou substituição não troca a identidade da categoria originalmente referenciada.
 - **SC-FCAT-007**: Em 100% das estruturas testadas, ciclos e referências cruzadas entre tenants são rejeitados e agrupadores não são selecionáveis como categorias.
 - **SC-FCAT-008**: Em 100% das divisões simuladas, parcelas de categoria correspondem exatamente ao valor classificado ou a operação é rejeitada com diferença identificada.
 - **SC-FCAT-009**: Em 100% dos testes, direção monetária invertida por estorno ou devolução não altera automaticamente a natureza econômica da categoria original.
 - **SC-FCAT-010**: Em 100% dos testes, categoria não cria conta financeira, dimensão analítica, lançamento, saldo nem conta contábil.
 - **SC-FCAT-011**: Pelo menos 95% das pesquisas e seleções comuns retornam resultado utilizável em até 2 segundos nas condições operacionais definidas para a primeira versão.
-- **SC-FCAT-012**: Em 100% dos testes concorrentes e de repetição técnica, cada operação confirmada produz no máximo um efeito e preserva códigos, versões, hierarquias e substituições válidos.
+- **SC-FCAT-012**: Em 100% dos testes concorrentes e de repetição técnica, cada operação confirmada produz no máximo um efeito e preserva nomes únicos, versões de estruturas, hierarquias e substituições válidas.
 - **SC-FCAT-013**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FCAT-014**: Em 100% dos testes dimensionais, parcela de categoria sem dimensão obrigatória ou com dimensão proibida é rejeitada, enquanto dimensão opcional aceita ausência ou preenchimento válido.
 - **SC-FCAT-015**: Em 100% dos lançamentos simulados com várias categorias, as regras dimensionais são avaliadas separadamente para cada parcela sem preencher ou remover valores silenciosamente.
 - **SC-FCAT-016**: Em 100% dos testes, natureza econômica e direção monetária são validadas independentemente, e estorno vinculado preserva a natureza original ao inverter a direção.
 - **SC-FCAT-017**: Em 100% dos testes, uma categoria aparece no máximo uma vez por versão de estrutura, pode ocupar posições diferentes em estruturas distintas e existe exatamente uma estrutura principal quando há estruturas ativas.
+- **SC-FCAT-018**: Em 100% dos testes com categorias comuns, inclusive categorias nomeadas como crédito, adiantamento, correção ou transferência, seus atributos apenas classificam e validam compatibilidade, sem criar ou controlar objeto funcional nem produzir efeito monetário por si próprios.
+- **SC-FCAT-019**: Em 100% das confirmações, inclusive retroativas e iniciadas antes de mudança cadastral, aplicam-se as regras atuais da categoria no instante da confirmação, sem consulta a versão ou vigência histórica.
+- **SC-FCAT-020**: Em 100% dos testes, a natureza econômica torna-se imutável após o primeiro uso confirmado, enquanto mudanças operacionais posteriores afetam somente novas confirmações e não invalidam operações existentes.
+- **SC-FCAT-021**: Em 100% dos testes com categoria inativa, fatos novos e propostas não materializadas são bloqueados, enquanto liquidação, correção e estorno explicitamente vinculados ao fato confirmado preservam a categoria original sem substituição automática.
+- **SC-FCAT-022**: Em 100% dos testes contextuais, categoria ativa e compatível fica disponível sem habilitação individual, proibição explícita impede somente novos usos e restrição do módulo consumidor continua prevalecendo.
 
 ## Fora do Escopo
 

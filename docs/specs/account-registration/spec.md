@@ -8,7 +8,7 @@
 
 Esta feature permite que um usuário ativo crie e mantenha contas. Cada conta constitui um tenant independente, com identidade, configurações básicas, ciclo de vida e isolamento próprios.
 
-Inclui a criação segura do tenant, a associação fundadora do criador, a atribuição inicial do plano `Free`, a proteção contra automação, a edição dos dados cadastrais básicos e a suspensão ou cancelamento controlado da conta. Não inclui classificação da conta como pessoa física ou jurídica, dados fiscais, convites e associações adicionais, desenho geral de grupos e chaves, seleção do contexto ativo, definição completa de planos, cobrança ou módulos de negócio.
+Inclui a aceitação durável da criação, o acompanhamento do provisionamento assíncrono do tenant, a associação fundadora do criador, a atribuição inicial do plano padrão, a proteção contra automação, a edição dos dados cadastrais básicos e a suspensão ou cancelamento controlado da conta. Não inclui classificação da conta como pessoa física ou jurídica, dados fiscais, convites e associações adicionais, desenho geral de grupos e chaves, seleção do contexto ativo, definição completa de planos, cobrança ou módulos de negócio.
 
 ## Clarifications
 
@@ -16,6 +16,10 @@ Inclui a criação segura do tenant, a associação fundadora do criador, a atri
 
 - Q: A conta inicial deve distinguir pessoa física e pessoa jurídica, e quantas contas um usuário pode criar ou participar? -> A: A conta será genérica, sem classificação PF/PJ ou identificador fiscal nesta etapa; um usuário poderá criar e participar de várias contas distintas.
 - Q: Com qual plano e estado uma nova conta deve iniciar? -> A: A conta é ativada com o plano básico `Free`; suas franquias e funcionalidades serão definidas em `plans-entitlements`.
+
+### Session 2026-07-24
+
+- Q: A criação deve aguardar todo o provisionamento ou utilizar o processo assíncrono já definido para tenants? -> A: A solicitação aceita cria a conta no estado `EM_CRIACAO`, persiste uma intenção durável e idempotente e entra na fila estrutural. A conta somente se torna ativa após armazenamento pronto e compatível, associação fundadora, concessões mínimas e plano padrão válido; a atomicidade é exigida em cada etapa durável, não como uma transação distribuída sobre todo o fluxo.
 
 ## User Scenarios & Testing
 
@@ -25,13 +29,14 @@ Um usuário ativo cria um espaço separado de sua identidade global para organiz
 
 **Why this priority**: estabelece o tenant mínimo que sustentará participantes, planos e módulos sem exigir antecipadamente uma natureza jurídica.
 
-**Independent Test**: autenticar um usuário sem contas, concluir um cadastro válido e verificar a criação de um único tenant isolado com o criador como participante fundador.
+**Independent Test**: autenticar um usuário sem contas, concluir uma solicitação válida, verificar uma única conta `EM_CRIACAO` com processo durável na fila e, após todas as etapas obrigatórias, confirmar sua ativação com tenant isolado e criador como participante fundador.
 
 **Acceptance Scenarios**:
 
-1. **Given** usuário ativo e autorizado a criar conta, **When** fornece os dados mínimos e passa pelas proteções exigidas, **Then** uma única conta e seu tenant são criados e ativados no plano `Free`
-2. **Given** falha em qualquer parte da criação, **When** a operação termina, **Then** não permanece tenant parcial, associação órfã ou concessão incompleta
-3. **Given** repetição da mesma confirmação, **When** a solicitação é reenviada, **Then** o sistema retorna a conta já criada sem duplicá-la
+1. **Given** usuário ativo e autorizado a criar conta, **When** fornece os dados mínimos e passa pelas proteções exigidas, **Then** uma única conta é registrada em `EM_CRIACAO`, sua intenção durável recebe protocolo e o provisionamento é enfileirado
+2. **Given** todas as etapas obrigatórias concluídas e validadas, **When** armazenamento, associação fundadora, concessões mínimas e plano padrão estão prontos, **Then** a conta torna-se ativa e disponível no plano atribuído
+3. **Given** falha em qualquer etapa, **When** o processo não pode prosseguir, **Then** a conta permanece não operacional e o estado durável permite diagnóstico ou retomada sem apresentar resultado parcial como ativo
+4. **Given** repetição da mesma confirmação, **When** a solicitação é reenviada, **Then** o sistema retorna a mesma conta, protocolo e estado do processo sem duplicá-los
 
 ---
 
@@ -85,6 +90,7 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 
 - O usuário envia a criação repetidamente após perda da resposta.
 - Duas instâncias processam simultaneamente a mesma intenção de criação.
+- A conexão ou sessão do solicitante termina depois da aceitação e antes da ativação.
 - O Turnstile ou seu serviço de validação fica indisponível.
 - Muitos usuários legítimos compartilham o mesmo IP de origem.
 - O criador é bloqueado durante a criação da conta.
@@ -114,13 +120,17 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **FR-ACC-CREATE-001**: Somente usuário ativo, autenticado e com autenticação recente DEVE iniciar a criação de conta.
 - **FR-ACC-CREATE-002**: O sistema DEVE validar os dados cadastrais mínimos antes de criar o tenant.
 - **FR-ACC-CREATE-003**: Nome de exibição, moeda-base e fuso horário DEVEM ser confirmados explicitamente antes da criação.
-- **FR-ACC-CREATE-004**: A criação DEVE produzir atomicamente a conta, o tenant, a associação fundadora, as concessões mínimas de administração e a atribuição do plano `Free`; falha em qualquer parte NÃO DEVE deixar estado parcial utilizável.
+- **FR-ACC-CREATE-004**: A aceitação da criação DEVE persistir consistentemente a intenção idempotente, a conta em `EM_CRIACAO`, a identidade funcional do tenant e o protocolo de acompanhamento antes de enfileirar o provisionamento.
 - **FR-ACC-CREATE-005**: O criador DEVE ser identificado como administrador fundador da conta, mas seu acesso efetivo DEVE decorrer de grupo e chaves iniciais explícitos.
 - **FR-ACC-CREATE-006**: O papel de administrador fundador NÃO DEVE conceder permissões fora das chaves explicitamente atribuídas.
 - **FR-ACC-CREATE-007**: As concessões fundadoras DEVEM permitir manter a conta e preparar futuras associações, sem conceder acesso administrativo global ao sistema.
 - **FR-ACC-CREATE-008**: Uma solicitação repetida com a mesma intenção DEVE retornar o resultado anterior ou estado consistente sem criar outra conta.
 - **FR-ACC-CREATE-009**: A criação DEVE ser auditada com usuário fundador, origem, instante, identificador da conta e resultado, sem registrar provas anti-bot ou segredos.
-- **FR-ACC-CREATE-010**: O usuário DEVE receber confirmação clara da criação, do plano `Free` atribuído e dos próximos passos disponíveis, sem apresentar funcionalidades não liberadas.
+- **FR-ACC-CREATE-010**: O usuário DEVE receber confirmação clara da aceitação, protocolo, estado público do provisionamento e próximos passos disponíveis; plano e funcionalidades somente DEVEM ser apresentados como ativos depois da ativação.
+- **FR-ACC-CREATE-011**: O fluxo completo DEVE ser assíncrono, durável e independente da permanência da sessão ou conexão do solicitante.
+- **FR-ACC-CREATE-012**: Cada etapa do fluxo DEVE ser atômica dentro do armazenamento que modifica, idempotente e retomável; o sistema NÃO DEVE presumir uma única transação distribuída entre armazenamento global, armazenamento do tenant e fila.
+- **FR-ACC-CREATE-013**: Falha após a aceitação NÃO DEVE apagar a intenção nem ativar resultado incompleto; a conta DEVE permanecer não operacional com estado suficiente para acompanhamento, diagnóstico e retomada segura.
+- **FR-ACC-CREATE-014**: A ordem, concorrência, estados públicos e recuperação do provisionamento físico DEVEM obedecer a `tenant-storage-provisioning`.
 
 ### Proteção contra Automação
 
@@ -138,7 +148,7 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 
 - **FR-ACC-STATE-001**: A conta DEVE possuir ao menos os estados em criação, ativa, suspensa e cancelada.
 - **FR-ACC-STATE-002**: Estado em criação NÃO DEVE permitir operações de tenant fora da conclusão ou recuperação segura da própria criação.
-- **FR-ACC-STATE-003**: Uma conta criada com sucesso DEVE tornar-se ativa somente depois da atribuição válida do plano `Free`.
+- **FR-ACC-STATE-003**: Uma conta DEVE tornar-se ativa somente depois da confirmação do armazenamento pronto e compatível, da associação fundadora, das concessões mínimas e da atribuição válida do plano padrão vigente.
 - **FR-ACC-STATE-004**: Conta suspensa NÃO DEVE aceitar novas operações de negócio, mas seus dados e auditoria DEVEM permanecer preservados e acessíveis apenas às ações autorizadas de regularização.
 - **FR-ACC-STATE-005**: Conta cancelada NÃO DEVE aceitar operações de negócio, novos participantes ou reativação implícita.
 - **FR-ACC-STATE-006**: Mudança de estado DEVE exigir chave específica, autenticação recente, confirmação explícita e auditoria.
@@ -149,7 +159,7 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **FR-ACC-PLAN-002**: O cadastro DEVE conter exatamente um plano ativo designado como padrão de criação; inicialmente ele é o plano gratuito de código estável `FREE`, apresentado como `Free`.
 - **FR-ACC-PLAN-003**: Toda nova conta DEVE receber o plano padrão vigente sem exigir escolha adicional do usuário; enquanto o padrão for o `FREE`, a atribuição não gera cobrança.
 - **FR-ACC-PLAN-004**: Franquias, cotas, funcionalidades, preços, versões, definição do plano padrão e regras de transição DEVEM ser definidos em `plans-entitlements`, não nesta feature.
-- **FR-ACC-PLAN-005**: A criação NÃO DEVE concluir se o plano padrão estiver ausente, duplicado, inativo ou indisponível, e NÃO DEVE deixar conta ou tenant parcial.
+- **FR-ACC-PLAN-005**: A ativação NÃO DEVE ocorrer se o plano padrão estiver ausente, duplicado, inativo ou indisponível; a conta DEVE permanecer em `EM_CRIACAO`, não operacional e acompanhável, sem descartar a intenção aceita.
 - **FR-ACC-PLAN-006**: A simples atribuição do plano padrão DEVE liberar somente as funcionalidades e franquias explicitamente vigentes em sua versão atribuída.
 
 ### Manutenção dos Dados Cadastrais
@@ -171,6 +181,7 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **FR-ACC-BOUND-003**: Seleção e propagação do contexto ativo pertencem a `tenant-context-isolation`.
 - **FR-ACC-BOUND-004**: Definição completa do catálogo, contratação, cobrança, franquias e liberação de funcionalidades pertencem a `plans-entitlements`; esta feature mantém apenas o registro mínimo e a atribuição inicial necessários ao plano `Free`.
 - **FR-ACC-BOUND-005**: Cadastro da conta NÃO DEVE liberar módulo ou funcionalidade por inferência de natureza jurídica, papel do fundador ou simples existência do tenant, mas somente pelos direitos vigentes do plano atribuído.
+- **FR-ACC-BOUND-006**: Provisionamento, versionamento, fila estrutural, estados físicos e retomada do armazenamento pertencem a `tenant-storage-provisioning`; esta feature coordena a intenção funcional e decide a ativação após receber as confirmações obrigatórias.
 
 ### Decisões de Infraestrutura Auditáveis
 
@@ -187,15 +198,16 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **Account Access Bootstrap**: conjunto inicial de grupo e chaves que permite ao fundador manter a conta até a gestão completa de acessos estar disponível.
 - **Plan Reference**: registro estável de um plano disponível, incluindo obrigatoriamente um único plano padrão vigente; inicialmente, o plano gratuito `FREE`, sem antecipar suas franquias e regras comerciais.
 - **Account Plan Assignment**: vínculo vigente entre uma conta e um plano, criado com o plano `Free` durante a ativação inicial.
+- **Account Creation Intent**: identidade idempotente e durável da solicitação aceita, vinculada à conta em criação e ao protocolo utilizado para acompanhar suas etapas assíncronas.
 - **Account Audit Event**: registro de criação, alteração sensível e transição de estado com ator, tenant, instante e efeito.
 
 ## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-ACC-001**: Pelo menos 90% dos usuários em teste concluem um cadastro válido de conta em até três minutos sem ajuda.
+- **SC-ACC-001**: Pelo menos 90% dos usuários em teste concluem e recebem a aceitação de uma solicitação válida de conta em até três minutos sem ajuda, sem incluir o tempo assíncrono de provisionamento.
 - **SC-ACC-002**: Em 100% dos testes, cada conta criada corresponde a um tenant exclusivo e não reutilizado.
-- **SC-ACC-003**: Em 100% dos testes de falha, não permanece tenant parcial, associação órfã ou concessão incompleta utilizável.
+- **SC-ACC-003**: Em 100% dos testes de falha, nenhum tenant parcial, associação incompleta ou concessão incompleta torna-se utilizável, e a intenção aceita permanece acompanhável ou retomável.
 - **SC-ACC-004**: Em 100% dos testes concorrentes e de repetição, uma mesma intenção produz no máximo uma conta.
 - **SC-ACC-005**: Em 100% dos testes de isolamento, dados de uma conta não são consultados nem alterados por contexto de outra.
 - **SC-ACC-006**: Em 100% dos testes, o fundador recebe somente as concessões explícitas da própria conta e nenhum acesso administrativo global.
@@ -205,4 +217,5 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **SC-ACC-010**: Em 100% dos testes, atualizar uma conta não modifica identidade global do usuário nem dados de outra conta.
 - **SC-ACC-011**: Em 100% dos testes, conta suspensa ou cancelada não aceita novas operações de negócio.
 - **SC-ACC-012**: Todas as jornadas de cadastro e manutenção podem ser concluídas apenas por teclado e sem bloqueios críticos de acessibilidade.
-- **SC-ACC-013**: Em 100% dos testes, uma conta nova somente é ativada com atribuição válida do único plano padrão, sem liberar direitos não definidos; no catálogo inicial, esse plano é o `FREE` sem cobrança.
+- **SC-ACC-013**: Em 100% dos testes, uma conta nova somente é ativada com armazenamento pronto e compatível, associação fundadora, concessões mínimas e atribuição válida do único plano padrão, sem liberar direitos não definidos; no catálogo inicial, esse plano é o `FREE` sem cobrança.
+- **SC-ACC-014**: Em 100% dos testes de desconexão, reinicialização, concorrência e repetição, a mesma intenção produz no máximo uma conta e um processo, que prossegue ou é retomado sem depender da sessão original.

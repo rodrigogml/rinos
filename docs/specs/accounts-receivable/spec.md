@@ -30,6 +30,11 @@ Recebimentos podem ser totais ou parciais e devem preservar principal, descontos
 
 - Q: Qual é a abrangência da cobrança nesta primeira versão? → A: A feature deve somente registrar ações manuais, resultados, promessas, observações e próximos acompanhamentos. Avisos e notificações, comunicações externas e emissão de boleto, Pix de cobrança, link de pagamento por cartão ou outro título ou meio de cobrança ficam adiados para um MVP futuro e não terão seus contratos antecipados neste SDD.
 
+### Session 2026-07-24
+
+- Q: A desativação da pessoa devedora impede receber ou corrigir um direito já confirmado? → A: Não. Ela bloqueia novos vínculos e a confirmação de rascunhos, mas não invalida o direito constituído nem impede recebimento, correção, cobrança interna ou cancelamento. Substituir o devedor exige outra pessoa ativa.
+- Q: O fechamento impede cadastrar direito cujo vencimento já passou? → A: Não. Emissão, competência e vencimento são datas documentais e podem estar no intervalo fechado enquanto não reescreverem fato monetário protegido. O recebimento usa a data real do crédito, que deve estar aberta; efeito já fechado somente pode ser corrigido por reabertura autorizada ou compensação em data aberta.
+
 ## Interface Coverage
 
 | Superfície humana conhecida | Tipo | Atores | Cobertura | Comportamento funcional | Exclusões ou adiamentos |
@@ -181,10 +186,13 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **FR-AR-RCV-007**: Classificações DEVEM obedecer `financial-categories` e `financial-dimensions`, inclusive rateios, obrigatoriedades e proibições.
 - **FR-AR-RCV-008**: Contraparte DEVE referenciar pessoa do mesmo tenant e preservar apresentação histórica mínima suficiente para que alterações cadastrais não tornem o direito incompreensível.
 - **FR-AR-RCV-009**: Valor original, desconto, juros, multa, tarifa, imposto, retenção, honorário e outros componentes DEVEM permanecer distinguíveis e reconciliar com o valor vigente aplicável.
-- **FR-AR-RCV-010**: Rascunho PODERÁ ser salvo sem devedor, mas todo direito confirmado DEVE referenciar exatamente uma pessoa devedora apta do mesmo tenant.
+- **FR-AR-RCV-010**: Rascunho PODERÁ ser salvo sem devedor ou preservar devedor posteriormente desativado, mas todo direito confirmado DEVE referenciar exatamente uma pessoa devedora ativa do mesmo tenant.
 - **FR-AR-RCV-011**: Pessoa devedora NÃO DEVE precisar possuir papel de cliente ou outro papel de negócio, e sua associação ao direito NÃO DEVE conceder acesso, participação ou permissão.
 - **FR-AR-RCV-012**: Cadastro rápido de devedor DEVE aplicar integralmente `party-registration`, inclusive identidade, isolamento, validação, pesquisa prévia de possíveis duplicidades e autorizações próprias.
 - **FR-AR-RCV-013**: Cadastro rápido NÃO DEVE criar automaticamente papel comercial, meio de pagamento nem relacionamento adicional além da pessoa selecionável como devedora.
+- **FR-AR-RCV-014**: Desativação posterior da pessoa devedora NÃO DEVE invalidar direito confirmado nem impedir seu recebimento, acompanhamento, correção ou cancelamento conforme autorizações, dependências e datas financeiras aplicáveis.
+- **FR-AR-RCV-015**: Alteração de direito confirmado que substitua a pessoa devedora DEVE exigir outra pessoa ativa do mesmo tenant; correção que preserve a devedora já vinculada NÃO DEVE exigir sua reativação.
+- **FR-AR-RCV-016**: Emissão, competência ou vencimento igual ou anterior ao fechamento financeiro NÃO DEVE, isoladamente, impedir criação ou correção de direito sem efeito monetário protegido; a alteração DEVE permanecer auditada e não poderá reescrever recebimento ou lançamento fechado.
 
 ### Estados
 
@@ -217,6 +225,8 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **FR-AR-PAY-019**: Um depósito efetivo DEVE permanecer representado por um único lançamento financeiro no valor integral; alocações e componentes explicativos NÃO DEVEM criar novas movimentações na conta.
 - **FR-AR-PAY-020**: Confirmação DEVE exigir que cada unidade monetária do recebimento possua destinação explícita e que a soma de parcelas, componentes e créditos corresponda exatamente ao valor do lançamento financeiro.
 - **FR-AR-PAY-021**: Valor conscientemente mantido como crédito da contraparte DEVE permanecer disponível e rastreável para alocação ou devolução posterior, sem alterar silenciosamente sua natureza nem apagar a destinação original.
+- **FR-AR-PAY-022**: Recebimento DEVE usar a data em que a entrada foi efetivamente reconhecida, sem copiar automaticamente emissão, competência ou vencimento como data efetiva.
+- **FR-AR-PAY-023**: Recebimento de parcela vencida somente PODERÁ ser confirmado quando sua data efetiva estiver aberta; vencimento em intervalo fechado NÃO exige reabertura, mas alteração de efeito monetário já fechado exige reabertura autorizada ou compensação em data aberta.
 
 ### Cobrança
 
@@ -296,6 +306,8 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **SC-AR-016**: Em 100% das conclusões de crédito pendente, a confirmação preserva identidade e efeito monetário e cria somente as alocações validadas, sem duplicar saldo.
 - **SC-AR-017**: Em 100% dos recebimentos superiores aos saldos inicialmente selecionados, a confirmação exige rateio integral escolhido pelo usuário, reconcilia todas as destinações e mantém uma única movimentação financeira.
 - **SC-AR-018**: Em 100% das ações de cobrança desta versão, somente o histórico interno é atualizado, sem enviar notificação ou mensagem nem gerar título ou meio externo de cobrança.
+- **SC-AR-019**: Em 100% dos testes, devedor desativado bloqueia a confirmação de novo direito, mas não bloqueia recebimento, acompanhamento, correção ou cancelamento autorizado de direito anteriormente confirmado.
+- **SC-AR-020**: Em 100% dos testes, direito vencido em intervalo fechado pode ser cadastrado sem efeito no saldo e seu recebimento usa data efetiva aberta, sem retroceder automaticamente ao vencimento.
 
 ## Fora do Escopo
 

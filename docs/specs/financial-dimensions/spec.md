@@ -38,7 +38,7 @@ Um usuário autorizado cria no tenant um eixo analítico próprio, define sua id
 **Acceptance Scenarios**:
 
 1. **Given** usuário autorizado no tenant ativo, **When** cadastra dimensão personalizada válida, **Then** o sistema cria identidade estável exclusivamente daquele tenant.
-2. **Given** código de dimensão já utilizado no tenant, **When** usuário confirma novo cadastro, **Then** o sistema rejeita a duplicidade sem alterar a dimensão existente.
+2. **Given** nome normalizado de dimensão já utilizado no tenant, **When** usuário confirma novo cadastro, **Then** o sistema rejeita a duplicidade sem alterar a dimensão existente.
 3. **Given** dimensão ativa com valores ativos, **When** módulo consumidor solicita dimensões aplicáveis, **Then** recebe definição e valores compatíveis sem conhecer um tipo fixo como centro de custo.
 
 ---
@@ -54,7 +54,7 @@ Um usuário autorizado habilita uma dimensão cujo conjunto de valores é mantid
 **Acceptance Scenarios**:
 
 1. **Given** módulo que fornece dimensão e valores ativos, **When** usuário habilita a dimensão, **Then** os valores ficam selecionáveis sem serem copiados como cadastros independentes.
-2. **Given** valor fornecido por módulo, **When** usuário tenta alterar seu código ou identidade pelo financeiro, **Then** o sistema impede a alteração e orienta para o módulo responsável.
+2. **Given** valor fornecido por módulo, **When** usuário tenta alterar seu nome ou identidade pelo financeiro, **Then** o sistema impede a alteração e orienta para o módulo responsável.
 3. **Given** módulo indisponível ou desativado, **When** histórico é consultado, **Then** referências dimensionais existentes continuam identificáveis e novos usos seguem a política de indisponibilidade definida.
 
 ---
@@ -123,8 +123,8 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 
 ### Edge Cases
 
-- Dimensão e valor com códigos que diferem apenas por caixa, espaços ou pontuação não significativa.
-- Duas dimensões possuem valores com o mesmo nome ou código local.
+- Dimensão e valor com nomes que diferem apenas por caixa, acentuação ou espaços não significativos.
+- Duas dimensões possuem valores com o mesmo nome local.
 - Dimensão personalizada passa a ter equivalente fornecido por módulo.
 - Entidade que fornece valor dimensional é desativada, removida ou transferida de estado.
 - Módulo provedor fica temporariamente indisponível.
@@ -153,7 +153,7 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 
 ### Definição e Origem da Dimensão
 
-- **FR-FDIM-DEF-001**: Toda dimensão DEVE possuir código único normalizado no tenant, nome, descrição, estado, política padrão de aplicabilidade e origem.
+- **FR-FDIM-DEF-001**: Toda dimensão DEVE possuir nome apresentável e único normalizado no tenant, descrição, estado, política padrão de aplicabilidade e origem, sem código de negócio exposto ao usuário.
 - **FR-FDIM-DEF-002**: Origem DEVE distinguir dimensão `PERSONALIZADA`, cujos valores são administrados pelo tenant, e dimensão `FORNECIDA_POR_MÓDULO`, cujos valores referenciam entidades do módulo provedor.
 - **FR-FDIM-DEF-003**: Tenant DEVE poder criar dimensões personalizadas sem lista fechada de finalidades, desde que respeite o contrato categórico da feature.
 - **FR-FDIM-DEF-004**: Módulo provedor DEVE declarar chave estável da dimensão, identidade estável dos valores, nome apresentável, disponibilidade e regras de consulta no tenant.
@@ -164,12 +164,12 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 
 ### Valores Dimensionais
 
-- **FR-FDIM-VAL-001**: Valor de dimensão personalizada DEVE possuir código único normalizado dentro da dimensão, nome, descrição opcional, estado e vigência.
-- **FR-FDIM-VAL-002**: Valores de dimensões diferentes PODERÃO possuir o mesmo código ou nome sem compartilhar identidade.
+- **FR-FDIM-VAL-001**: Valor de dimensão personalizada DEVE possuir nome apresentável e único normalizado dentro da dimensão, descrição opcional, estado e vigência, sem código de negócio exposto ao usuário.
+- **FR-FDIM-VAL-002**: Valores de dimensões diferentes PODERÃO possuir o mesmo nome sem compartilhar identidade.
 - **FR-FDIM-VAL-003**: Valor fornecido por módulo DEVE referenciar uma única entidade do mesmo tenant e preservar identidade mesmo quando sua apresentação mudar.
-- **FR-FDIM-VAL-004**: Usuário autorizado DEVE poder pesquisar valores por dimensão, código, nome, estado, vigência, origem e estrutura.
+- **FR-FDIM-VAL-004**: Usuário autorizado DEVE poder pesquisar valores por dimensão, correspondência parcial de nome e descrição, estado, vigência, origem e estrutura.
 - **FR-FDIM-VAL-005**: Valor somente DEVE ser elegível quando dimensão e valor estiverem ativos, vigentes e disponíveis para o contexto consumidor.
-- **FR-FDIM-VAL-006**: Alteração de nome ou descrição NÃO DEVE reclassificar histórico; alteração incompatível de código ou significado depois do primeiro uso DEVE exigir versionamento ou substituição.
+- **FR-FDIM-VAL-006**: Alteração de nome ou descrição NÃO DEVE reclassificar histórico; alteração incompatível de significado depois do primeiro uso DEVE exigir versionamento ou substituição conforme o contrato da dimensão.
 - **FR-FDIM-VAL-007**: Valor não encontrado ou temporariamente indisponível no módulo provedor NÃO DEVE ser substituído silenciosamente por outro valor.
 
 ### Aplicabilidade por Categoria
@@ -267,8 +267,8 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 
 ### Pesquisa, Experiência e Acessibilidade
 
-- **FR-FDIM-UX-001**: Usuário autorizado DEVE poder pesquisar e filtrar dimensões por código, nome, origem, finalidade, política e estado.
-- **FR-FDIM-UX-002**: Usuário autorizado DEVE poder pesquisar valores por dimensão, código, nome, estado, vigência, substituto e estrutura.
+- **FR-FDIM-UX-001**: Usuário autorizado DEVE poder pesquisar dimensões por correspondência parcial de nome e descrição e filtrá-las por origem, finalidade, política e estado, sem depender de código ou identidade técnica.
+- **FR-FDIM-UX-002**: Usuário autorizado DEVE poder pesquisar valores por dimensão e correspondência parcial de nome e descrição e filtrá-los por estado, vigência, substituto e estrutura.
 - **FR-FDIM-UX-003**: Interface DEVE explicar a diferença entre categoria, dimensão, valor dimensional, nó de estrutura e campo livre.
 - **FR-FDIM-UX-004**: Configuração de aplicabilidade DEVE apresentar matriz categoria por dimensão, filtros e alteração em lote sem esconder regras específicas existentes.
 - **FR-FDIM-UX-005**: Editor de distribuição DEVE apresentar valor original, valor distribuído, diferença e políticas obrigatórias ou proibidas antes da confirmação.
@@ -306,7 +306,7 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 
 - **SC-FDIM-001**: Em 100% dos testes cruzados, dimensão, valor, regra, estrutura ou distribuição de um tenant não é consultado, alterado nem referenciado por outro tenant.
 - **SC-FDIM-002**: Usuários autorizados criam dimensão personalizada com dois valores em até 2 minutos durante testes de usabilidade.
-- **SC-FDIM-003**: Em 100% dos testes, códigos normalizados permanecem únicos no escopo correto sem impedir códigos iguais em dimensões distintas.
+- **SC-FDIM-003**: Em 100% dos testes, nomes normalizados permanecem únicos no escopo correto sem impedir nomes iguais em dimensões distintas, e nenhuma jornada comum exige código ou expõe identidade técnica.
 - **SC-FDIM-004**: Em 100% dos testes de fonte por módulo, valor referencia a entidade original sem permitir edição financeira de sua identidade ou atributos funcionais.
 - **SC-FDIM-005**: Em 100% dos testes por categoria, dimensão obrigatória ausente e dimensão proibida presente impedem confirmação, enquanto dimensão opcional aceita ausência ou preenchimento válido.
 - **SC-FDIM-006**: Em 100% das distribuições confirmáveis, componentes correspondem exatamente ao valor da parcela ou a diferença é identificada e a operação rejeitada.
@@ -314,7 +314,7 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 - **SC-FDIM-008**: Em 100% das estruturas testadas, ciclos e referências cruzadas são rejeitados e nós não são retornados como valores selecionáveis.
 - **SC-FDIM-009**: Em 100% dos testes, sugestão incompatível com política ou valor vigente não é aplicada silenciosamente.
 - **SC-FDIM-010**: Pelo menos 95% das pesquisas, matrizes de aplicabilidade e seleções comuns retornam resultado utilizável em até 2 segundos nas condições operacionais da primeira versão.
-- **SC-FDIM-011**: Em 100% dos testes concorrentes e de repetição técnica, cada operação confirmada produz no máximo um efeito e preserva códigos, somas, versões, hierarquias e substituições válidos.
+- **SC-FDIM-011**: Em 100% dos testes concorrentes e de repetição técnica, cada operação confirmada produz no máximo um efeito e preserva nomes únicos, somas, versões, hierarquias e substituições válidas.
 - **SC-FDIM-012**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
 - **SC-FDIM-013**: Em 100% dos testes multidimensionais, componentes preservam os cruzamentos informados, somam exatamente o valor da parcela e permitem totalização correta por dimensão isolada e por combinação.
 - **SC-FDIM-014**: Em 100% dos testes, sugestões históricas derivam apenas de distribuições confirmadas do mesmo tenant, respeitam regras e vigências atuais e nunca confirmam operação automaticamente.
