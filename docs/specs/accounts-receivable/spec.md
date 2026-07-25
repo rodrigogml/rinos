@@ -35,6 +35,10 @@ Recebimentos podem ser totais ou parciais e devem preservar principal, descontos
 - Q: A desativação da pessoa devedora impede receber ou corrigir um direito já confirmado? → A: Não. Ela bloqueia novos vínculos e a confirmação de rascunhos, mas não invalida o direito constituído nem impede recebimento, correção, cobrança interna ou cancelamento. Substituir o devedor exige outra pessoa ativa.
 - Q: O fechamento impede cadastrar direito cujo vencimento já passou? → A: Não. Emissão, competência e vencimento são datas documentais e podem estar no intervalo fechado enquanto não reescreverem fato monetário protegido. O recebimento usa a data real do crédito, que deve estar aberta; efeito já fechado somente pode ser corrigido por reabertura autorizada ou compensação em data aberta.
 
+### Session 2026-07-25
+
+- Q: Como juros, multa, descontos e acréscimos do recebimento devem ser categorizados e distribuídos dimensionalmente? → A: A tela possui campos próprios e o tenant mapeia cada tipo, contexto e direção para uma categoria. Esses componentes permanecem distinguíveis, mas ignoram as políticas dimensionais de suas categorias automáticas, herdam proporcionalmente as bases das categorias principais e integram a única matriz balanceada do recebimento.
+
 ## Interface Coverage
 
 | Superfície humana conhecida | Tipo | Atores | Cobertura | Comportamento funcional | Exclusões ou adiamentos |
@@ -210,7 +214,7 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **FR-AR-PAY-004**: Recebimento parcial DEVE reduzir somente o valor alocado e manter o restante aberto sem reescrever o valor original da parcela.
 - **FR-AR-PAY-005**: Um recebimento DEVE poder ser alocado a uma ou várias parcelas compatíveis, e cada parcela DEVE poder receber um ou vários recebimentos até seu saldo pendente ser integralmente quitado.
 - **FR-AR-PAY-006**: Principal, desconto, juros, multa, imposto, retenção, tarifa, honorário e diferença cambial DEVEM ser explicitados de modo que o crédito na conta e a redução do direito sejam reconciliáveis.
-- **FR-AR-PAY-007**: Componentes econômicos adicionais DEVEM possuir categorias e dimensões compatíveis quando produzirem efeitos financeiros próprios.
+- **FR-AR-PAY-007**: Componentes econômicos adicionais DEVEM possuir categorias resolvidas pelo mapeamento do tenant, mas NÃO DEVEM possuir rateio dimensional independente; devem herdar proporcionalmente as bases das categorias principais conforme `financial-transactions`.
 - **FR-AR-PAY-008**: Uma alocação DEVE identificar recebimento, parcela, valor aplicado e componentes explicativos, e a soma de todas as destinações DEVE reconciliar exatamente com o valor recebido antes da confirmação.
 - **FR-AR-PAY-009**: Um único recebimento somente PODERÁ abranger direitos do mesmo tenant, mesma moeda e mesma contraparte devedora; valores de devedores distintos DEVEM constituir recebimentos separados.
 - **FR-AR-PAY-010**: Confirmação em lote PODERÁ agrupar operações para conveniência, mas DEVE preservar recebimentos, validações, efeitos e resultados individualizáveis.
@@ -227,6 +231,9 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **FR-AR-PAY-021**: Valor conscientemente mantido como crédito da contraparte DEVE permanecer disponível e rastreável para alocação ou devolução posterior, sem alterar silenciosamente sua natureza nem apagar a destinação original.
 - **FR-AR-PAY-022**: Recebimento DEVE usar a data em que a entrada foi efetivamente reconhecida, sem copiar automaticamente emissão, competência ou vencimento como data efetiva.
 - **FR-AR-PAY-023**: Recebimento de parcela vencida somente PODERÁ ser confirmado quando sua data efetiva estiver aberta; vencimento em intervalo fechado NÃO exige reabertura, mas alteração de efeito monetário já fechado exige reabertura autorizada ou compensação em data aberta.
+- **FR-AR-PAY-024**: Interface de recebimento DEVE oferecer campos próprios para principal, juros, multa, desconto incondicional, desconto condicional e acréscimo, preservando cada valor e permitindo tipos canônicos adicionais do módulo.
+- **FR-AR-PAY-025**: Categoria de cada campo especial DEVE ser resolvida por configuração do tenant específica para contas a receber e direção de entrada; falta ou incompatibilidade DEVE bloquear confirmação sem descartar os valores preenchidos.
+- **FR-AR-PAY-026**: Alteração de qualquer campo que modifique o total DEVE recalcular automaticamente a distribuição percentual persistida e a matriz dimensional única do recebimento.
 
 ### Cobrança
 
@@ -281,6 +288,7 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **Recebimento**: reconhecimento de entrada efetiva em conta financeira, com valor, data, moeda, componentes e origem.
 - **Alocação de Recebimento**: distribuição explícita do valor recebido entre uma ou várias parcelas compatíveis.
 - **Destinação do Recebimento**: parcela do valor recebido atribuída pelo usuário a direito, componente econômico, crédito da contraparte ou outra finalidade válida, sem criar nova movimentação bancária.
+- **Componente Monetário do Recebimento**: valor tipado de principal, desconto, juros, multa, acréscimo, retenção, tarifa ou outro ajuste, categorizado separadamente e incluído na matriz dimensional única.
 - **Ação de Cobrança**: registro não financeiro de contato, tentativa, promessa, observação ou próximo acompanhamento.
 - **Origem do Direito**: identidade e contexto do processo manual ou modular que criou e controla o direito.
 - **Crédito Pendente de Identificação**: pré-lançamento de entrada que já compõe o saldo, mas ainda não possui informações suficientes para confirmar recebimento ou liquidar direitos.
@@ -308,6 +316,7 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - **SC-AR-018**: Em 100% das ações de cobrança desta versão, somente o histórico interno é atualizado, sem enviar notificação ou mensagem nem gerar título ou meio externo de cobrança.
 - **SC-AR-019**: Em 100% dos testes, devedor desativado bloqueia a confirmação de novo direito, mas não bloqueia recebimento, acompanhamento, correção ou cancelamento autorizado de direito anteriormente confirmado.
 - **SC-AR-020**: Em 100% dos testes, direito vencido em intervalo fechado pode ser cadastrado sem efeito no saldo e seu recebimento usa data efetiva aberta, sem retroceder automaticamente ao vencimento.
+- **SC-AR-021**: Em 100% dos recebimentos com campos especiais, categorias são resolvidas pela configuração do tenant, valores permanecem distinguíveis e a matriz única herda somente as políticas e bases do principal.
 
 ## Fora do Escopo
 

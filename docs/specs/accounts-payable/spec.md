@@ -35,6 +35,10 @@ Liquidações podem ser totais ou parciais e devem preservar principal, desconto
 - Q: O fechamento impede cadastrar obrigação cujo vencimento já passou? → A: Não. Emissão, competência e vencimento são datas documentais e podem estar no intervalo fechado enquanto não reescreverem fato monetário protegido. A liquidação usa a data real do pagamento, que deve estar aberta; efeito já fechado somente pode ser corrigido por reabertura autorizada ou compensação em data aberta.
 - Q: Como tratar saída maior que as obrigações liquidadas? → A: A movimentação integral permanece um único lançamento, e toda unidade monetária deve receber destinação explícita entre parcelas e componentes categorizados. O usuário pode classificar a diferença em categoria própria de crédito recuperável ou finalidade equivalente, mas isso não cria conta a receber, cadastro de adiantamento, saldo auxiliar nem controle automático contra a contraparte. Sem distribuição integral válida, a confirmação falha e eventual efeito já reconhecido permanece como pré-lançamento.
 
+### Session 2026-07-25
+
+- Q: Como juros, multa, descontos e acréscimos do pagamento devem ser categorizados e distribuídos dimensionalmente? → A: A tela possui campos próprios e o tenant mapeia cada tipo, contexto e direção para uma categoria. Esses componentes permanecem distinguíveis, mas ignoram as políticas dimensionais de suas categorias automáticas, herdam proporcionalmente as bases das categorias principais e integram a única matriz balanceada da liquidação.
+
 ## Interface Coverage
 
 | Superfície humana conhecida | Tipo | Atores | Cobertura | Comportamento funcional | Exclusões ou adiamentos |
@@ -209,7 +213,7 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **FR-AP-PAY-004**: Pagamento parcial DEVE reduzir somente o valor alocado e manter o restante aberto sem reescrever o valor original da parcela.
 - **FR-AP-PAY-005**: Uma liquidação DEVE poder ser alocada a uma ou várias parcelas, e cada parcela DEVE poder receber uma ou várias liquidações até seu saldo pendente ser integralmente quitado.
 - **FR-AP-PAY-006**: Principal, desconto, juros, multa, imposto, tarifa, honorário e diferença cambial DEVEM ser explicitados de modo que o débito na conta e a redução da obrigação sejam reconciliáveis.
-- **FR-AP-PAY-007**: Componentes econômicos adicionais DEVEM possuir categorias e dimensões próprias quando diferirem da classificação do principal.
+- **FR-AP-PAY-007**: Componentes econômicos adicionais DEVEM possuir categorias resolvidas pelo mapeamento do tenant, mas NÃO DEVEM possuir rateio dimensional independente; devem herdar proporcionalmente as bases das categorias principais conforme `financial-transactions`.
 - **FR-AP-PAY-008**: Pagamento em moeda diferente DEVE preservar valor liquidado na moeda da obrigação e memória de conversão do valor efetivado na moeda da conta.
 - **FR-AP-PAY-009**: Pagamento excedente NÃO DEVE ser absorvido, descartado nem presumido silenciosamente; a confirmação DEVE exigir sua destinação explícita em componente categorizado do mesmo lançamento.
 - **FR-AP-PAY-010**: Instrução de pagamento serve como memória e orientação e NÃO DEVE ser tratada como prova de execução externa.
@@ -226,6 +230,9 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **FR-AP-PAY-021**: A soma das alocações em obrigações e dos componentes categorizados DEVE corresponder exatamente ao valor integral da saída antes da confirmação.
 - **FR-AP-PAY-022**: Usuário PODERÁ destinar diferença a categoria comum criada ou escolhida para crédito recuperável, adiantamento ou finalidade equivalente; essa classificação NÃO DEVE criar direito a receber, cadastro especializado, saldo auxiliar, compensação futura automática nem controle por contraparte.
 - **FR-AP-PAY-023**: Se a distribuição integral for inválida, a confirmação DEVE falhar atomicamente; quando a saída já existir como pré-lançamento, identidade, estado e efeito anterior DEVEM ser preservados conforme `financial-transactions`.
+- **FR-AP-PAY-024**: Interface de liquidação DEVE oferecer campos próprios para principal, juros, multa, desconto incondicional, desconto condicional e acréscimo, preservando cada valor e permitindo tipos canônicos adicionais do módulo.
+- **FR-AP-PAY-025**: Categoria de cada campo especial DEVE ser resolvida por configuração do tenant específica para contas a pagar e direção de saída; falta ou incompatibilidade DEVE bloquear confirmação sem descartar os valores preenchidos.
+- **FR-AP-PAY-026**: Alteração de qualquer campo que modifique o total DEVE recalcular automaticamente a distribuição percentual persistida e a matriz dimensional única da liquidação.
 
 ### Agenda, Consulta e Operações em Lote
 
@@ -289,7 +296,7 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **Obrigação a Pagar**: compromisso de identidade estável que reúne contraparte, moeda, valor, datas, origem, estado e parcelas.
 - **Pessoa Credora**: contraparte obrigatória da obrigação confirmada, cadastrada no tenant sem necessidade de papel comercial e preservada por referência e apresentação histórica mínima.
 - **Parcela a Pagar**: parte exigível da obrigação, com sequência, vencimento, componentes, classificação, estado e saldo pendente.
-- **Componente Monetário**: parcela explicativa de principal, desconto, juros, multa, imposto, tarifa, honorário ou outro ajuste.
+- **Componente Monetário**: valor tipado de principal, desconto, juros, multa, acréscimo, imposto, tarifa, honorário ou outro ajuste, categorizado separadamente e incluído na matriz dimensional única da liquidação.
 - **Liquidação**: reconhecimento de pagamento efetivo, com conta, data, moeda, valor debitado, componentes e efeito financeiro correspondente; em pagamento externo, possui somente a saída da conta controlada.
 - **Alocação de Liquidação**: parte da liquidação atribuída ao saldo de uma parcela específica.
 - **Instrução Preservada de Pagamento**: snapshot da versão do dado indicado para executar o pagamento fora do sistema.
@@ -316,6 +323,7 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - **SC-AP-015**: Em 100% dos testes, credor desativado bloqueia a confirmação de nova obrigação, mas não bloqueia liquidação, correção ou cancelamento autorizado de obrigação anteriormente confirmada.
 - **SC-AP-016**: Em 100% dos testes, obrigação vencida em intervalo fechado pode ser cadastrada sem efeito no saldo e sua liquidação usa data efetiva aberta, sem retroceder automaticamente ao vencimento.
 - **SC-AP-017**: Em 100% dos pagamentos excedentes testados, o valor integral produz uma única saída, cada unidade monetária possui destinação explícita e a categoria de crédito recuperável não cria cadastro, saldo ou controle automático contra a contraparte.
+- **SC-AP-018**: Em 100% das liquidações com campos especiais, categorias são resolvidas pela configuração do tenant, valores permanecem distinguíveis e a matriz única herda somente as políticas e bases do principal.
 
 ## Fora do Escopo
 

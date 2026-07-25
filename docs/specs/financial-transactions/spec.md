@@ -36,6 +36,10 @@ O lançamento pode ser criado manualmente ou originado por outro módulo. Rascun
 - Q: Uma contraparte desativada pode permanecer em lançamento já efetivado ou em vínculo econômico previamente constituído? → A: Sim. Ela não pode ser escolhida para novo vínculo nem confirmar rascunho manual, mas permanece nos fatos históricos e não bloqueia efeito financeiro solicitado por obrigação, direito ou outro relacionamento constituído antes da desativação.
 - Q: Classificar uma parcela como crédito recuperável cria controle especializado contra a contraparte? → A: Não. É uma categoria financeira comum, sujeita às mesmas regras e dimensões, que explica a finalidade do valor sem criar conta a receber, cadastro de adiantamento, saldo auxiliar ou compensação automática.
 
+### Session 2026-07-25
+
+- Q: Como representar principal, juros, multa, descontos e acréscimos sem exigir que o usuário classifique e distribua cada campo separadamente? → A: O lançamento preserva componentes econômicos tipados. O principal usa uma ou várias categorias escolhidas para o fato; campos especiais usam categorias configuradas no banco do tenant por tipo, contexto e direção. A distribuição dimensional é informada uma única vez no lançamento, mas cada dimensão fica limitada às parcelas principais em que é aplicável; componentes especiais ignoram as políticas dimensionais de suas categorias automáticas, herdam proporcionalmente as bases principais e integram uma única matriz balanceada com arredondamento global.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Registrar entrada ou saída efetivada (Priority: P1)
@@ -58,18 +62,19 @@ Um usuário autorizado prepara um lançamento manual, informa conta, direção, 
 
 ### User Story 2 - Classificar e ratear o lançamento (Priority: P1)
 
-Um usuário autorizado divide o valor entre uma ou várias categorias e informa distribuições dimensionais conjuntas exigidas por cada parcela.
+Um usuário autorizado divide o principal entre uma ou várias categorias, informa uma única distribuição dimensional no lançamento e permite que o sistema classifique e distribua campos especiais conforme as configurações do tenant.
 
 **Why this priority**: Um saldo sem finalidade econômica e perspectiva analítica não atende aos controles e relatórios que motivam o módulo financeiro.
 
-**Independent Test**: Dividir uma saída entre duas categorias com políticas dimensionais distintas e comprovar soma exata, validação por parcela e preservação dos cruzamentos dimensionais.
+**Independent Test**: Dividir o principal em 20% numa categoria aplicável a projeto e 80% numa categoria aplicável a departamento, acrescentar juros e comprovar categorias, bases ajustadas, matriz e total exatos.
 
 **Acceptance Scenarios**:
 
-1. **Given** lançamento com duas parcelas de categoria, **When** a soma corresponde ao valor e cada distribuição é válida, **Then** a confirmação preserva parcelas e componentes dimensionais.
+1. **Given** lançamento com duas parcelas principais de categoria, **When** a soma e as bases dimensionais são válidas, **Then** a confirmação preserva parcelas, componentes especiais e matriz dimensional balanceada.
 2. **Given** diferença monetária entre lançamento e parcelas, **When** confirmação é solicitada, **Then** o sistema rejeita a operação e informa a diferença.
-3. **Given** dimensão obrigatória ausente ou dimensão proibida presente em uma parcela, **When** confirmação de rascunho é solicitada, **Then** ele permanece rascunho sem efeito até a correção.
+3. **Given** dimensão obrigatória ausente ou valor acima da base aplicável, **When** confirmação de rascunho é solicitada, **Then** ele permanece rascunho sem efeito até a correção.
 4. **Given** a mesma inconsistência em pré-lançamento que já afeta saldo, **When** sua confirmação é rejeitada, **Then** ele permanece pré-lançamento com exatamente o efeito anterior, sem classificação parcial nem movimentação adicional.
+5. **Given** campo especial sem categoria válida configurada, **When** confirmação é solicitada, **Then** o sistema preserva o preenchimento, identifica a configuração faltante e não confirma conteúdo parcial.
 
 ---
 
@@ -218,11 +223,11 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 ### Categorias e Dimensões
 
 - **FR-FTR-CLASS-001**: Todo lançamento confirmado que represente fato econômico DEVE estar integralmente classificado por categorias, sem parcela monetária implícita ou temporariamente não classificada. Somente fatos estruturais validados que movam ou substituam principal sem gerar resultado — pontas de `financial-transfers` e componentes de principal de reparcelamento de cartão — DEVEM dispensar categorias e dimensões.
-- **FR-FTR-CLASS-002**: Lançamento DEVE permitir uma ou várias parcelas de categoria, cada uma com categoria e valor próprios na moeda da conta.
-- **FR-FTR-CLASS-003**: Soma de todas as parcelas de categoria DEVE corresponder exatamente ao valor total do lançamento, sem diferença oculta de arredondamento.
+- **FR-FTR-CLASS-002**: Lançamento DEVE permitir que o principal seja composto por uma ou várias parcelas de categoria, cada uma com categoria e valor próprios na moeda da conta.
+- **FR-FTR-CLASS-003**: Soma algébrica das parcelas principais e dos componentes especiais categorizados DEVE corresponder exatamente ao valor líquido total do lançamento, sem diferença oculta de arredondamento.
 - **FR-FTR-CLASS-004**: Direção do lançamento DEVE ser compatível com cada categoria, exceto em estorno vinculado que preserve a classificação original.
-- **FR-FTR-CLASS-005**: Cada parcela DEVE ser validada separadamente contra regras dimensionais vigentes da categoria na data da confirmação.
-- **FR-FTR-CLASS-006**: Distribuição dimensional conjunta DEVE preservar montantes exatos, combinações e no máximo um valor por dimensão em cada componente.
+- **FR-FTR-CLASS-005**: Cada parcela principal DEVE ser validada contra as regras dimensionais atuais de sua categoria para formar a base máxima de cada dimensão no instante da confirmação.
+- **FR-FTR-CLASS-006**: Distribuição dimensional DEVE ser operada uma única vez no lançamento e preservar uma matriz monetária balanceada com montantes exatos, bases aplicáveis, combinações e no máximo um valor por dimensão em cada componente.
 - **FR-FTR-CLASS-007**: Sugestões explícitas ou históricas PODERÃO preencher uma proposta, mas NÃO DEVERÃO confirmar nem modificar classificações sem revisão permitida pelo contexto.
 - **FR-FTR-CLASS-008**: Confirmação e revisão DEVEM preservar as identidades de categorias, dimensões e valores efetivamente usados; categorias são validadas pelo estado atual no instante da confirmação e NÃO POSSUEM versão semântica histórica própria.
 - **FR-FTR-CLASS-009**: Alteração ou desativação cadastral posterior NÃO DEVE reclassificar lançamento sem ação autorizada e auditada sobre ele.
@@ -231,6 +236,14 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-CLASS-012**: Dispensa de classificação DEVE decorrer exclusivamente de origem estrutural validada de transferência ou reparcelamento de cartão e NÃO DEVE ser selecionável, atribuível ou simulável por lançamento manual ou por módulo sem esse contrato.
 - **FR-FTR-CLASS-013**: Em reparcelamento de cartão, neutralização e reapresentação do principal DEVEM possuir valores correspondentes e vínculo atômico; qualquer diferença econômica DEVE ser explicitada em lançamentos categorizados de juros, multas, impostos, tarifas ou outros encargos.
 - **FR-FTR-CLASS-014**: Nome, finalidade ou uso de categoria como crédito recuperável, adiantamento ou equivalente NÃO DEVE criar por si só direito, obrigação, saldo auxiliar, controle por contraparte nem comportamento privilegiado fora do contrato comum de categorias.
+- **FR-FTR-CLASS-015**: Lançamento DEVE poder preservar componentes tipados de principal, juros, multa, desconto incondicional, desconto condicional e acréscimo, além de outros tipos canônicos fornecidos por módulo, mantendo valor, sinal, categoria, origem e efeito explicáveis.
+- **FR-FTR-CLASS-016**: Campo especial preenchido DEVE resolver sua categoria por configuração armazenada no banco do tenant e identificada ao menos por tipo do componente, contexto e direção; principal NÃO DEVE usar categoria global e permanece classificado pelas categorias próprias do fato.
+- **FR-FTR-CLASS-017**: Ausência, inatividade ou incompatibilidade da categoria configurada para campo especial DEVE preservar o conteúdo informado, bloquear a confirmação e indicar a configuração a corrigir, sem escolher categoria silenciosamente.
+- **FR-FTR-CLASS-018**: Categoria automática de campo especial DEVE classificar sua finalidade econômica, mas NÃO DEVE aplicar políticas dimensionais próprias nesse vínculo; essas políticas continuam válidas quando a categoria for usada como principal ou classificação independente.
+- **FR-FTR-CLASS-019**: Cada componente especial DEVE ser repartido proporcionalmente entre as parcelas principais para ajustar as bases dimensionais, preservando seu valor econômico total e sua categoria automática.
+- **FR-FTR-CLASS-020**: Para cada dimensão, a soma distribuível DEVE limitar-se às parcelas principais em que ela seja obrigatória ou opcionalmente escolhida, ajustadas pelos componentes especiais; valores de dimensões independentes NÃO DEVEM ser somados entre si.
+- **FR-FTR-CLASS-021**: Distribuição percentual DEVE persistir modo, percentuais, ordem, total de cálculo e montantes resultantes e ser recalculada automaticamente quando qualquer componente alterar o total.
+- **FR-FTR-CLASS-022**: Matriz dimensional DEVE ser calculada uma única vez sobre o conjunto do lançamento pelo método determinístico dos maiores resíduos, conciliando total líquido, componentes, proporções principais e bases dimensionais.
 
 ### Contraparte e Memória Histórica
 
@@ -317,17 +330,20 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **FR-FTR-SEC-008**: Histórico de revisão DEVE preservar integralmente valores anteriores e posteriores de todos os campos financeiros, classificações, datas, contraparte, origem e estado, sem depender somente de mensagem textual de auditoria.
 - **FR-FTR-SEC-006**: Logs, erros, métricas e auditorias comuns NÃO DEVEM expor valores, saldos, dados pessoais, classificações ou referências além da finalidade e autorização necessárias.
 - **FR-FTR-SEC-007**: Usuário sem acesso a valor, saldo, contraparte ou origem NÃO DEVE inferi-los por totais, contagens, filtros, mensagens ou vínculos.
+- **FR-FTR-SEC-009**: Consultar e administrar mapeamentos de componentes especiais DEVEM possuir chaves de acesso específicas do tenant e NÃO DEVEM decorrer apenas da permissão de criar ou confirmar lançamento.
+- **FR-FTR-SEC-010**: Criação, alteração, remoção ou uso negado de mapeamento de componente DEVE registrar ator, tenant, instante, tipo, contexto, direção, categoria anterior e nova, motivo e resultado.
 
 ### Experiência e Acessibilidade
 
-- **FR-FTR-UX-001**: Formulário DEVE apresentar claramente conta, direção, valor, moeda, data de efetivação, descrição, contraparte, parcelas de categoria, dimensões e origem antes da confirmação.
-- **FR-FTR-UX-002**: Antes de confirmar, usuário DEVE visualizar efeito no saldo, diferenças de classificação, regras dimensionais e memória de conversão aplicável.
+- **FR-FTR-UX-001**: Formulário DEVE apresentar claramente conta, direção, moeda, data de efetivação, descrição, contraparte, principal, juros, multa, descontos, acréscimos, total, categorias, distribuição dimensional e origem antes da confirmação.
+- **FR-FTR-UX-002**: Antes de confirmar, usuário DEVE visualizar efeito no saldo, composição algébrica, categorias resolvidas, bases dimensionais, arredondamentos e memória de conversão aplicável.
 - **FR-FTR-UX-008**: Pré-lançamento DEVE exibir sinalização persistente de que afeta saldo, mas ainda exige conclusão, e listar os dados pendentes sem depender exclusivamente de cor.
 - **FR-FTR-UX-003**: Sugestões DEVEM permanecer distinguíveis de dados confirmados e explicar sua origem sem automatizar consentimento.
 - **FR-FTR-UX-004**: Erros de soma, precisão, vigência, autorização, fechamento ou repetição DEVEM indicar o campo ou parcela afetada e como regularizar, sem revelar dados protegidos.
 - **FR-FTR-UX-005**: Revisão, cancelamento, estorno e correção DEVEM apresentar conteúdo atual, alteração proposta, efeito nos saldos, datas e dependências antes da confirmação.
 - **FR-FTR-UX-006**: Direção, estado, valor negativo derivado, estorno e inconsistência NÃO DEVEM depender exclusivamente de cor.
 - **FR-FTR-UX-007**: Jornadas principais DEVEM ser realizáveis por teclado e tecnologias assistivas, inclusive edição de parcelas e distribuições.
+- **FR-FTR-UX-009**: Administração do tenant DEVE apresentar mapeamentos de campos especiais por tipo, contexto e direção, identificar categorias ausentes ou inativas e permitir chegar à correção a partir do erro de confirmação quando o usuário possuir autorização.
 
 ### Decisões de Infraestrutura Auditáveis
 
@@ -345,7 +361,10 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **Lançamento Financeiro**: fato monetário de entrada ou saída em uma conta, com identidade técnica estável, conteúdo vigente, histórico integral de revisões, valor, moeda, datas, classificação, origem e estado; torna-se imutável quando sua data é bloqueada.
 - **Revisão de Lançamento**: versão histórica completa que preserva conteúdo anterior e novo, motivo, autoria, instante e efeito da alteração permitida.
 - **Parcela de Categoria**: parte monetária do lançamento associada a uma categoria e validada independentemente.
-- **Componente Dimensional**: parte de uma parcela que preserva combinação conjunta de valores dimensionais.
+- **Componente Econômico Tipado**: valor algébrico de principal, juros, multa, desconto, acréscimo ou outra finalidade canônica preservada no lançamento.
+- **Mapeamento de Componente do Tenant**: configuração no banco do tenant que associa tipo, contexto e direção de campo especial a uma categoria comum.
+- **Base Dimensional do Lançamento**: soma das parcelas principais em que uma dimensão é aplicável, ajustada proporcionalmente pelos componentes especiais.
+- **Componente Dimensional**: célula da matriz balanceada que preserva montante, base e combinação conjunta de valores dimensionais.
 - **Contraparte do Lançamento**: referência opcional à pessoa envolvida e apresentação histórica mínima necessária.
 - **Memória de Conversão**: evidência do valor originalmente denominado em outra moeda e de como se tornou o valor efetivado.
 - **Origem do Lançamento**: referência estável ao usuário ou evento de módulo que solicitou o efeito financeiro.
@@ -361,8 +380,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **SC-FTR-002**: Em 100% das confirmações válidas, o lançamento possui exatamente um efeito monetário: a confirmação direta o produz uma vez e a confirmação de pré-lançamento preserva o efeito existente; em qualquer falha, nenhum efeito parcial adicional permanece.
 - **SC-FTR-003**: Em 100% das consultas testadas, o saldo é reproduzível pela abertura, pelos pré-lançamentos e pelos lançamentos confirmados até a referência solicitada.
 - **SC-FTR-004**: Em 100% dos testes, rascunhos e eventos futuros não alteram o saldo atual, enquanto pré-lançamentos já efetivados o alteram e permanecem identificáveis como pendentes.
-- **SC-FTR-005**: Em 100% dos testes monetários, valores respeitam a precisão da moeda e parcelas e distribuições exigidas somam exatamente o montante aplicável.
-- **SC-FTR-006**: Em 100% dos testes dimensionais, regras obrigatórias, opcionais e proibidas são avaliadas por parcela sem perder cruzamentos.
+- **SC-FTR-005**: Em 100% dos testes monetários, principal, componentes especiais, categorias, matriz e efeito na conta reconciliam exatamente na precisão da moeda.
+- **SC-FTR-006**: Em 100% dos testes dimensionais, regras são avaliadas nas parcelas principais, categorias automáticas não impõem dimensões próprias e cada base máxima é respeitada sem perder cruzamentos.
 - **SC-FTR-007**: Em 100% dos testes, revisão ou cancelamento em data aberta preserva identidade e histórico completo e recalcula saldos; fato em data bloqueada permanece imutável e somente aceita compensação rastreável.
 - **SC-FTR-008**: Em 100% das repetições equivalentes, no máximo um lançamento é produzido; conteúdo divergente com a mesma origem é rejeitado.
 - **SC-FTR-009**: Em 100% dos testes multimoeda, somente a moeda da conta afeta saldo e a memória original explica deterministicamente a conversão confirmada.
@@ -379,6 +398,8 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - **SC-FTR-020**: Em 100% das tentativas de avanço do fechamento, a existência de rascunho ou pré-lançamento dentro do limite proposto bloqueia a operação sem alterar o fechamento vigente.
 - **SC-FTR-021**: Em 100% das confirmações falhas, recusadas ou abandonadas, rascunho permanece sem efeito e pré-lançamento preserva exatamente seu efeito anterior, sem transição ou conteúdo parcial.
 - **SC-FTR-022**: Em 100% dos testes, contraparte desativada bloqueia novo vínculo manual, permanece identificável em fatos existentes e não bloqueia, isoladamente, efeito solicitado por relacionamento previamente constituído.
+- **SC-FTR-023**: Em 100% dos campos especiais preenchidos, a categoria é resolvida pela configuração válida do tenant ou a confirmação é bloqueada sem perda de dados nem fallback silencioso.
+- **SC-FTR-024**: Em 100% dos recálculos percentuais, alteração do total reaplica a intenção persistida e produz a mesma matriz balanceada para as mesmas entradas e ordem, sem diferenças de arredondamento.
 
 ## Fora do Escopo
 

@@ -32,6 +32,10 @@ As categorias devem permanecer estáveis e reutilizáveis entre lançamentos man
 - Q: Inativar uma categoria deve impedir a liquidação, correção ou reversão de documento já confirmado que a utilizou? → A: Não. A inativação impede novas classificações, inclusive confirmação de rascunhos, pré-lançamentos e propostas recorrentes ainda não materializadas, mas a categoria original continua válida quando uma operação explicitamente vinculada liquida, corrige ou estorna um fato já confirmado. A substituta apenas orienta novos usos e nunca é aplicada automaticamente.
 - Q: Categorias precisam ser habilitadas individualmente em cada contexto de uso? → A: Não. Categoria ativa fica disponível por padrão em todos os contextos economicamente compatíveis, e o tenant registra apenas proibições específicas. Cada módulo conserva suas restrições funcionais; novos contextos compatíveis tornam-se utilizáveis sem manutenção em massa, e mudanças afetam somente novas classificações e confirmações.
 
+### Session 2026-07-25
+
+- Q: Como as políticas dimensionais das categorias se aplicam quando o lançamento possui várias categorias principais e categorias automáticas para juros, multa, desconto ou acréscimo? → A: Cada parcela principal delimita a base das dimensões obrigatórias ou opcionais nela aplicáveis. Categorias automáticas dos campos especiais classificam economicamente esses valores, mas suas próprias políticas dimensionais são ignoradas nesse uso; os componentes são repartidos proporcionalmente pelas parcelas principais e integram uma única matriz balanceada do lançamento.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Cadastrar categoria financeira (Priority: P1)
@@ -190,18 +194,20 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **FR-FCAT-ALLOC-001**: Contrato da categoria DEVE permitir que um lançamento futuro seja classificado em uma ou várias parcelas de categoria.
 - **FR-FCAT-ALLOC-002**: Cada parcela futura DEVE possuir valor na moeda do lançamento e referência a uma única categoria elegível.
 - **FR-FCAT-ALLOC-003**: Soma das parcelas de categoria DEVE corresponder exatamente ao valor classificado após aplicar a política monetária e de arredondamento da futura feature de lançamentos.
-- **FR-FCAT-ALLOC-004**: Dimensões analíticas, como centro de custo, departamento, projeto, unidade, contrato ou finalidade gerencial, DEVEM permanecer independentes das parcelas de categoria e poder classificá-las conforme feature própria.
+- **FR-FCAT-ALLOC-004**: Dimensões analíticas DEVEM permanecer independentes da classificação econômica, mas as parcelas principais de categoria DEVEM delimitar as bases monetárias em que cada dimensão é aplicável.
 - **FR-FCAT-ALLOC-005**: Sugestão ou distribuição analítica padrão associada futuramente a categoria DEVE ser tratada como valor inicial revisável, salvo quando regra do contexto consumidor a tornar obrigatória.
 - **FR-FCAT-ALLOC-006**: Alterar sugestão analítica futura NÃO DEVE reclassificar lançamentos existentes.
 - **FR-FCAT-ALLOC-007**: Cada categoria DEVE poder declarar, para cada dimensão ativa e aplicável do tenant, a política `OBRIGATÓRIA`, `OPCIONAL` ou `PROIBIDA`.
-- **FR-FCAT-ALLOC-008**: Política `OBRIGATÓRIA` DEVE impedir confirmação de parcela futura da categoria sem valor ou distribuição válida naquela dimensão.
-- **FR-FCAT-ALLOC-009**: Política `OPCIONAL` DEVE aceitar ausência ou preenchimento válido da dimensão sem criar valor implícito.
-- **FR-FCAT-ALLOC-010**: Política `PROIBIDA` DEVE impedir que a parcela futura da categoria carregue valor naquela dimensão, inclusive por preenchimento padrão ou automação.
-- **FR-FCAT-ALLOC-011**: A política DEVE ser validada por parcela de categoria; em um mesmo lançamento dividido, uma categoria poderá exigir dimensão que outra torne opcional ou proibida.
+- **FR-FCAT-ALLOC-008**: Política `OBRIGATÓRIA` na categoria principal DEVE incluir integralmente sua parcela na base da dimensão e impedir confirmação sem distribuição válida.
+- **FR-FCAT-ALLOC-009**: Política `OPCIONAL` na categoria principal DEVE permitir que sua parcela seja integralmente incluída ou omitida da base da dimensão, sem preenchimento implícito.
+- **FR-FCAT-ALLOC-010**: Política `PROIBIDA` na categoria principal DEVE excluir sua parcela da base da dimensão, inclusive diante de preenchimento padrão ou automação.
+- **FR-FCAT-ALLOC-011**: A política DEVE ser avaliada por parcela principal para formar a base máxima de cada dimensão; categorias principais distintas PODERÃO contribuir para dimensões diferentes dentro do mesmo lançamento.
 - **FR-FCAT-ALLOC-012**: Dimensão recém-criada DEVE aplicar sua política padrão às categorias sem regra específica, e usuário autorizado DEVE poder revisar e sobrescrever essa política por categoria.
 - **FR-FCAT-ALLOC-013**: Regra específica da categoria DEVE prevalecer sobre a política padrão da dimensão, sem impedir que o contexto consumidor aplique restrição adicional expressamente definida em sua própria feature.
 - **FR-FCAT-ALLOC-014**: Alteração de política dimensional DEVE passar a valer para confirmações posteriores, inclusive de rascunhos, pré-lançamentos ou operações com data financeira retroativa, e NÃO DEVE modificar distribuições já confirmadas.
 - **FR-FCAT-ALLOC-015**: Dimensão desativada ou indisponível NÃO DEVE permitir nova confirmação quando ainda for obrigatória para a categoria; a inconsistência DEVE ser resolvida explicitamente antes do uso.
+- **FR-FCAT-ALLOC-016**: Categoria usada automaticamente para juros, multa, desconto incondicional, desconto condicional, acréscimo ou outro componente especial NÃO DEVE aplicar suas políticas dimensionais nesse vínculo; o componente DEVE herdar proporcionalmente as bases formadas pelas categorias principais.
+- **FR-FCAT-ALLOC-017**: A exceção dos componentes especiais NÃO DEVE alterar as políticas normais da categoria quando ela for usada como parcela principal ou classificação independente em outro lançamento.
 
 ### Ciclo de Vida e Versionamento
 
@@ -267,7 +273,7 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **Substituição de Categoria**: orientação auditável de uma categoria inativa para outra ativa em novos usos, sem reclassificação automática.
 - **Parcela de Categoria**: futura parte monetária de um lançamento atribuída a uma categoria; seu ciclo de vida pertence a `financial-transactions`.
 - **Dimensão Analítica**: eixo independente de análise, como centro de custo, projeto ou departamento, cujo cadastro, valores e alocação pertencem a `financial-dimensions`.
-- **Regra Dimensional da Categoria**: política versionada que torna uma dimensão obrigatória, opcional ou proibida para parcelas de determinada categoria.
+- **Regra Dimensional da Categoria**: política atual que torna uma dimensão obrigatória, opcional ou proibida e, em parcelas principais, determina sua participação na base dimensional.
 - **Mapeamento Contábil**: associação futura, versionada e contextual entre classificações financeiras e regras de escrituração.
 
 ## Success Criteria
@@ -287,8 +293,8 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **SC-FCAT-011**: Pelo menos 95% das pesquisas e seleções comuns retornam resultado utilizável em até 2 segundos nas condições operacionais definidas para a primeira versão.
 - **SC-FCAT-012**: Em 100% dos testes concorrentes e de repetição técnica, cada operação confirmada produz no máximo um efeito e preserva nomes únicos, versões de estruturas, hierarquias e substituições válidas.
 - **SC-FCAT-013**: Todas as jornadas principais podem ser concluídas apenas por teclado e sem bloqueios críticos para tecnologias assistivas.
-- **SC-FCAT-014**: Em 100% dos testes dimensionais, parcela de categoria sem dimensão obrigatória ou com dimensão proibida é rejeitada, enquanto dimensão opcional aceita ausência ou preenchimento válido.
-- **SC-FCAT-015**: Em 100% dos lançamentos simulados com várias categorias, as regras dimensionais são avaliadas separadamente para cada parcela sem preencher ou remover valores silenciosamente.
+- **SC-FCAT-014**: Em 100% dos testes dimensionais, parcela principal obrigatória integra a base e exige distribuição, parcela proibida fica excluída e parcela opcional é incluída ou omitida explicitamente.
+- **SC-FCAT-015**: Em 100% dos lançamentos com várias categorias principais, cada dimensão fica limitada à soma das parcelas em que é aplicável, sem preencher ou remover valores silenciosamente.
 - **SC-FCAT-016**: Em 100% dos testes, natureza econômica e direção monetária são validadas independentemente, e estorno vinculado preserva a natureza original ao inverter a direção.
 - **SC-FCAT-017**: Em 100% dos testes, uma categoria aparece no máximo uma vez por versão de estrutura, pode ocupar posições diferentes em estruturas distintas e existe exatamente uma estrutura principal quando há estruturas ativas.
 - **SC-FCAT-018**: Em 100% dos testes com categorias comuns, inclusive categorias nomeadas como crédito, adiantamento, correção ou transferência, seus atributos apenas classificam e validam compatibilidade, sem criar ou controlar objeto funcional nem produzir efeito monetário por si próprios.
@@ -296,6 +302,7 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - **SC-FCAT-020**: Em 100% dos testes, a natureza econômica torna-se imutável após o primeiro uso confirmado, enquanto mudanças operacionais posteriores afetam somente novas confirmações e não invalidam operações existentes.
 - **SC-FCAT-021**: Em 100% dos testes com categoria inativa, fatos novos e propostas não materializadas são bloqueados, enquanto liquidação, correção e estorno explicitamente vinculados ao fato confirmado preservam a categoria original sem substituição automática.
 - **SC-FCAT-022**: Em 100% dos testes contextuais, categoria ativa e compatível fica disponível sem habilitação individual, proibição explícita impede somente novos usos e restrição do módulo consumidor continua prevalecendo.
+- **SC-FCAT-023**: Em 100% dos testes com componentes especiais, sua categoria automática preserva a finalidade econômica, ignora políticas dimensionais próprias somente nesse vínculo e herda proporcionalmente as bases das categorias principais.
 
 ## Fora do Escopo
 
