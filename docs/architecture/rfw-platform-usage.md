@@ -104,10 +104,16 @@ Toda evolução aprovada do RFW deve:
 1. seguir as instruções do próprio submódulo;
 2. preservar compatibilidade ou documentar a ruptura;
 3. incluir testes proporcionais;
-4. atualizar documentação em português e traduções aplicáveis;
-5. incluir ou atualizar laboratório no showroom;
-6. validar build e, quando visual, executar inspeção no showroom;
-7. ser commitada e publicada no repositório do RFW antes de o Rinos atualizar seu ponteiro.
+4. documentar obrigatoriamente toda alteração dentro do módulo `modules/rfw.showroom`, sem exceção por tamanho ou
+   natureza da mudança;
+5. atualizar a documentação-base em português e todas as traduções equivalentes;
+6. incluir ou atualizar laboratório, bundles e testes do showroom quando a alteração for demonstrável;
+7. validar build e, quando visual, executar inspeção no showroom;
+8. ser commitada e publicada no repositório do RFW antes de o Rinos atualizar seu ponteiro.
+
+> [!IMPORTANT]
+> Código, testes e documentação geral fora do showroom não substituem essa obrigação. Uma alteração no RFW somente é
+> considerada concluída quando o showroom informa às aplicações hospedeiras o que mudou, para que serve e como usar.
 
 ## Validação no Rinos
 
@@ -120,4 +126,3 @@ Mesmo quando o componente estiver validado no RFW, a integração do Rinos deve 
 - responsividade e acessibilidade;
 - comportamento com falhas externas;
 - ausência de credenciais e dados sensíveis em estado serializável, logs e telemetria.
-

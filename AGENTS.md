@@ -23,6 +23,6 @@ Alterações no RFW Platform constituem um ciclo separado:
 
 - apresentar previamente o problema, a API proposta, compatibilidade e impacto para outras aplicações;
 - obter autorização explícita;
-- atualizar código, testes, documentação e showroom do RFW;
+- atualizar código, testes e, obrigatoriamente, a documentação correspondente dentro do showroom do RFW;
+- atualizar laboratórios, traduções e validação visual do showroom sempre que a alteração for demonstrável;
 - validar o RFW isoladamente antes de atualizar o ponteiro no Rinos.
-
