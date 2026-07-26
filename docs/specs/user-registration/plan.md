@@ -10,19 +10,19 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 
 ## Technical Context
 
-**Language/Version**: Java 25  
-**Primary Dependencies**: Spring Boot 4.0.1, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Vaadin 25.0.2 e RFW Platform 1.0.0, conforme o submódulo atual  
-**Storage**: MySQL 9, schema global do sistema  
-**Testing**: JUnit 5, Spring Boot Test, testes de integração com MySQL compatível e testes de UI Vaadin/Playwright na etapa de implementação  
-**Target Platform**: JAR executável em servidor Linux atrás de proxy reverso confiável  
-**Project Type**: aplicação web Spring Boot/Vaadin modular por funcionalidade  
-**Performance Goals**: envio inicial processado sem bloqueios desnecessários; 95% dos e-mails aceitos pelo transporte entregues em até dois minutos; operações de validação externa com timeout explícito  
-**Constraints**: equipe inicial de uma pessoa; sem orçamento reservado; configuração exclusiva por origem; nenhuma variável de ambiente, propriedade JVM ou argumento de linha de comando pode sobrescrever configuração Rinos; nenhum segredo versionado; identidade global sem tenant  
+**Language/Version**: Java 25
+**Primary Dependencies**: Spring Boot 4.0.1, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Vaadin 25.0.2 e RFW Platform 1.0.0, conforme o submódulo atual
+**Storage**: MySQL 9, schema global do sistema
+**Testing**: JUnit 5, Spring Boot Test, testes de integração com MySQL compatível e testes de UI Vaadin/Playwright na etapa de implementação
+**Target Platform**: JAR executável em servidor Linux atrás de proxy reverso confiável
+**Project Type**: aplicação web Spring Boot/Vaadin modular por funcionalidade
+**Performance Goals**: envio inicial processado sem bloqueios desnecessários; 95% dos e-mails aceitos pelo transporte entregues em até dois minutos; operações de validação externa com timeout explícito
+**Constraints**: equipe inicial de uma pessoa; sem orçamento reservado; configuração exclusiva por origem; nenhuma variável de ambiente, propriedade JVM ou argumento de linha de comando pode sobrescrever configuração Rinos; nenhum segredo versionado; identidade global sem tenant
 **Scale/Scope**: cadastro público exposto à internet, preparado para concorrência e múltiplas instâncias, sem API pública no primeiro incremento
 
 ## Interaction Surface Architecture
 
-**Surface Catalog**: [Interaction Surface Architecture](../../architecture/interaction-surfaces.md)  
+**Surface Catalog**: [Interaction Surface Architecture](../../architecture/interaction-surfaces.md)
 **Interface Design Applicability**: **REQUIRED** — a feature cria jornadas públicas em web responsiva, com estados de validação, falhas externas, acessibilidade e retomada.
 
 | Surface ID | Feature Coverage | Technology Decision | Module/Repository | Notes |
@@ -56,9 +56,13 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 
 ## RFW Compatibility Gate
 
-O commit `db8756b8b7bae92878144f3341a0ee43973b293a` já fornece o add-in de acesso que deve ser hospedado pelo Rinos. A análise em [rfw-gap-analysis.md](./rfw-gap-analysis.md) encontrou extensões reutilizáveis necessárias para cadastro Google com aceites, issuer tipado, Turnstile condicional, cancelamento e erros por campo.
+O commit `fb59049ef916f0854b53159542b71591db24cb8f` fornece o add-in de acesso que deve ser hospedado pelo Rinos e
+resolve todas as lacunas registradas em [rfw-gap-analysis.md](./rfw-gap-analysis.md): cadastro Google com aceites,
+issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuação de aceite durante a ativação,
+encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
-Essas extensões dependem de autorização explícita antes de qualquer alteração no submódulo. A Interface Design pode consolidar inventário e estrutura geral, mas seus contratos finais e wireframes devem aguardar a resolução deste gate para não documentar APIs inexistentes.
+O ciclo foi implementado, testado e documentado no showroom do RFW antes da atualização do ponteiro no Rinos. O gate
+de compatibilidade está encerrado e a [Interface Design](./interface-spec.md) referencia os contratos finais.
 
 ## Transaction and Failure Strategy
 
@@ -106,7 +110,7 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | `FR-REG-021` a `FR-REG-027` | retomada pela identidade pendente, cancelamento e job de limpeza | cenários 6, 7, 14 e 15 |
 | `FR-REG-028` a `FR-REG-042` | política por origem, adapter Turnstile e proxy confiável | cenários 8 e 9 |
 | `FR-REG-043` a `FR-REG-052` | Google Identity Services pelo RFW, continuação de cadastro externo e `ExternalIdentity` | cenários 10 a 12 |
-| `SC-UR-001` a `SC-UR-013` | matriz de testes, métricas operacionais e futura Interface Design | suíte end-to-end e checklist de qualidade |
+| `SC-UR-001` a `SC-UR-013` | matriz de testes, métricas operacionais e [Interface Design](./interface-spec.md) | suíte end-to-end e checklist de qualidade |
 
 ## Project Structure
 
@@ -125,7 +129,7 @@ docs/specs/user-registration/
 └── interface-spec.md
 ```
 
-`interface-spec.md` será criado pela etapa 6 e não existe neste momento.
+`interface-spec.md` foi criado e validado pela etapa 6.
 
 ### Source Code (repository root)
 
@@ -155,14 +159,14 @@ docs/architecture/           # decisões transversais de arquitetura
 
 ## Implementation Sequencing
 
-1. Resolver e autorizar as lacunas reutilizáveis listadas em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
-2. Evoluir o RFW aprovado, com compatibilidade, testes, documentação e showroom próprios; publicar a nova versão e atualizar o ponteiro.
-3. Criar o esqueleto Maven hospedeiro, configuração exclusiva e banco global compatível com RFW.
-4. Implementar modelo global, migrations init/update e repositories.
-5. Implementar providers RFW, facades e políticas de senha/origem.
-6. Compor a rota Vaadin com `RFWAccessComponent` conforme `interface-spec.md`.
-7. Implementar limpeza agendada e observabilidade.
-8. Executar testes de segurança, integração, UI e end-to-end; validar build do RFW e do Rinos.
+1. ~~Resolver, autorizar, implementar e publicar as lacunas do RFW.~~ Concluído em
+   `fb59049ef916f0854b53159542b71591db24cb8f`.
+2. Criar o esqueleto Maven hospedeiro, configuração exclusiva e banco global compatível com RFW.
+3. Implementar modelo global, migrations init/update e repositories.
+4. Implementar providers RFW, facades e políticas de senha/origem.
+5. Compor a rota Vaadin com `RFWAccessComponent` conforme `interface-spec.md`.
+6. Implementar limpeza agendada e observabilidade.
+7. Executar testes de segurança, integração, UI e end-to-end; validar build do RFW e do Rinos.
 
 Essa sequência é arquitetural; a decomposição executável pertence a `tasks.md`.
 
