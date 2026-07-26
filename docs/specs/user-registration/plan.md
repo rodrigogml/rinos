@@ -127,10 +127,14 @@ docs/specs/user-registration/
 ├── quickstart.md
 ├── contracts/
 │   └── external-services.md
-└── interface-spec.md
+├── checklists/
+│   └── requirements.md
+├── interface-spec.md
+└── tasks.md
 ```
 
-`interface-spec.md` foi criado e validado pela etapa 6.
+`interface-spec.md` foi criado e validado pela etapa 6; o quality gate e a decomposição executável estão registrados
+em `checklists/requirements.md` e `tasks.md`.
 
 ### Source Code (repository root)
 
