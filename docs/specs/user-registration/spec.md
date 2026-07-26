@@ -2,7 +2,7 @@
 
 **Feature**: `user-registration`
 **Created**: 2026-07-17
-**Status**: Clarified — pronta para planejamento
+**Status**: Clarified — quality gate de requisitos aprovado
 
 ## Escopo
 
@@ -10,7 +10,7 @@ Esta feature cria a identidade global e única do usuário no Rinos e conduz o c
 
 Inclui validação dos dados cadastrais, criação de credencial local ou vínculo inicial com identidade Google, comprovação do identificador primário, aceite dos documentos legais e tratamento de cadastros pendentes.
 
-Não inclui autenticação de sessões, recuperação de acesso, detalhamento do Painel de Usuário, cadastro de contas pessoais ou empresas, associação ou convite para contas, planos, papéis, grupos, chaves de acesso ou administração de usuários ativos.
+Não inclui autenticação de sessões, implementação da recuperação de acesso, detalhamento do Painel de Usuário, cadastro de contas pessoais ou empresas, associação ou convite para contas, planos, papéis, grupos, chaves de acesso ou administração de usuários ativos. Embora pertença a `user-authentication`, a recuperação mínima de senha é dependência obrigatória para liberar `user-registration` em produção.
 
 ## Clarifications
 
@@ -32,6 +32,15 @@ Não inclui autenticação de sessões, recuperação de acesso, detalhamento do
 
 - Q: Uma passkey pode satisfazer a exigência de autenticação de dois fatores? -> A: Sim, desde que a verificação local do usuário seja obrigatória e comprovada; senha continua exigindo fator adicional nos contextos protegidos.
 - Q: Código enviado ao mesmo e-mail Google pode satisfazer o 2FA obrigatório de administradores após login Google? -> A: Não. Nesse fluxo, administradores devem confirmar com TOTP ou passkey com verificação local; a decisão foi encaminhada para `user-authentication`.
+
+### Session 2026-07-26
+
+- Q: Quais campos podem ser preservados quando um desafio anti-automação precisa ser renovado? -> A: Somente e-mail e aceites legais; senha, confirmação, token e qualquer outra prova permanecem efêmeros e devem ser reinformados.
+- Q: O cadastro pode ser liberado em produção antes de existir recuperação de senha? -> A: Não. Pode ser implementado primeiro, mas sua liberação em produção depende do fluxo mínimo de recuperação fornecido por `user-authentication`.
+- Q: Qual padrão e gate de acessibilidade devem ser adotados? -> A: WCAG 2.2 nível AA, sem violações automatizadas críticas ou sérias e sem bloqueios nas jornadas principais avaliadas manualmente por teclado e leitor de tela.
+- Q: Como medir a meta de entrega do e-mail sem confirmação de caixa postal? -> A: Medir a aceitação pelo SMTP em até dois minutos após o commit; entrega final, bounce e atraso serão métricas externas somente quando o provedor oferecer eventos.
+- Q: Qual amostra mínima torna os percentuais de usabilidade e ativação verificáveis no MVP? -> A: Dez participantes alheios ao desenvolvimento, sem orientação durante a jornada, com ao menos quatro testes em telefone e quatro em desktop; o gate exige sucesso de pelo menos nove participantes.
+- Q: Um Turnstile válido pode ultrapassar o limite máximo temporário de cadastros por IP? -> A: Não. O limite permanece absoluto durante a janela, deve ser conservador, informar o tempo restante e nunca produzir bloqueio permanente.
 
 ## User Scenarios & Testing
 
@@ -168,13 +177,13 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **FR-REG-032**: A indisponibilidade temporária do serviço de entrega da comprovação NÃO DEVE duplicar o usuário nem perder um cadastro já aceito; a pessoa deve receber orientação para tentar novamente.
 - **FR-REG-033**: Depois que os dados forem aceitos, salvos e a confirmação for enviada, o e-mail do cadastro pendente NÃO DEVE ser alterado. Para corrigir o endereço, a pessoa DEVE iniciar outro cadastro com o e-mail correto.
 - **FR-REG-034**: Quando o Turnstile for obrigatório, o sistema DEVE validar o token no servidor antes de persistir o cadastro e DEVE rejeitar tokens ausentes, inválidos, expirados ou reutilizados.
-- **FR-REG-035**: A pessoa DEVE poder renovar um desafio expirado ou inválido sem perder os demais dados preenchidos no formulário.
+- **FR-REG-035**: A pessoa DEVE poder renovar um desafio expirado ou inválido preservando somente o e-mail e os aceites legais já informados. Senha, confirmação, token Turnstile e qualquer outra credencial ou prova NÃO DEVEM ser preservados e DEVEM ser reinformados.
 - **FR-REG-036**: A apresentação e o tratamento do Turnstile NÃO DEVEM impedir a conclusão do cadastro por teclado ou tecnologia assistiva.
 - **FR-REG-037**: A aplicação DEVE permitir configurar quantos cadastros podem ser criados por IP de origem, dentro de uma janela de contabilização configurável, antes que o Turnstile se torne obrigatório para novas tentativas dessa origem.
 - **FR-REG-038**: O limiar que torna o Turnstile obrigatório DEVE ter valor padrão zero. Com esse valor, toda tentativa de cadastro DEVE exigir validação do Turnstile, independentemente do histórico da origem.
 - **FR-REG-039**: A identificação da origem DEVE considerar o endereço validado pela aplicação mesmo quando ela operar atrás de proxy reverso, sem confiar em informações fornecidas por intermediários não autorizados.
-- **FR-REG-040**: Além do Turnstile, a aplicação DEVE permitir configurar uma quantidade máxima de cadastros por IP de origem e a respectiva janela de restrição.
-- **FR-REG-041**: Ao atingir o limite máximo por IP, o sistema DEVE rejeitar temporariamente novos cadastros dessa origem, informar quando uma nova tentativa será permitida e não aplicar bloqueio permanente.
+- **FR-REG-040**: Além do Turnstile, a aplicação DEVE permitir configurar uma quantidade máxima de cadastros por IP de origem e a respectiva janela de restrição. Esse limite é absoluto durante a janela e NÃO DEVE ser ultrapassado por uma validação Turnstile bem-sucedida.
+- **FR-REG-041**: Ao atingir o limite máximo por IP, o sistema DEVE rejeitar temporariamente novos cadastros dessa origem, inclusive de pessoas legítimas em rede compartilhada, informar quando uma nova tentativa será permitida e não aplicar bloqueio permanente. O valor padrão operacional DEVE ser conservador para reduzir falsos bloqueios.
 - **FR-REG-042**: Quando o Turnstile for obrigatório e seu serviço de validação estiver indisponível, o sistema NÃO DEVE criar o cadastro e DEVE orientar a pessoa a tentar novamente posteriormente.
 - **FR-REG-043**: O sistema DEVE oferecer cadastro por Google e validar no servidor a assinatura, o emissor, a audiência, a validade, a proteção contra repetição e a indicação de e-mail verificado antes de confiar na identidade recebida.
 - **FR-REG-044**: O vínculo com Google DEVE usar a combinação imutável de emissor e `sub` como identificador externo. O e-mail recebido NÃO DEVE identificar esse vínculo, pois pode mudar no provedor.
@@ -203,13 +212,13 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 
 ### Measurable Outcomes
 
-- **SC-UR-001**: Pelo menos 90% das pessoas em teste de usabilidade concluem o envio inicial do cadastro em até três minutos, sem ajuda externa.
-- **SC-UR-002**: Pelo menos 95% das instruções de comprovação aceitas pelo serviço de entrega chegam ao destinatário em até dois minutos.
-- **SC-UR-003**: Pelo menos 90% das pessoas que iniciam a comprovação válida concluem a ativação na primeira tentativa.
+- **SC-UR-001**: Em teste de usabilidade com no mínimo 10 participantes alheios ao desenvolvimento e compatíveis com o público não técnico, pelo menos 9 DEVEM concluir o envio inicial do cadastro em até três minutos, sem orientação durante a jornada. A amostra DEVE conter ao menos quatro execuções em telefone e quatro em desktop.
+- **SC-UR-002**: Em pelo menos 95% dos cadastros locais aceitos, o servidor SMTP configurado DEVE aceitar a instrução de comprovação em até dois minutos após o commit do cadastro. Entrega final na caixa postal, bounce, classificação como spam e atrasos posteriores DEVEM ser tratados como métricas externas quando o provedor disponibilizar eventos e NÃO constituem gate de release sem infraestrutura capaz de comprová-los.
+- **SC-UR-003**: Na mesma amostra mínima definida em `SC-UR-001`, pelo menos 9 de cada 10 participantes que iniciarem uma comprovação válida DEVEM concluir a ativação na primeira tentativa, sem orientação durante a jornada.
 - **SC-UR-004**: Em 100% dos testes de duplicidade, concorrência e repetição, um mesmo identificador primário resulta em no máximo uma identidade vigente.
 - **SC-UR-005**: Em 100% dos testes de segurança, comprovações inválidas, expiradas, utilizadas, canceladas ou pertencentes a outro cadastro não ativam usuário.
 - **SC-UR-006**: Em 100% dos testes, um usuário recém-ativado acessa somente o próprio Painel de Usuário e não possui acesso a contas, tenants, dados de terceiros ou funcionalidades futuras ainda não concedidas.
-- **SC-UR-007**: O fluxo completo pode ser concluído apenas por teclado e sem bloqueios críticos identificados por avaliação automatizada de acessibilidade.
+- **SC-UR-007**: Todas as jornadas principais desta feature DEVEM atender à WCAG 2.2 nível AA, não apresentar violações automatizadas classificadas como críticas ou sérias e ser concluídas sem bloqueios em avaliação manual por teclado e leitor de tela. Falhas menores identificadas DEVEM ser documentadas e transformadas em tarefas antes da liberação.
 - **SC-UR-008**: Em 100% dos testes nos quais o Turnstile é obrigatório, um cadastro com token ausente, inválido, expirado ou reutilizado é rejeitado sem criar identidade pendente.
 - **SC-UR-009**: Em 100% dos testes, o limite configurado por IP é aplicado durante a janela definida e liberado automaticamente após seu término.
 - **SC-UR-010**: Com o limiar anti-bot configurado como zero, 100% das tentativas de cadastro exigem validação bem-sucedida do Turnstile.

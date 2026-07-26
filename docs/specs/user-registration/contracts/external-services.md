@@ -127,3 +127,7 @@ O adapter procura localmente o sufixo restante do SHA-1 entre as linhas `SUFFIX:
 | Reenvio | Nova comprovação invalida anteriores antes do novo dispatch |
 
 O log registra apenas resultado operacional e correlation ID; não registra destinatário completo, conteúdo nem URL secreta.
+
+O Rinos mede o intervalo entre o commit do cadastro e a aceitação da mensagem pelo servidor SMTP. Entrega final na
+caixa postal, bounce, classificação como spam e atrasos posteriores só integram a observabilidade quando o provedor
+configurado oferecer eventos próprios; sem esses eventos, não constituem gate de release.

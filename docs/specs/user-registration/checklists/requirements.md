@@ -18,10 +18,10 @@
 
 - [x] CHK006 - A política de senha possui limites, classes exigidas, tratamento de comprometimento, colagem, gerenciadores e ausência de expiração arbitrária explicitamente definidos? [Clareza, Spec §FR-REG-004; Research §Decision 2] {auto}
 - [x] CHK007 - Validades, retenções, janelas e limites funcionais possuem números e unidades verificáveis? [Mensurabilidade, Spec §FR-REG-013, FR-REG-015, FR-REG-023–024 e FR-REG-037–041] {auto}
-- [ ] CHK008 - A população, o tamanho mínimo da amostra e o método de medição dos percentuais de usabilidade e ativação na primeira tentativa estão especificados? [Ambiguity, Spec §SC-UR-001 e SC-UR-003] {auto}
-- [ ] CHK009 - O ponto inicial/final da medição e a fonte observável que comprovam “chegar ao destinatário em até dois minutos” estão definidos, distinguindo aceite SMTP de entrega na caixa postal? [Ambiguity, Spec §SC-UR-002; Contracts §SMTP por RFW] {auto}
+- [x] CHK008 - A população, o tamanho mínimo da amostra e o método de medição dos percentuais de usabilidade e ativação na primeira tentativa estão especificados? [Mensurabilidade, Spec §SC-UR-001 e SC-UR-003; Plan §Validation Strategy] {auto}
+- [x] CHK009 - O ponto inicial/final da medição e a fonte observável que comprovam o SLO de dois minutos estão definidos, distinguindo aceite SMTP de entrega na caixa postal? [Mensurabilidade, Spec §SC-UR-002; Contracts §SMTP por RFW] {auto}
 - [x] CHK010 - Os critérios de unicidade, replay, isolamento inicial, Turnstile e Google usam resultados objetivos de 100% nos cenários críticos? [Mensurabilidade, Spec §SC-UR-004–006 e SC-UR-008–013] {auto}
-- [ ] CHK011 - O padrão de acessibilidade adotado, seu nível de conformidade e a definição de “bloqueio crítico” estão explicitados para tornar o gate reproduzível? [Ambiguity, Spec §SC-UR-007; Constitution §Critérios de Qualidade e Entrega; Interface §Shared Accessibility and Input] {auto}
+- [x] CHK011 - O padrão de acessibilidade adotado, seu nível de conformidade e a definição de “bloqueio crítico” estão explicitados para tornar o gate reproduzível? [Mensurabilidade, Spec §SC-UR-007; Constitution §Critérios de Qualidade e Entrega; Interface §Shared Accessibility and Input] {auto}
 
 ## Consistência entre artefatos
 
@@ -30,8 +30,8 @@
 - [x] CHK014 - A imutabilidade do e-mail depois do aceite do cadastro e a necessidade de reiniciar com endereço correto estão alinhadas nos fluxos? [Consistência, Spec §FR-REG-033; Spec §Clarifications 2026-07-17; Interface §INT-WEB-REG-002] {auto}
 - [x] CHK015 - A alteração de documentos legais durante um processo pendente possui requisito, continuação tipada, estado de interface e contrato RFW correspondentes? [Consistência, Spec §FR-REG-016–017; Interface §INT-WEB-REG-002; RFW Compatibility §GAP-RFW-REG-007] {auto}
 - [x] CHK016 - O fluxo Google usa `issuer + sub`, não vincula automaticamente por e-mail e invalida credenciais pendentes antes da ativação? [Consistência, Spec §FR-REG-043–051; Data Model §Entity: ExternalIdentity; Interface §INT-WEB-REG-003] {auto}
-- [ ] CHK017 - A expressão “demais dados preenchidos” exclui explicitamente senha, confirmação e token, e o cenário de interação deixou de mencionar uma decisão futura já encerrada? [Conflict, Spec §FR-REG-035; Interface §INT-WEB-REG-001 e §Shared Security and Privacy; Quickstart §Scenario 17] {auto}
-- [ ] CHK018 - A dependência de disponibilizar recuperação de senha no lançamento desta feature está explicitada, já que a ação do renderer depende de capability cuja implementação pertence a `user-authentication`? [Gap, Spec §FR-REG-008; Plan §Architecture and Responsibility Boundaries; Interface §INT-WEB-REG-001] {auto}
+- [x] CHK017 - A expressão “demais dados preenchidos” exclui explicitamente senha, confirmação e token, e o cenário de interação deixou de mencionar uma decisão futura já encerrada? [Consistência, Spec §FR-REG-035; Interface §INT-WEB-REG-001 e §Shared Security and Privacy; Quickstart §Scenario 17] {auto}
+- [x] CHK018 - A dependência de disponibilizar recuperação de senha no lançamento desta feature está explicitada, já que a ação do renderer depende de capability cuja implementação pertence a `user-authentication`? [Consistência, Spec §Escopo e FR-REG-008; Plan §Architecture and Responsibility Boundaries; Interface §INT-WEB-REG-001] {auto}
 
 ## Segurança, privacidade e abuso
 
@@ -42,7 +42,7 @@
 - [x] CHK023 - A origem atrás de proxy confiável, a anonimização por HMAC e a rejeição de headers forjados estão documentadas? [Segurança, Spec §FR-REG-039; Research §Decision 6; Plan §Validation Strategy] {auto}
 - [x] CHK024 - Google possui validação de assinatura, issuer, audience, tempo, nonce, replay e e-mail verificado antes de qualquer escrita? [Segurança, Spec §FR-REG-043–052; Contracts §Google OpenID Connect] {auto}
 - [x] CHK025 - Cancelamento e expiração invalidam provas, removem dados identificáveis e possuem retenção mínima documentada? [Privacidade, Spec §FR-REG-023–027; Research §Decision 8; Data Model §Retention and Cleanup] {auto}
-- [ ] CHK026 - A política para IP compartilhado define se o bloqueio temporário máximo, mesmo após Turnstile válido, é um risco de produto aceitável ou se exige mitigação adicional? [Risco, Spec §Edge Cases e FR-REG-040–041] {humano}
+- [x] CHK026 - A política para IP compartilhado define se o bloqueio temporário máximo, mesmo após Turnstile válido, é um risco de produto aceitável ou se exige mitigação adicional? [Risco aceito, Spec §FR-REG-040–041; Quickstart §Scenario 8] {humano}
 
 ## Falhas, concorrência e operação
 
@@ -63,8 +63,9 @@
 
 ## Notes
 
+- Gate `requirements`: **PASS**, com 37 de 37 itens encerrados.
 - Itens `{auto}` satisfeitos estão marcados com `[x]` e citam a evidência documental.
-- `CHK008`, `CHK009`, `CHK011`, `CHK017` e `CHK018` exigem correção ou complementação dos artefatos.
-- `CHK026` depende de decisão explícita do dono do produto.
-- Itens `[Ambiguity]` e `[Conflict]` retornam à etapa de clarificação da spec.
-- O `[Gap]` de dependência entre features deve ser resolvido antes da decomposição final do backlog.
+- As ambiguidades automáticas identificadas foram resolvidas na spec e refletidas nos artefatos dependentes.
+- `CHK026` foi encerrado por decisão explícita do dono do produto: o limite temporário por IP permanece absoluto.
+- As marcações `[Ambiguity]` e `[Conflict]` identificadas nesta rodada foram resolvidas pela sessão de clarificação de 2026-07-26.
+- O `[Gap]` de dependência entre features foi encerrado tornando a recuperação mínima de senha obrigatória para o release.

@@ -16,7 +16,7 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 **Testing**: JUnit 5, Spring Boot Test, testes de integração com MySQL compatível e testes de UI Vaadin/Playwright na etapa de implementação
 **Target Platform**: JAR executável em servidor Linux atrás de proxy reverso confiável
 **Project Type**: aplicação web Spring Boot/Vaadin modular por funcionalidade
-**Performance Goals**: envio inicial processado sem bloqueios desnecessários; 95% dos e-mails aceitos pelo transporte entregues em até dois minutos; operações de validação externa com timeout explícito
+**Performance Goals**: envio inicial processado sem bloqueios desnecessários; 95% das instruções de comprovação aceitas pelo SMTP em até dois minutos após o commit; operações de validação externa com timeout explícito
 **Constraints**: equipe inicial de uma pessoa; sem orçamento reservado; configuração exclusiva por origem; nenhuma variável de ambiente, propriedade JVM ou argumento de linha de comando pode sobrescrever configuração Rinos; nenhum segredo versionado; identidade global sem tenant
 **Scale/Scope**: cadastro público exposto à internet, preparado para concorrência e múltiplas instâncias, sem API pública no primeiro incremento
 
@@ -51,7 +51,7 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 | Backend `registration` | Orquestração do cadastro, idempotência, comprovações, limites por origem, expiração e integração com portas externas. |
 | RFW Platform | `RFWAccessComponent`, providers, estados, Google, Turnstile, e-mail, challenges, i18n, tema, sessão e atualização de banco. |
 | Provedores externos | Cloudflare valida presença humana; Google comprova identidade externa; HIBP informa comprometimento de senha; SMTP entrega a comprovação. |
-| `user-authentication` | Login, sessão, recuperação, 2FA, passkeys e vínculo Google de usuário já ativo. |
+| `user-authentication` | Login, sessão, recuperação, 2FA, passkeys e vínculo Google de usuário já ativo. A recuperação mínima de senha é dependência de release de `user-registration`. |
 | `user-dashboard` | Conteúdo e operações do painel acessível depois da ativação. |
 
 ## RFW Compatibility Gate
@@ -80,7 +80,7 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | Grupo | Conteúdo |
 |-------|----------|
 | Cadastro | validade de 24 horas, retenção pendente de 15 dias, limite de três reenvios em 15 minutos e agenda diária de limpeza |
-| Origem e proxy | proxies confiáveis, chave HMAC do IP, limiar/janela para exigir Turnstile e limite/janela para bloquear cadastro |
+| Origem e proxy | proxies confiáveis, chave HMAC do IP, limiar/janela para exigir Turnstile e limite/janela absoluta para bloquear cadastro mesmo após Turnstile válido |
 | Turnstile | site key pública, secret key, hostname/action esperados, endpoint e timeouts |
 | Google OIDC | client ID, client secret quando aplicável, redirect URI, issuer/discovery permitido e timeouts |
 | Senha comprometida | endpoint Pwned Passwords, user-agent, timeouts e política fail-closed |
@@ -97,7 +97,8 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | Persistência | unicidade concorrente de e-mail e `issuer + sub`; cascade/restrict; índices; bloqueio transacional; deleção segura de pendências |
 | Integração | MySQL 9; SMTP RFW; Siteverify; Google OIDC; Pwned Passwords; timeouts e respostas inválidas, usando servidores simulados locais |
 | Segurança | replay de tokens; token de outro cadastro; race de ativação; cabeçalhos de proxy forjados; enumeração além da mensagem explicitamente permitida; ausência de segredos em logs |
-| UI | teclado; foco; leitores de tela; mobile; desafio renovado sem perda de campos permitidos; mensagens e rotas de todos os estados |
+| UI | WCAG 2.2 AA; zero violações automatizadas críticas ou sérias; jornadas principais sem bloqueios por teclado e leitor de tela; mobile; desafio renovado sem perda de campos permitidos; mensagens e rotas de todos os estados |
+| Usabilidade | mínimo de 10 participantes alheios ao desenvolvimento, sem orientação; pelo menos quatro jornadas em telefone e quatro em desktop; gates de envio e ativação satisfeitos por no mínimo 9 participantes |
 | End-to-end | cadastro local, cadastro Google, retomada, cancelamento, expiração, duplicidade simultânea e isolamento de acesso após ativação |
 
 ## Requirement Traceability

@@ -45,7 +45,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 **Change Type**: NEW
 **Purpose**: Permitir que uma pessoa crie uma única identidade global pendente usando somente e-mail, senha e decisões sobre documentos legais.
 **Actors and Permissions**: Pessoa não autenticada; rota anônima; nenhuma conta, tenant, papel, grupo ou permissão é criada ou consultada.
-**Entry and Navigation**: A ação Criar conta da etapa de login abre `RFWAccessStepEnum.REGISTRATION` na mesma rota `/login`. Voltar retorna ao login sem persistir o formulário. Cadastro aceito abre `ACTIVATION`. E-mail já ativo oferece ação direta Recuperar senha com o e-mail preenchido, condicionada à capability futura de recuperação.
+**Entry and Navigation**: A ação Criar conta da etapa de login abre `RFWAccessStepEnum.REGISTRATION` na mesma rota `/login`. Voltar retorna ao login sem persistir o formulário. Cadastro aceito abre `ACTIVATION`. E-mail já ativo oferece ação direta Recuperar senha com o e-mail preenchido. A capability de recuperação pertence a `user-authentication`, mas é obrigatória antes da liberação desta feature em produção.
 **Content and Data**: Título e explicação da finalidade; e-mail; senha; confirmação da senha; requisitos de senha visíveis antes do envio; documentos legais vigentes com obrigatório ou opcional; Turnstile quando exigido; ação principal Criar conta; ações secundárias Recuperar senha quando disponível e Voltar para entrar. Não solicitar nome, telefone, documento, conta ou empresa.
 **Actions and Behavior**: Validar localmente presença, formato, confirmação da senha e aceites obrigatórios; submeter pelo `RFWRegistrationProvider`; aceitar colagem e gerenciadores; abrir documentos em nova aba sem perder o preenchimento; impedir submissões repetidas enquanto processa; preservar e-mail e aceites após rejeição recuperável, mas sempre limpar senha, confirmação e token Turnstile.
 **Validation and Feedback**: Mostrar erro junto ao campo e resumo com `role="alert"`; focar o primeiro campo inválido; explicar cada regra de senha não atendida; informar explicitamente e-mail existente sem revelar outros dados; informar indisponibilidade do verificador de senha, Turnstile ou cadastro e permitir nova tentativa segura; informar bloqueio temporário e tempo restante; renovar Turnstile sem apagar e-mail e aceites.
@@ -251,12 +251,14 @@ ativação
 
 ### Shared Accessibility and Input
 
+- O padrão de conformidade é WCAG 2.2 nível AA; o gate combina análise automatizada com avaliação manual.
 - Operação completa por teclado, toque, mouse e leitor de tela.
 - Um único foco lógico por transição; primeiro erro recebe foco; mensagens assíncronas usam região de alerta.
 - Campos preservam labels visíveis, autocomplete adequado e instruções associadas.
 - Componentes respeitam contraste, zoom, reflow, tema claro/escuro e `prefers-reduced-motion`.
 - Turnstile não pode ser a única informação visual nem bloquear tecnologia assistiva.
 - Segredos são limpos antes da operação assíncrona e nunca retornam ao DOM após re-renderização.
+- A liberação exige zero violações automatizadas críticas ou sérias e nenhuma jornada principal bloqueada em avaliação manual por teclado e leitor de tela; falhas menores devem possuir tarefa registrada.
 
 ### Shared Security and Privacy
 

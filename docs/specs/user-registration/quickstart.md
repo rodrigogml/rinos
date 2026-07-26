@@ -61,7 +61,8 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 3. Submeter token de teste válido uma vez e reutilizá-lo em outra tentativa.
 4. **Expected**: somente a primeira validação pode prosseguir.
 5. Atingir o limite máximo configurado para uma origem.
-6. **Expected**: novas tentativas dessa origem são bloqueadas até a janela terminar, com tempo restante; outra origem continua operável.
+6. Repetir com outro token Turnstile válido na mesma origem.
+7. **Expected**: novas tentativas dessa origem continuam bloqueadas até a janela terminar, mesmo com Turnstile válido, e exibem o tempo restante; outra origem continua operável.
 
 ## Scenario 9: Proxy não confiável
 
@@ -123,4 +124,4 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 1. Em viewport de telefone e depois desktop, concluir o cadastro local usando somente teclado e leitor de tela.
 2. Forçar expiração do Turnstile durante o preenchimento e renová-lo.
 3. Continuar a operação real até o e-mail de teste e abrir a confirmação.
-4. **Expected**: os dados não secretos permanecem preenchidos, senha é tratada segundo a decisão da futura Interface Design, foco e erros são anunciados, a identidade fica ativa e o próximo acesso possível é somente o próprio Painel de Usuário.
+4. **Expected**: e-mail e aceites legais permanecem preenchidos; senha, confirmação, token e outras provas são descartados e precisam ser reinformados; foco e erros são anunciados, a identidade fica ativa e o próximo acesso possível é somente o próprio Painel de Usuário.
