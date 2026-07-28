@@ -122,12 +122,22 @@ O adapter procura localmente o sufixo restante do SHA-1 entre as linhas `SUFFIX:
 
 | Condition | Rinos result |
 |-----------|--------------|
-| Mensagem aceita pelo dispatcher | Cadastro permanece pendente e UI confirma envio |
-| Falha de template ou transporte | Cadastro permanece pendente; UI oferece reenvio |
+| Mensagem aceita pelo dispatcher e pelo SMTP | Cadastro permanece pendente e UI confirma envio |
+| Falha de template, timeout ou transporte | Cadastro permanece pendente; UI não afirma que houve envio e oferece retomada e reenvio |
+| Processo interrompido entre commit e dispatch | Cadastro permanece pendente; retomada permite solicitar nova comprovação |
 | Reenvio | Nova comprovação invalida anteriores antes do novo dispatch |
 
 O log registra apenas resultado operacional e correlation ID; não registra destinatário completo, conteúdo nem URL secreta.
 
+No primeiro incremento, o dispatch é direto depois do commit. Não existe outbox nem retentativa automática, e token,
+URL secreta ou mensagem renderizada não são persistidos para envio posterior. A recuperação de falhas ocorre por
+reenvio solicitado pela pessoa, que cria uma nova comprovação conforme as regras do cadastro.
+
 O Rinos mede o intervalo entre o commit do cadastro e a aceitação da mensagem pelo servidor SMTP. Entrega final na
 caixa postal, bounce, classificação como spam e atrasos posteriores só integram a observabilidade quando o provedor
 configurado oferecer eventos próprios; sem esses eventos, não constituem gate de release.
+
+O gate nominal usa 100 cadastros contra SMTP local controlado e exige ao menos 95 aceitações em até dois minutos. Para
+medir somente o dispatch, o perfil de teste permite ao menos 100 novas pendências por origem e usa verificação humana
+controlada; a política padrão de 20 e o Turnstile real são validados separadamente. No SMTP real da instalação, o
+readiness executa somente um smoke test e não declara throughput ou capacidade suportada.

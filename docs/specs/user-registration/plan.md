@@ -16,7 +16,7 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 **Testing**: JUnit 5, Spring Boot Test, testes de integração com MySQL compatível e testes de UI Vaadin/Playwright na etapa de implementação
 **Target Platform**: JAR executável em servidor Linux atrás de proxy reverso confiável
 **Project Type**: aplicação web Spring Boot/Vaadin modular por funcionalidade
-**Performance Goals**: envio inicial processado sem bloqueios desnecessários; 95% das instruções de comprovação aceitas pelo SMTP em até dois minutos após o commit; operações de validação externa com timeout explícito
+**Performance Goals**: em amostra nominal controlada de 100 cadastros, ao menos 95 instruções de comprovação aceitas pelo SMTP local em até dois minutos após o commit; um smoke test no SMTP real; operações de validação externa com timeout explícito; nenhum compromisso de throughput antes de existir infraestrutura de referência
 **Constraints**: equipe inicial de uma pessoa; sem orçamento reservado; configuração exclusiva por origem; nenhuma variável de ambiente, propriedade JVM ou argumento de linha de comando pode sobrescrever configuração Rinos; nenhum segredo versionado; identidade global sem tenant
 **Scale/Scope**: cadastro público exposto à internet, preparado para concorrência e múltiplas instâncias, sem API pública no primeiro incremento
 
@@ -48,6 +48,7 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 | UI de cadastro | A rota Rinos hospeda `RFWAccessComponent`; configuração, slots e renderers aprovados apresentam a jornada sem substituir sua máquina de estados. |
 | API/facade Java | Implementar os providers do RFW e publicar casos de uso completos de início, retorno Google, reenvio, confirmação, cancelamento e consulta de estado seguro. |
 | Backend `identity` | Normalização de e-mail, lifecycle global do usuário, consentimentos, credenciais, identidades externas e auditoria. |
+| Backend `platform` | Lease global, heartbeat, fencing e elegibilidade compartilhada para tarefas de manutenção, conforme `platform-operations`. |
 | Backend `registration` | Orquestração do cadastro, idempotência, comprovações, limites por origem, expiração e integração com portas externas. |
 | RFW Platform | `RFWAccessComponent`, providers, estados, Google, Turnstile, e-mail, challenges, i18n, tema, sessão e atualização de banco. |
 | Provedores externos | Cloudflare valida presença humana; Google comprova identidade externa; HIBP informa comprometimento de senha; SMTP entrega a comprovação. |
@@ -68,10 +69,10 @@ de compatibilidade está encerrado e a [Interface Design](./interface-spec.md) r
 
 1. A submissão local valida contrato, origem, limite, Turnstile e senha antes de iniciar escrita.
 2. Uma transação cria ou reutiliza a identidade pendente, substitui a credencial local quando permitido, registra aceites, invalida comprovações anteriores e cria nova comprovação com token armazenado somente como hash.
-3. O commit ocorre antes do envio SMTP. A falha de envio não reverte nem duplica o cadastro; a resposta orienta reenvio.
+3. O commit ocorre antes do envio SMTP direto pelo RFW. A chamada usa timeout explícito e somente confirma envio depois da aceitação pelo SMTP. Falha ou interrupção não reverte nem duplica o cadastro, não dispara retentativa automática e orienta retomada e reenvio; nenhuma outbox, mensagem renderizada, URL secreta ou token recuperável é persistido no primeiro incremento.
 4. A ativação bloqueia e relê cadastro, usuário, comprovação e documentos vigentes na mesma transação. Repetição retorna o estado já alcançado sem recriar efeitos.
 5. O fluxo Google valida integralmente a resposta antes de escrever. Ao reutilizar pendência, invalida credencial local e comprovações antes de gravar o vínculo e ativar.
-6. Expiração e limpeza usam job diário idempotente, com lotes limitados e métricas; execução concorrente não pode excluir usuário ativo.
+6. Expiração de cadastros e retenção de janelas de origem usam o mesmo job diário coordenado, com tarefas idempotentes, lotes próprios e métricas separadas. Antes de cada lote, a sessão comprova lease global vigente, `epoch` atual e estabilização. Cada lote executa em uma transação com timeout padrão de cinco minutos, validado como inferior aos 10 minutos de estabilização; dentro da transação, relê o estado de negócio antes da exclusão. Assim, um lote antigo termina ou é abortado antes de a nova coordenadora iniciar, sem sobreposição de escritas.
 
 ## Configuration Ownership
 
@@ -80,10 +81,12 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | Grupo | Conteúdo |
 |-------|----------|
 | Cadastro | validade de 24 horas, retenção pendente de 15 dias, limite de três reenvios em 15 minutos e agenda diária de limpeza |
-| Origem e proxy | proxies confiáveis, chave HMAC do IP, limiar/janela para exigir Turnstile e limite/janela absoluta para bloquear cadastro mesmo após Turnstile válido |
+| Coordenação de manutenção | `instanceId` obrigatório por instância, heartbeat padrão de 30 minutos, abandono após quatro horas, estabilização de 10 minutos e timeout transacional de lote padrão de cinco minutos, obrigatoriamente inferior à estabilização; todos com origem exclusiva `PROPERTY_FILE` |
+| Origem e proxy | proxies confiáveis; limiar/janela para exigir Turnstile, com limiar padrão zero; limite absoluto configurável, com padrão de 20 novas pendências de cadastro local por origem em 24 horas, mesmo após Turnstile válido; e retenção do IP por até 30 dias depois do fim da janela |
 | Turnstile | site key pública, secret key, hostname/action esperados, endpoint e timeouts |
 | Google OIDC | client ID, client secret quando aplicável, redirect URI, issuer/discovery permitido e timeouts |
 | Senha comprometida | endpoint Pwned Passwords, user-agent, timeouts e política fail-closed |
+| Hash de senha | Argon2id com memória, iterações, paralelismo, salt e tamanho do hash; piso de 19.456 KiB, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes |
 | E-mail | SMTP e propriedades de template/remetente consumidas pelo RFW |
 
 > [!IMPORTANT]
@@ -94,9 +97,9 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | Camada | Cobertura mínima |
 |--------|------------------|
 | Unitária | normalização; política de senha; transições; validade; limitação por origem; decisão Turnstile; cálculo de retenção; tradução de resultados externos |
-| Persistência | unicidade concorrente de e-mail e `issuer + sub`; cascade/restrict; índices; bloqueio transacional; deleção segura de pendências |
-| Integração | MySQL 9; SMTP RFW; Siteverify; Google OIDC; Pwned Passwords; timeouts e respostas inválidas, usando servidores simulados locais |
-| Segurança | replay de tokens; token de outro cadastro; race de ativação; cabeçalhos de proxy forjados; enumeração além da mensagem explicitamente permitida; ausência de segredos em logs |
+| Persistência | unicidade concorrente de e-mail e `issuer + sub`; cascade/restrict; índices; bloqueio transacional; deleção segura de pendências; normalização binária e retenção limitada da origem |
+| Integração | MySQL 9; SMTP RFW; Siteverify; Google OIDC; Pwned Passwords; timeouts e respostas inválidas, usando servidores simulados locais; amostra nominal de 100 dispatches SMTP com limite antifraude elevado para ao menos 100 e verificação humana controlada |
+| Segurança | replay de tokens; token de outro cadastro; race de ativação; cabeçalhos de proxy forjados; enumeração além da mensagem explicitamente permitida; ausência de segredos em logs; piso e calibração reproduzível do Argon2id no servidor-alvo |
 | UI | WCAG 2.2 AA; zero violações automatizadas críticas ou sérias; jornadas principais sem bloqueios por teclado e leitor de tela; mobile; desafio renovado sem perda de campos permitidos; mensagens e rotas de todos os estados |
 | Usabilidade | mínimo de 10 participantes alheios ao desenvolvimento, sem orientação; pelo menos quatro jornadas em telefone e quatro em desktop; gates de envio e ativação satisfeitos por no mínimo 9 participantes |
 | End-to-end | cadastro local, cadastro Google, retomada, cancelamento, expiração, duplicidade simultânea e isolamento de acesso após ativação |
@@ -111,7 +114,7 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | `FR-REG-021` a `FR-REG-027` | retomada pela identidade pendente, cancelamento e job de limpeza | cenários 6, 7, 14 e 15 |
 | `FR-REG-028` a `FR-REG-042` | política por origem, adapter Turnstile e proxy confiável | cenários 8 e 9 |
 | `FR-REG-043` a `FR-REG-052` | Google Identity Services pelo RFW, continuação de cadastro externo e `ExternalIdentity` | cenários 10 a 12 |
-| `SC-UR-001` a `SC-UR-013` | matriz de testes, métricas operacionais e [Interface Design](./interface-spec.md) | suíte end-to-end e checklist de qualidade |
+| `SC-UR-001` a `SC-UR-015` | matriz de testes, métricas operacionais e [Interface Design](./interface-spec.md) | suíte end-to-end, eleição concorrente, calibração Argon2id e checklist de qualidade |
 
 ## Project Structure
 
@@ -172,6 +175,7 @@ docs/architecture/           # decisões transversais de arquitetura
 5. Compor a rota Vaadin com `RFWAccessComponent` conforme `interface-spec.md`.
 6. Implementar limpeza agendada e observabilidade.
 7. Executar testes de segurança, integração, UI e end-to-end; validar build do RFW e do Rinos.
+8. No ambiente equivalente ao de produção, calibrar Argon2id, registrar a evidência no checklist operacional e somente então concluir o gate de liberação.
 
 Essa sequência é arquitetural; a decomposição executável pertence a `tasks.md`.
 

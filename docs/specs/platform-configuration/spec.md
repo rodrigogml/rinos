@@ -12,6 +12,8 @@ Cada definição possui exatamente uma origem: arquivo `application.properties`,
 
 Não inclui credenciais, senhas, chaves privadas, segredos de integrações, dados de conexão, configuração do servidor, proxy, portas, caminhos, processo de deploy, backup, restauração, parâmetros internos do banco ou valores de infraestrutura que precisem permanecer fora da aplicação. Também não inclui direitos de planos, preferências pessoais, configurações particulares de conta ou conteúdo funcional dos módulos.
 
+Lease, heartbeat, sessão, fencing token e demais estados operacionais de eleição automática não são configurações e pertencem a `platform-operations`. Uma preferência administrativa futura por instância poderá ser configuração global versionada, mas nunca substituirá a aquisição atômica do lease.
+
 ## Clarifications
 
 ### Session 2026-07-20
@@ -25,6 +27,10 @@ Não inclui credenciais, senhas, chaves privadas, segredos de integrações, dad
 
 - Q: A regra de que configurações não concedem acesso impede a propriedade usada para criar o primeiro administrador global? -> A: A regra permanece para configurações comuns. `access-control` possui uma única exceção de bootstrap, com origem `PROPERTY_FILE`, padrão `admin@rinos.com.br`, usuário ativo e confirmado, fator forte e marcador ainda não concluído. A propriedade isoladamente não autoriza operações e nunca volta a conceder acesso depois da conclusão.
 - Q: A publicação de configuração global exige aprovação de um segundo administrador? -> A: Não. O próprio administrador autorizado pode concluir a publicação após autenticação forte recente, confirmação, justificativa, validações e auditoria.
+
+### Session 2026-07-27
+
+- Q: Heartbeat e instância atualmente responsável pela manutenção devem ser guardados como propriedades globais versionadas? -> A: Não. São estado operacional volátil em lease dedicado de `platform-operations`. Somente uma preferência manual futura pela instância poderá ser `GLOBAL_DATABASE`, com versão e auditoria, sem conceder liderança diretamente.
 
 ## User Scenarios & Testing
 
@@ -132,6 +138,7 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - Uma configuração de tenant é consultada sem contexto explícito do tenant.
 - Uma configuração depende de outra e forma ciclo de resolução.
 - O evento técnico esperado ocorre durante indisponibilidade ou reinício da aplicação.
+- Uma instância envia heartbeat operacional enquanto uma configuração global é publicada.
 - Uma versão pendente exige reinício, mas uma nova versão a substitui antes dele.
 - O administrador tenta usar configuração comum para armazenar segredo.
 - Uma alteração de limite deixaria operações ou recursos existentes acima do novo valor.
@@ -174,6 +181,7 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - **FR-PC-SCOPE-012**: O `application.properties` NÃO DEVE conter interpolação de variável de ambiente e NÃO DEVE ser editável pela aplicação.
 - **FR-PC-SCOPE-013**: A existência de configuração NÃO DEVE conceder acesso, grupo, chave, papel, direito de plano ou contexto de tenant por si própria. A única exceção de efeito concessivo permitido é o bootstrap único especificado por `access-control`, condicionado cumulativamente a identidade ativa e confirmada, fator forte compatível, marcador ainda não concluído, persistência atômica e auditoria.
 - **FR-PC-SCOPE-014**: Integração futura com provedor de segredos DEVE possuir contrato próprio e somente poderá expor estado seguro, nunca o valor secreto.
+- **FR-PC-SCOPE-015**: Lease, heartbeat, identificador de sessão, fencing token e progresso técnico transitório NÃO DEVEM ser armazenados como definição ou versão de configuração.
 
 ### Resolução do Valor Efetivo
 
@@ -263,6 +271,7 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - **FR-PC-BOUND-006**: Segredos e configurações de infraestrutura permanecem sob procedimentos externos e não recebem interface administrativa genérica.
 - **FR-PC-BOUND-007**: Alteração estrutural de banco continua pertencendo às migrações automáticas no deploy e NÃO DEVE ser simulada por configuração.
 - **FR-PC-BOUND-008**: Preferências e valores particulares de conta pertencem às respectivas features e ao armazenamento do usuário ou tenant.
+- **FR-PC-BOUND-009**: `platform-operations` mantém o lease operacional da coordenação de manutenção; esta feature somente poderá publicar uma preferência futura de instância, sem editar proprietário, heartbeat, sessão, expiração ou `epoch`.
 
 ### Decisões de Infraestrutura Auditáveis
 
@@ -310,3 +319,4 @@ Um administrador autorizado compara versões, investiga quem alterou uma políti
 - **SC-PC-022**: Em 100% das tentativas de informar data, hora ou prazo futuro de ativação, a publicação é recusada sem alterar o valor efetivo nem criar agendamento.
 - **SC-PC-023**: Em 100% das alterações `TENANT_DATABASE`, o tenant é explícito, o valor é validado pela definição tipada e existe auditoria correlacionável, mesmo quando a feature consumidora não adota versionamento.
 - **SC-PC-024**: Em 100% das publicações globais válidas, um único administrador devidamente autorizado consegue concluir o fluxo sem aprovação de segunda pessoa; a ausência de qualquer controle obrigatório impede a publicação.
+- **SC-PC-025**: Em 100% dos heartbeats, aquisições e trocas de liderança testados, nenhuma versão de configuração é criada ou alterada; eventual preferência administrativa permanece separada do lease operacional.

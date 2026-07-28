@@ -10,6 +10,8 @@ Esta feature oferece visibilidade segura sobre a saúde estrutural da instalaç�
 
 O provisionamento é iniciado pela criação válida de uma conta e prepara automaticamente seu armazenamento exclusivo na versão estrutural vigente. Migrações de bancos existentes são iniciadas automaticamente pelo deploy: o global é migrado primeiro e bloqueia toda a aplicação até ficar compatível; depois, os tenants pendentes são processados, e cada tenant somente é liberado após sua própria compatibilidade.
 
+Tarefas globais de manutenção que não precisem de distribuição utilizam uma liderança automática por lease persistido no banco global. Cada execução possui identidade estável configurada e sessão efêmera; somente a sessão que detém lease vigente e estabilizado pode iniciar novos lotes. Cada lote usa uma transação limitada por timeout inferior ao intervalo de estabilização, garantindo que uma execução anterior termine ou seja abortada antes de a nova coordenadora começar. Heartbeat e lease são estado operacional, não versões de configuração.
+
 Falhas que esgotem a recuperação automática segura exigem intervenção externa do pessoal de infraestrutura. A aplicação não oferece botões para repetir ou corrigir migrações falhas, alterar versões, executar scripts, acessar terminal, criar backup ou restaurar dados. Backup, retenção física, teste de cópias e restauração são procedimentos operacionais executados diretamente no servidor e permanecem fora da interface e do controle do Rinos.
 
 Todas as visões administrativas usam contexto global e chaves específicas do sistema. O papel “Administrador do Sistema” identifica o ator, mas não concede acesso por si próprio. Não inclui acesso ao conteúdo interno de contas, representação de usuários, edição geral de configurações, administração de planos, escolha de ferramentas físicas ou operação do servidor.
@@ -23,6 +25,11 @@ Todas as visões administrativas usam contexto global e chaves específicas do s
 - Q: O que acontece quando uma conta é criada enquanto existem tenants na fila de migração? -> A: Seu provisionamento entra na mesma fila de criação e atualização de tenants, depois das operações já enfileiradas, e aguarda a vez respeitando o limite de concorrência vigente.
 - Q: Quanto detalhe o criador da conta deve visualizar durante o provisionamento? -> A: Somente os estados Aguardando, Preparando, Pronta e Problema encontrado, acompanhados de orientação segura; etapas técnicas, topologia, versões e logs ficam fora dessa visão.
 - Q: Como os problemas operacionais serão comunicados inicialmente? -> A: Problemas de tenant ficam visíveis na área administrativa enquanto a aplicação estiver disponível; falhas globais ou anteriores à inicialização dependem dos logs e do monitoramento externo da infraestrutura. A primeira versão não envia e-mail nem webhook operacional.
+
+### Session 2026-07-27
+
+- Q: Como eleger uma única instância para tarefas globais de manutenção que não precisam ser distribuídas? -> A: Usar lease dedicado no banco global, com identificador estável da instância no `application.properties`, sessão nova por inicialização, heartbeat padrão de 30 minutos, expiração após quatro horas sem renovação, geração de fencing crescente e estabilização de 10 minutos antes da execução. Preferência manual futura será configuração global separada e nunca editará diretamente o lease.
+- Q: Como impedir que um lote iniciado pela coordenadora anterior grave dados depois da estabilização de uma nova líder? -> A: Cada lote deve executar em transação com timeout padrão máximo de cinco minutos, sempre inferior aos 10 minutos de estabilização; a sessão anterior pode concluir somente o lote já iniciado dentro desse limite, nunca iniciar outro, e a nova coordenadora somente começa depois de comprovar novamente o lease estabilizado.
 
 ## User Scenarios & Testing
 
@@ -116,6 +123,12 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - Um tenant é criado enquanto a fila de migrações do deploy está em execução.
 - Várias instâncias iniciam simultaneamente sobre uma versão global anterior.
 - A infraestrutura reinicia a aplicação sem corrigir a causa da migração falha.
+- Duas instâncias tentam criar ou assumir simultaneamente o mesmo lease de manutenção.
+- A coordenadora perde conectividade por mais de quatro horas e retorna depois de outra instância assumir.
+- Duas execuções usam acidentalmente o mesmo identificador configurado de instância.
+- O relógio local de uma instância diverge do relógio do banco durante eleição ou heartbeat.
+- O banco global fica indisponível enquanto a coordenadora tenta renovar o lease.
+- Um lote iniciado pela coordenadora anterior bloqueia além do timeout quando outra sessão já adquiriu o lease.
 - O armazenamento disponível termina durante provisionamento ou migração.
 - O relógio das instâncias diverge durante a ordenação de etapas e eventos.
 - Uma dependência oscila entre saudável e indisponível e produz alertas repetidos.
@@ -219,6 +232,26 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - **FR-PO-ALERT-016**: A primeira versão NÃO DEVE enviar alerta operacional por e-mail, webhook ou outra integração externa controlada pela aplicação.
 - **FR-PO-ALERT-017**: Ausência de e-mail ou webhook NÃO DEVE ser apresentada como ausência de ocorrência; a área administrativa e os sinais externos mantêm responsabilidades distintas.
 
+### Coordenação de Manutenção
+
+- **FR-PO-MAINT-001**: Cada instância DEVE possuir `instanceId` estável, explícito e exclusivo no `application.properties`; ausência ou formato inválido DEVE impedir a habilitação segura da coordenação automática nessa instância.
+- **FR-PO-MAINT-002**: Cada inicialização DEVE gerar um `sessionId` efêmero e imprevisível, distinguindo reinícios e duas execuções acidentais do mesmo `instanceId`.
+- **FR-PO-MAINT-003**: A liderança DEVE ser representada por um lease dedicado no banco global, identificado por `leaseKey`, e NÃO DEVE ser armazenada como versão de configuração.
+- **FR-PO-MAINT-004**: Heartbeat, aquisição, renovação, expiração e troca de liderança DEVEM usar exclusivamente o relógio do MySQL global.
+- **FR-PO-MAINT-005**: Os padrões operacionais DEVEM ser heartbeat a cada 30 minutos, expiração depois de quatro horas sem renovação e estabilização de 10 minutos depois de uma aquisição; esses valores são definições `PROPERTY_FILE`, não valores do banco global.
+- **FR-PO-MAINT-006**: Aquisição inicial ou tomada de lease expirado DEVE ser atômica e permitir um único vencedor entre instâncias concorrentes.
+- **FR-PO-MAINT-007**: Cada nova aquisição por outra sessão DEVE incrementar um `epoch` monotônico usado como fencing token.
+- **FR-PO-MAINT-008**: Renovação somente DEVE concluir quando `leaseKey`, `instanceId`, `sessionId`, `epoch` e versão vigente ainda corresponderem ao proprietário.
+- **FR-PO-MAINT-009**: Sessão que perder o lease, não puder comprová-lo ou observar `epoch` diferente NÃO DEVE iniciar novo job nem novo lote. Um lote cuja transação já tenha começado poderá somente concluir dentro do timeout vigente ou ser abortado por ele; depois disso, a sessão DEVE interromper-se no próximo ponto transacional seguro.
+- **FR-PO-MAINT-010**: Depois de adquirir o lease, a sessão DEVE aguardar 10 minutos e comprová-lo novamente antes de avaliar e disparar tarefas vencidas.
+- **FR-PO-MAINT-011**: Somente tarefas catalogadas como manutenção global exclusiva DEVEM depender dessa liderança; as demais instâncias continuam atendendo operações comuns sem receber permissões adicionais.
+- **FR-PO-MAINT-012**: Cada tarefa coordenada DEVE permanecer idempotente, operar em lotes limitados e revalidar seu próprio estado de negócio; o lease NÃO substitui proteção transacional.
+- **FR-PO-MAINT-013**: Indisponibilidade do banco global ou falha ao renovar o lease DEVE suspender novos lotes até nova comprovação, sem presumir continuidade da liderança.
+- **FR-PO-MAINT-014**: Aquisição, renovação, perda, tomada e tentativa rejeitada DEVEM produzir métricas e registros operacionais sem credenciais ou conteúdo de tenant.
+- **FR-PO-MAINT-015**: A primeira versão NÃO DEVE oferecer comando de interface para editar lease, heartbeat, sessão ou `epoch`.
+- **FR-PO-MAINT-016**: Preferência manual futura por uma instância DEVE ser configuração `GLOBAL_DATABASE` versionada e auditada pela `platform-configuration`, separada do lease; sua publicação não poderá declarar liderança sem aquisição atômica pela instância elegível.
+- **FR-PO-MAINT-017**: Cada lote coordenado DEVE executar em uma única transação com timeout `PROPERTY_FILE` padrão de cinco minutos, validado na inicialização como estritamente menor que o intervalo de estabilização. Timeout, perda de conexão ou falha de commit DEVEM abortar o lote sem marcar progresso não confirmado; a idempotência da tarefa deve permitir repetição segura pela coordenadora vigente.
+
 ### Limites com Features Relacionadas
 
 - **FR-PO-BOUND-001**: `tenant-storage-provisioning` define identidade, estados e invariantes do armazenamento; esta feature apresenta sua operação automática sem oferecer atalhos estruturais.
@@ -230,6 +263,7 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - **FR-PO-BOUND-007**: Esta feature NÃO DEVE oferecer terminal, consulta arbitrária, edição direta de registros, execução livre de comandos, migração manual, backup ou restauração.
 - **FR-PO-BOUND-008**: Deploy do artefato executável, servidor, proxy reverso, backup, restauração e intervenção sobre falhas estruturais pertencem aos procedimentos externos de infraestrutura.
 - **FR-PO-BOUND-009**: Conteúdo funcional, validações de negócio e relatórios de módulos pertencem às respectivas features e não compõem a saúde estrutural do tenant.
+- **FR-PO-BOUND-010**: `platform-configuration` poderá manter a preferência administrativa futura da instância coordenadora, mas lease, heartbeat, sessão e fencing permanecem estado operacional desta feature.
 
 ### Decisões de Infraestrutura Auditáveis
 
@@ -239,6 +273,8 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - **FR-PO-INFRA-RECOVERY**: Estado e progresso conhecidos pela aplicação DEVEM sobreviver a reinício e troca de instância sem inventar sucesso nem perder evidências.
 - **FR-PO-INFRA-CLOCK**: Ordenação, duração e correlação DEVEM usar referência temporal confiável e falhar com segurança diante de divergência relevante.
 - **FR-PO-INFRA-CAPACITY**: Falta de capacidade conhecida DEVE impedir novas etapas com segurança, preservar estados já válidos e produzir diagnóstico antes de causar corrupção ou mistura de escopos.
+- **FR-PO-INFRA-LEADER**: Tarefas globais exclusivas DEVEM comprovar lease vigente, sessão proprietária, `epoch` atual e estabilização antes de cada execução, sem depender de eleição em memória.
+- **FR-PO-INFRA-DRAIN**: A estabilização da nova coordenadora DEVE superar o timeout transacional máximo de um lote, impedindo sobreposição entre escritas da sessão anterior e o início de novos lotes.
 
 ### Key Entities
 
@@ -249,6 +285,7 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - **Migration Execution**: evidência automática da aplicação ordenada de um update em um armazenamento determinado.
 - **Operational Occurrence**: condição conhecida que exige acompanhamento interno ou intervenção externa, com severidade, estado, correlação e histórico.
 - **Operational Audit Event**: evidência protegida das consultas administrativas, mudanças de ocorrência e resultados automáticos.
+- **Maintenance Lease**: estado operacional proposto na tabela global `platform_maintenanceLease`, com `id BIGINT` autoincremento, `leaseKey VARCHAR(64)` único, `instanceId VARCHAR(128)`, `sessionId CHAR(36)`, `epoch BIGINT`, `acquiredAt TIMESTAMP(6)`, `heartbeatAt TIMESTAMP(6)`, `leaseUntil TIMESTAMP(6)`, `createdAt TIMESTAMP(6)`, `updatedAt TIMESTAMP(6)` e `version BIGINT`. Não possui FK de usuário nem armazena configuração funcional.
 
 ## Success Criteria
 
@@ -273,3 +310,6 @@ Um administrador autorizado prioriza ocorrências visíveis, reconhece quais exi
 - **SC-PO-017**: Em 100% das criações realizadas com migrações já enfileiradas, o provisionamento novo aguarda depois das operações existentes, não excede a concorrência configurada e não é apresentado como falho.
 - **SC-PO-018**: Em 100% dos testes da visão do criador, somente os quatro estados definidos e orientações seguras são apresentados, sem topologia, versões, etapas técnicas ou logs.
 - **SC-PO-019**: Em 100% dos testes, ocorrência de tenant fica consultável na área administrativa quando a aplicação está disponível, falha global permanece diagnosticável externamente e nenhum e-mail ou webhook operacional é enviado.
+- **SC-PO-020**: Em 100% das aquisições simultâneas testadas para a mesma `leaseKey`, somente uma sessão se torna coordenadora e somente depois de 10 minutos de estabilização pode iniciar tarefas vencidas.
+- **SC-PO-021**: Em 100% dos testes de perda, expiração, reinício e retorno da antiga coordenadora, a nova aquisição incrementa o `epoch` e a sessão anterior não inicia nem continua outro lote depois de detectar a perda.
+- **SC-PO-022**: Em 100% dos testes de troca de liderança, um lote já iniciado pela sessão anterior conclui ou é abortado em no máximo cinco minutos, nenhum novo lote começa antes dos 10 minutos de estabilização e não há sobreposição de escritas entre as duas sessões.

@@ -99,6 +99,7 @@ Credencial local separada da identidade. Esta feature cria ou invalida a senha i
 
 - A senha em claro existe somente durante validação e hashing.
 - O hash não aparece em DTO, VO, auditoria, mensagem de exceção ou log.
+- O valor segue o formato do `DelegatingPasswordEncoder` e conserva identificador, parâmetros e salt necessários para validar hashes produzidos por configurações anteriores.
 - No reaproveitamento por Google, a credencial pendente é invalidada e removida antes do commit da ativação.
 
 ## Entity: Verification
@@ -218,29 +219,36 @@ Evidência imutável da decisão sobre uma versão específica.
 - UK em `(idUser, idLegalDocumentVersion)`.
 - O registro não é atualizado; mudança de versão cria nova decisão.
 
-## Entity: RegistrationOriginWindow
+## Entity: OriginWindow
 
-**Tabela proposta**: `identity_registrationOriginWindow`
+**Tabela proposta**: `security_originWindow`
 
-Contador persistido por origem e janela para decidir exigência do Turnstile e bloqueio temporário.
+Contador global persistido por origem, operação, política e janela. A estrutura atende inicialmente ao cadastro e poderá
+ser reutilizada por autenticação, recuperação e outras operações de segurança sem transformar o IP em identidade.
 
 | Field | Type | Constraints | Notes |
 |-------|------|-------------|-------|
 | `id` | `BIGINT` | PK, auto increment | |
-| `originDigest` | `BINARY(32)` | NOT NULL | HMAC-SHA-256 do IP normalizado |
-| `policy` | `VARCHAR(32)` | NOT NULL | `TURNSTILE_THRESHOLD` ou `REGISTRATION_LIMIT` |
+| `originAddress` | `VARBINARY(16)` | NOT NULL | IPv4 ou IPv6 normalizado, sem representação textual ambígua |
+| `operation` | `VARCHAR(48)` | NOT NULL | Inicialmente `USER_REGISTRATION`; extensível por contrato |
+| `policy` | `VARCHAR(32)` | NOT NULL | `TURNSTILE_THRESHOLD` ou `ABSOLUTE_LIMIT` |
 | `windowStartedAt` | `TIMESTAMP(6)` | NOT NULL | Início determinístico da janela |
 | `windowEndsAt` | `TIMESTAMP(6)` | NOT NULL | |
-| `attemptCount` | `INT` | NOT NULL | Incremento atômico |
+| `eventCount` | `INT` | NOT NULL | Eventos contabilizados conforme operação e política |
+| `blockedUntil` | `TIMESTAMP(6)` | NULL | Liberação explícita quando a política bloquear |
 | `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 | `updatedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 | `version` | `BIGINT` | NOT NULL | Controle otimista ou incremento atômico SQL |
 
 ### Constraints and indexes
 
-- UK em `(originDigest, policy, windowStartedAt)`.
+- UK em `(originAddress, operation, policy, windowStartedAt)`.
 - Índice em `windowEndsAt` para limpeza.
-- O endereço IP em claro não é persistido.
+- Para `USER_REGISTRATION + ABSOLUTE_LIMIT`, a janela padrão começa na primeira nova pendência contabilizada e termina 24 horas depois.
+- O contador é incrementado atomicamente, na mesma transação que cria uma nova `Registration`; repetição idempotente que reutiliza a pendência vencedora não o incrementa.
+- Submissões rejeitadas antes da persistência, retomadas, reenvios e cancelamentos não alteram o contador.
+- O IP não é copiado para `IdentityEvent`, logs comuns ou auditorias permanentes.
+- A linha é excluída automaticamente até 30 dias depois de `windowEndsAt`.
 
 ## Entity: IdentityEvent
 
@@ -300,6 +308,13 @@ Registro append-only dos eventos exigidos para identidade e cadastro, sem creden
 |------|-----------|
 | Usuário/registro pendente, credencial, comprovações e consentimentos não ativados | Até completar 15 dias desde a criação; exclusão diária idempotente |
 | Comprovação usada, invalidada ou expirada de cadastro ainda pendente | Até o cadastro terminar ou expirar |
-| `RegistrationOriginWindow` | Até o fim da janela mais margem operacional mínima para execução da limpeza |
+| `OriginWindow` | Até 30 dias depois do fim da janela; exclusão física automática ao menos diária, em lotes próprios |
 | Tombstone de cancelamento sem PII | 15 dias |
 | Usuário ativo, vínculo externo e consentimentos aplicáveis | Enquanto a identidade estiver vigente ou conforme governança/obrigação futura |
+
+O job diário depende do lease global `platform_maintenanceLease` definido em `platform-operations`; essa tabela não
+pertence ao domínio de identidade. O catálogo do job inclui separadamente a expiração de cadastros pendentes e a
+exclusão de `OriginWindow` vencidas. A sessão coordenadora comprova lease e `epoch` antes de cada lote, e cada
+transação possui timeout padrão de cinco minutos, obrigatoriamente inferior aos 10 minutos de estabilização. A
+transação relê estado e expiração antes de excluir; timeout ou falha de commit não registra progresso e permite
+repetição idempotente pela coordenadora vigente.

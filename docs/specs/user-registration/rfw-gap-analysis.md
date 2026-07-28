@@ -107,7 +107,7 @@ Não existe contrato para o Rinos informar que o cadastro ainda está abaixo do 
 - Permitir um provider/policy decidir se a prova é exigida para operação e origem já resolvida.
 - Preservar como fallback o comportamento atual “provider presente = obrigatório”, garantindo compatibilidade.
 - Renderizar e validar o widget somente quando a decisão efetiva exigir.
-- Manter contadores, HMAC da origem, janelas e bloqueios no Rinos.
+- Manter no Rinos a origem normalizada, os contadores, as janelas, os bloqueios e a retenção limitada.
 
 ### Compatibilidade
 

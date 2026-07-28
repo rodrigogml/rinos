@@ -26,7 +26,9 @@ Documento produzido no Phase 0 do plano de `user-registration`. As decisões aba
 
 ## Decision 3: Senhas locais
 
-**Decision**: aplicar a política funcional antes da persistência, consultar senhas comprometidas pela API gratuita Pwned Passwords usando k-anonimato e armazenar somente hash Argon2id por meio do `PasswordEncoder` do Spring Security, com identificador de algoritmo no valor persistido. Os parâmetros de custo deverão ser calibrados no ambiente de produção antes da liberação.
+**Decision**: aplicar a política funcional antes da persistência, consultar senhas comprometidas pela API gratuita Pwned Passwords usando k-anonimato e armazenar somente hash Argon2id por meio do `PasswordEncoder` do Spring Security, com identificador de algoritmo e parâmetros no valor persistido. O piso será de 19.456 KiB de memória, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes. Antes da liberação em cada novo perfil de servidor de produção, uma ferramenta reproduzível executará aquecimento e no mínimo 50 medições; memória ou iterações serão ajustadas sem reduzir o piso até obter mediana entre 500 ms e um segundo e percentil 95 de até 1,5 segundo.
+
+A calibração não ocorrerá automaticamente durante a inicialização. Os parâmetros efetivos serão definições exclusivas do `application.properties`, documentadas no `application.properties.model`, e o resultado será registrado no checklist operacional do [README do projeto](../../../README.md). Hashes existentes permanecem verificáveis com os parâmetros codificados no próprio valor; eventual atualização após autenticação pertence a `user-authentication`.
 
 Nenhuma senha, hash SHA-1 completo ou sufixo comparado será registrado em logs ou auditoria. Se o serviço de senhas comprometidas estiver indisponível, o cadastro local falhará fechado com orientação para tentar novamente; o cadastro Google continuará disponível.
 
@@ -42,7 +44,7 @@ Nenhuma senha, hash SHA-1 completo ou sufixo comparado será registrado em logs 
 
 **Decision**: emitir um token opaco de alta entropia para um link HTTPS, persistindo somente seu hash SHA-256, estado, emissão e expiração. O token será de uso único, válido por 24 horas; nova emissão invalida as anteriores. A aplicação Rinos será responsável pelo significado, persistência e política, reutilizando os contratos de entrega e o serviço de e-mail do RFW.
 
-O registro pendente e a comprovação serão confirmados na mesma transação. O envio SMTP ocorrerá após o commit; se falhar, o cadastro permanece retomável e o reenvio gera uma nova comprovação.
+O registro pendente e a comprovação serão confirmados na mesma transação. O envio SMTP ocorrerá diretamente pelo serviço de e-mail do RFW após o commit, com timeout explícito e sem outbox ou retentativa automática no primeiro incremento. Se o envio falhar ou o processo for interrompido entre o commit e o dispatch, o cadastro permanece retomável e o reenvio solicitado pela pessoa gera uma nova comprovação. Token, URL secreta e mensagem renderizada não serão persistidos para envio posterior.
 
 **Rationale**: um segredo aleatório suficientemente longo pode ser transportado em link sem pedir digitação e pode ser validado por comparação de hash. Separar persistência de entrega impede que uma falha SMTP desfaça ou duplique o cadastro.
 
@@ -50,7 +52,7 @@ O registro pendente e a comprovação serão confirmados na mesma transação. O
 
 - Persistir o token em texto recuperável: rejeitada porque uma leitura indevida do banco permitiria ativação.
 - Usar somente o gerador numérico padrão do RFW: rejeitada para este fluxo público porque exige controles adicionais de tentativas e oferece menor entropia que um token opaco.
-- Usar uma fila/outbox no primeiro incremento: adiada; o reenvio idempotente satisfaz o requisito atual com menor complexidade.
+- Usar uma fila/outbox no primeiro incremento: adiada; além da complexidade operacional, o transporte durável do link exigiria persistir um segredo recuperável ou definir criptografia e rotação de chave. O reenvio solicitado pela pessoa satisfaz o requisito atual sem expor o token.
 
 ## Decision 5: Documentos legais e consentimentos
 
@@ -67,16 +69,18 @@ O registro pendente e a comprovação serão confirmados na mesma transação. O
 
 **Decision**: reutilizar `RFWTurnstileComponent`, `RFWHumanVerificationProvider` e `RFWTurnstileVerificationService` já fornecidos pelo RFW Platform. O Rinos permanece responsável pela política que decide quando exigir o desafio e pelos limites por origem. O token será validado no servidor antes de qualquer persistência, com verificação de `hostname`, contexto/action, timeout limitado e sem persistência do token.
 
-Os limites por IP usarão janelas persistidas no schema global, identificadas por HMAC do endereço normalizado. A chave HMAC, as credenciais do Turnstile, os limites, as janelas e a lista explícita de proxies confiáveis serão definições exclusivas de `application.properties`. O limiar padrão do Turnstile será zero. Falha do Siteverify será tratada como indisponibilidade e impedirá o cadastro quando o desafio for obrigatório.
+Os limites por IP usarão janelas persistidas no schema global. O endereço validado pela política de proxy será normalizado e armazenado diretamente em formato binário na tabela compartilhada `security_originWindow`, reutilizável futuramente por autenticação e recuperação. Não haverá HMAC, criptografia nem rotação de chave. O registro será acessível somente para prevenção e investigação de abuso, não será copiado para auditoria permanente e será excluído até 30 dias depois do fim da janela.
+
+As credenciais do Turnstile, os limites, as janelas e a lista explícita de proxies confiáveis serão definições exclusivas de `application.properties`. O limiar padrão do Turnstile será zero. O limite absoluto padrão será de 20 novas pendências de cadastro local por origem em uma janela de 24 horas iniciada pela primeira criação contabilizada. Somente uma nova pendência efetivamente persistida consumirá esse limite; rejeições anteriores à persistência, retomadas, reenvios, cancelamentos e convergências idempotentes não serão contabilizados. Falha do Siteverify será tratada como indisponibilidade e impedirá o cadastro quando o desafio for obrigatório.
 
 O RFW atualmente exige a prova sempre que o provider está presente e valida o hostname, mas ainda não recebe uma decisão dinâmica por operação/origem nem valida `action`. Essas lacunas reutilizáveis devem ser evoluídas no RFW, após autorização, sem criar um segundo adapter no Rinos. A análise completa está em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
 
-**Rationale**: o RFW já concentra o contrato técnico reutilizável com o provedor, enquanto regras de cadastro pertencem ao Rinos. O HMAC permite contar uma origem sem conservar o IP em claro. A lista de proxies confiáveis impede aceitar cabeçalhos forjados por clientes diretos.
+**Rationale**: o RFW já concentra o contrato técnico reutilizável com o provedor, enquanto regras de cadastro pertencem ao Rinos. A retenção curta, a finalidade antifraude e a necessidade operacional de diagnóstico não justificam chave compartilhada, sincronização entre instâncias e rotação para pseudonimizar o IP. A lista de proxies confiáveis impede aceitar cabeçalhos forjados por clientes diretos.
 
 **Alternatives considered**:
 
 - Validar somente no navegador: rejeitada; o token pode ser forjado ou reutilizado.
-- Armazenar o IP em claro: rejeitada por minimização de dados.
+- Pseudonimizar o IP com HMAC: rejeitada porque o benefício diante de vazamento exclusivo do banco não compensa chave compartilhada, sincronização, reinício e rotação entre instâncias para dados de curta retenção.
 - Contadores apenas em memória: rejeitados porque reinicializações e múltiplas instâncias burlariam as janelas.
 
 ## Decision 7: Cadastro Google
@@ -115,6 +119,20 @@ O Rinos implementará `RFWExternalIdentityResolver` para localizar, iniciar ou r
 - Criar API pública REST no MVP: rejeitada porque não há consumidor externo definido.
 - Criar componente próprio de acesso no Rinos: rejeitada porque duplicaria `RFWAccessComponent`.
 - Colocar regras de cadastro nas views Vaadin: rejeitada por acoplamento, baixa testabilidade e violação das fronteiras de packages.
+
+## Decision 10: Coordenação da limpeza em múltiplas instâncias
+
+**Decision**: antecipar a capacidade de liderança automática de manutenção definida em `platform-operations`. Cada instância terá `instanceId` explícito no `application.properties` e `sessionId` novo por inicialização. Um lease no banco global será renovado a cada 30 minutos, expirará depois de quatro horas sem heartbeat e incrementará `epoch` em cada nova aquisição. A sessão vencedora aguardará 10 minutos, comprovará novamente propriedade e fencing e somente então executará tarefas vencidas. Cada transação de lote terá timeout padrão de cinco minutos, configurado em properties e validado como estritamente inferior à estabilização.
+
+O heartbeat usa o relógio do MySQL e não gera versão de configuração. A limpeza de cadastros pendentes e de janelas de origem continua idempotente, em lotes próprios e limitados, com releitura transacional antes da exclusão e verificação do lease antes de cada lote. Um lote iniciado pela sessão anterior pode somente concluir dentro do timeout ou ser abortado; a nova líder começa depois da estabilização, quando já não pode haver transação antiga vigente. Preferência manual futura será configuração global separada, sem edição direta do lease.
+
+**Rationale**: uma liderança compartilhada evita distribuir jobs simples e permite failover automático. Separar lease de configuração impede que heartbeats poluam histórico, auditoria e caches funcionais; `sessionId` e `epoch` impedem que uma execução antiga inicie novo trabalho depois de perder a liderança. O timeout menor que a estabilização fecha a janela de um lote já aberto sem exigir fencing distribuído em cada escrita de domínio.
+
+**Alternatives considered**:
+
+- Coordenador fixo por properties: rejeitado porque exige failover manual e pode deixar tarefas paradas enquanto outra instância está saudável.
+- Heartbeat em propriedade global chave/valor: rejeitado porque estado operacional volátil não deve produzir versões de configuração.
+- Processamento cooperativo com `SKIP LOCKED`: adiado porque distribui um job que não exige escala no estágio atual.
 
 ## Referências técnicas consultadas
 

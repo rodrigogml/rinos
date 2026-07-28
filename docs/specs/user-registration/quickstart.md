@@ -60,9 +60,12 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 2. **Expected**: nenhuma escrita ocorre e a UI pede renovação do desafio.
 3. Submeter token de teste válido uma vez e reutilizá-lo em outra tentativa.
 4. **Expected**: somente a primeira validação pode prosseguir.
-5. Atingir o limite máximo configurado para uma origem.
-6. Repetir com outro token Turnstile válido na mesma origem.
-7. **Expected**: novas tentativas dessa origem continuam bloqueadas até a janela terminar, mesmo com Turnstile válido, e exibem o tempo restante; outra origem continua operável.
+5. Com os valores padrão, criar 20 novas pendências de cadastro local na mesma origem dentro da janela de 24 horas.
+6. Confirmar que rejeições anteriores à persistência, retomadas, reenvios, cancelamentos e repetições idempotentes não aumentaram o contador.
+7. Tentar criar a vigésima primeira pendência com outro token Turnstile válido na mesma origem.
+8. **Expected**: a nova criação permanece bloqueada até a janela terminar, mesmo com Turnstile válido, e exibe o tempo restante; outra origem continua operável.
+9. Avançar o relógio para mais de 30 dias depois do fim da janela e executar a limpeza.
+10. **Expected**: o registro com IP foi excluído e nenhuma auditoria permanente ou log comum conserva o endereço.
 
 ## Scenario 9: Proxy não confiável
 
@@ -108,8 +111,16 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 ## Scenario 15: Expiração automática
 
 1. Criar cadastro pendente com mais de 15 dias usando relógio controlado.
-2. Executar o job diário duas vezes, inclusive em duas instâncias concorrentes.
-3. **Expected**: dados pendentes são removidos uma única vez, usuário ativo nunca é excluído e falhas individuais são observáveis sem interromper silenciosamente o lote.
+2. Iniciar duas instâncias com `instanceId` distintos e disputar atomicamente o mesmo lease.
+3. Confirmar que somente a vencedora renova heartbeat e que nenhum lote começa antes dos 10 minutos de estabilização.
+4. Executar o job diário duas vezes e ativar concorrentemente um dos cadastros selecionáveis.
+5. **Expected**: dados ainda pendentes são removidos uma única vez, usuário ativado nunca é excluído e falhas individuais são observáveis sem interromper silenciosamente o lote.
+6. Interromper a coordenadora, avançar o relógio do banco além de quatro horas e permitir que a segunda instância assuma com novo `epoch`.
+7. Manter artificialmente um lote da instância antiga em execução e confirmar que ele conclui ou é abortado pelo timeout de cinco minutos.
+8. Retomar a instância antiga e executar nova avaliação.
+9. **Expected**: nenhum lote da nova coordenadora começa antes dos 10 minutos de estabilização; a sessão antiga não inicia outro lote, não existe sobreposição de escritas e nenhum timeout registra progresso não confirmado.
+10. Criar uma `OriginWindow` cuja retenção tenha vencido e executar o catálogo diário de manutenção.
+11. **Expected**: a janela é removida em lote próprio sob a mesma liderança, sem interferir na limpeza dos cadastros pendentes.
 
 ## Scenario 16: Roundtrip UI Vaadin -> Facade -> MySQL
 
@@ -125,3 +136,31 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 2. Forçar expiração do Turnstile durante o preenchimento e renová-lo.
 3. Continuar a operação real até o e-mail de teste e abrir a confirmação.
 4. **Expected**: e-mail e aceites legais permanecem preenchidos; senha, confirmação, token e outras provas são descartados e precisam ser reinformados; foco e erros são anunciados, a identidade fica ativa e o próximo acesso possível é somente o próprio Painel de Usuário.
+
+## Scenario 18: Falha SMTP e recuperação por reenvio
+
+1. Configurar o servidor SMTP de teste para falhar ou exceder o timeout depois que o cadastro local for confirmado no banco.
+2. Submeter um cadastro válido.
+3. **Expected**: a pendência e sua comprovação existem, nenhuma identidade está ativa, a UI não afirma que o e-mail foi enviado e oferece retomada e reenvio.
+4. Retomar o cadastro, restabelecer o SMTP e solicitar nova comprovação.
+5. **Expected**: a comprovação anterior é invalidada, uma nova mensagem é aceita pelo SMTP e o novo link permite uma única ativação.
+6. Verificar banco, logs e eventos.
+7. **Expected**: não existe outbox, token recuperável, URL secreta ou mensagem renderizada persistida.
+
+## Scenario 19: Calibração Argon2id para produção
+
+1. No mesmo perfil de servidor, Java e limites de recursos da produção, configurar o piso de 19.456 KiB, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes.
+2. Executar a ferramenta de calibração depois do aquecimento da JVM e coletar no mínimo 50 operações sem registrar senha ou hash.
+3. Ajustar somente memória ou iterações, sem reduzir o piso, até alcançar a faixa definida.
+4. **Expected**: mediana entre 500 ms e um segundo, percentil 95 de até 1,5 segundo e hashes válidos com identificador e parâmetros codificados.
+5. Registrar hardware, JVM, parâmetros, data e resultados conforme o checklist do `README.md`.
+6. **Expected**: o gate impede a liberação quando o piso ou o limite de latência não é atendido.
+
+## Scenario 20: SLO SMTP nominal e smoke test real
+
+1. Configurar um servidor SMTP local controlado, elevar o limite antifraude do perfil de teste para ao menos 100 novas pendências por origem e usar verificação humana controlada.
+2. Executar 100 cadastros nominais, registrando o instante do commit e da aceitação de cada mensagem.
+3. **Expected**: ao menos 95 mensagens são aceitas em até dois minutos depois do respectivo commit; falhas são contabilizadas sem duplicar ou ativar identidades.
+4. Restaurar o perfil antifraude padrão e confirmar separadamente o limite de 20 e o Turnstile real conforme o Scenario 8.
+5. Configurar o SMTP real da instalação e realizar um único cadastro de smoke test com destinatário operacional autorizado.
+6. **Expected**: a mensagem é aceita e a evidência confirma somente conectividade e configuração, sem declarar throughput, carga máxima ou quantidade de usuários simultâneos.

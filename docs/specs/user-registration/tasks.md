@@ -69,6 +69,19 @@ Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-m
 - [ ] 1.4.5 Criar teste de banco vazio, banco atualizado e versão incompatível
 - [ ] 1.4.6 Documentar indisponibilidade durante migrations e intervenção externa em caso de falha
 
+### 1.5 Implementar coordenação automática de manutenção `[C]`
+
+Ref: [Platform Operations §Coordenação de Manutenção](../platform-operations/spec.md), [Research §Decision 10](./research.md)
+
+- [ ] 1.5.1 Declarar `instanceId`, intervalo de heartbeat, prazo de expiração, estabilização e timeout transacional de lote como properties tipadas, com padrões de 30 minutos, quatro horas, 10 minutos e cinco minutos; rejeitar timeout igual ou superior à estabilização
+- [ ] 1.5.2 Criar migration, entity e repository globais para `platform_maintenanceLease` com `leaseKey` único, sessão, `epoch`, instantes e versionamento
+- [ ] 1.5.3 Gerar `sessionId` novo por inicialização e usar exclusivamente o relógio do MySQL para aquisição, heartbeat e expiração
+- [ ] 1.5.4 Implementar aquisição e tomada atômicas com um vencedor, incremento de `epoch` e renovação condicionada ao proprietário vigente
+- [ ] 1.5.5 Impedir execução antes da estabilização de 10 minutos, exigir nova comprovação do lease antes de cada job e lote e executar cada lote em transação sujeita ao timeout configurado
+- [ ] 1.5.6 Suspender novos lotes diante de perda, fencing divergente, falha de heartbeat ou indisponibilidade do banco global
+- [ ] 1.5.7 Instrumentar aquisição, renovação, perda, tomada e rejeição sem criar versões em `platform-configuration`
+- [ ] 1.5.8 Criar testes com duas instâncias, mesmo `instanceId`, reinício, expiração, retorno da líder antiga, lote antigo bloqueado, timeout, ausência de sobreposição, relógio local divergente e banco indisponível
+
 ---
 
 ## FASE 2 - Domínio Global e Persistência
@@ -110,15 +123,15 @@ Ref: [Spec §FR-USR-010–011 e FR-REG-005–006](./spec.md), [Data Model §Lega
 
 ### 2.4 Modelar identidade externa, origem e auditoria `[C]`
 
-Ref: [Spec §FR-USR-007 e FR-REG-029, FR-REG-037–049](./spec.md), [Data Model §ExternalIdentity, §RegistrationOriginWindow e §IdentityEvent](./data-model.md)
+Ref: [Spec §FR-USR-007 e FR-REG-029, FR-REG-037–049](./spec.md), [Data Model §ExternalIdentity, §OriginWindow e §IdentityEvent](./data-model.md)
 
 - [ ] 2.4.1 Criar `ExternalIdentityEntity` com unicidade por `issuer + subject`
-- [ ] 2.4.2 Criar `RegistrationOriginWindowEntity` identificado por HMAC da origem
+- [ ] 2.4.2 Criar `OriginWindowEntity` global com IP normalizado em `VARBINARY(16)`, operação, política, janela, contador e bloqueio
 - [ ] 2.4.3 Criar `IdentityEventEntity` sem PII ou segredos
 - [ ] 2.4.4 Criar repositories com consultas por vínculo externo, janela e eventos
 - [ ] 2.4.5 Implementar service de auditoria de transições e resultados públicos
 - [ ] 2.4.6 Implementar tombstone de cancelamento sem identificador direto
-- [ ] 2.4.7 Criar testes de unicidade externa, retenção, HMAC e sanitização de eventos
+- [ ] 2.4.7 Criar testes de unicidade externa, normalização IPv4/IPv6, retenção de origem e sanitização de eventos
 
 ### 2.5 Criar schema, constraints e validação de paridade `[C]`
 
@@ -144,9 +157,11 @@ Ref: [Spec §FR-REG-003–004](./spec.md), [Contracts §Pwned Passwords](./contr
 - [ ] 3.1.2 Implementar política de 10–128 caracteres e classes obrigatórias com erros públicos por regra
 - [ ] 3.1.3 Implementar consulta HIBP por prefixo SHA-1 com `Add-Padding`
 - [ ] 3.1.4 Implementar timeout, payload defensivo e política fail-closed
-- [ ] 3.1.5 Configurar hashing Argon2id por `PasswordEncoder` sem formato recuperável
+- [ ] 3.1.5 Configurar Argon2id por `PasswordEncoder` com properties tipadas e piso de 19.456 KiB, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes
 - [ ] 3.1.6 Garantir limpeza de senha, hashes intermediários e resposta HIBP de logs e auditoria
 - [ ] 3.1.7 Criar testes unitários e de integração local para senhas válidas, comuns, comprometidas e indisponibilidade
+- [ ] 3.1.8 Criar ferramenta reproduzível de calibração com aquecimento, no mínimo 50 medições e relatório de mediana e percentil 95 sem expor senha ou hash
+- [ ] 3.1.9 Validar identificador, parâmetros codificados, verificação de hashes anteriores e rejeição de configuração abaixo do piso
 
 ### 3.2 Implementar origem confiável e limites por IP `[C]`
 
@@ -154,11 +169,12 @@ Ref: [Spec §FR-REG-037–041](./spec.md), [Research §Decision 6](./research.md
 
 - [ ] 3.2.1 Implementar resolução do endereço remoto com allowlist explícita de proxies
 - [ ] 3.2.2 Rejeitar cadeias encaminhadas inconsistentes ou originadas fora de proxy confiável
-- [ ] 3.2.3 Implementar HMAC versionável do IP normalizado sem persistir endereço bruto
-- [ ] 3.2.4 Implementar janela persistida para limiar Turnstile e limite máximo absoluto
+- [ ] 3.2.3 Implementar normalização canônica de IPv4/IPv6 e persistência binária da origem sem HMAC ou criptografia
+- [ ] 3.2.4 Implementar janela persistida e contador atômico para limiar Turnstile e limite máximo absoluto, com padrões de 20 novas pendências em 24 horas
 - [ ] 3.2.5 Retornar bloqueio temporário com instante de liberação sem exceção por Turnstile válido
-- [ ] 3.2.6 Criar limpeza idempotente de janelas expiradas
-- [ ] 3.2.7 Criar testes de NAT compartilhado, proxy forjado, concorrência e término automático do bloqueio
+- [ ] 3.2.6 Integrar ao catálogo diário coordenado uma limpeza idempotente, em lotes próprios, que exclua a origem até 30 dias depois do fim da janela sob o lease e timeout transacional vigentes
+- [ ] 3.2.7 Garantir que somente a criação efetiva de nova pendência incremente o limite, excluindo rejeições, retomadas, reenvios, cancelamentos e convergências idempotentes
+- [ ] 3.2.8 Criar testes de NAT compartilhado, proxy forjado, concorrência, vigésima primeira criação, término automático do bloqueio, retenção máxima, troca de liderança e repetição segura da limpeza
 
 ### 3.3 Integrar Cloudflare Turnstile pelo RFW `[C]`
 
@@ -171,17 +187,17 @@ Ref: [Spec §FR-REG-028 e FR-REG-034–042](./spec.md), [Contracts §Cloudflare 
 - [ ] 3.3.5 Garantir validação antes de qualquer persistência do cadastro
 - [ ] 3.3.6 Criar testes com servidor local simulado para sucesso, replay, timeout, hostname e action divergentes
 
-### 3.4 Implementar outbox e despacho SMTP pelo RFW `[A]`
+### 3.4 Implementar despacho SMTP pós-commit pelo RFW `[A]`
 
 Ref: [Spec §FR-REG-012, FR-REG-014 e FR-REG-032](./spec.md), [Contracts §SMTP por RFW](./contracts/external-services.md)
 
-- [ ] 3.4.1 Modelar outbox global para mensagem lógica, locale, tentativa, estado e correlation ID
-- [ ] 3.4.2 Criar migration, entity e repository internos da outbox
-- [ ] 3.4.3 Registrar mensagem no mesmo commit que cria ou renova a comprovação
-- [ ] 3.4.4 Implementar dispatcher assíncrono idempotente usando o serviço de e-mail do RFW
-- [ ] 3.4.5 Impedir destinatário completo, token e URL secreta em logs ou eventos operacionais
+- [ ] 3.4.1 Montar a mensagem de comprovação em memória pelo serviço de template do RFW, com locale e correlation ID
+- [ ] 3.4.2 Executar o dispatch somente depois do commit, com timeouts explícitos de conexão e transporte
+- [ ] 3.4.3 Confirmar envio à UI somente depois da aceitação pelo SMTP
+- [ ] 3.4.4 Preservar a pendência e retornar orientação de retomada e reenvio em falha de template, timeout ou transporte
+- [ ] 3.4.5 Impedir destinatário completo, token, URL secreta e mensagem renderizada em persistência, logs ou eventos operacionais
 - [ ] 3.4.6 Medir tempo do commit até aceitação SMTP e tentativas por resultado
-- [ ] 3.4.7 Criar testes de commit, retry, falha de template/transporte e não duplicação
+- [ ] 3.4.7 Criar testes de commit, aceitação, timeout, falha de template/transporte e recuperação por reenvio sem retentativa automática
 
 ### 3.5 Configurar e validar Google OpenID Connect `[C]`
 
@@ -218,7 +234,7 @@ Ref: [Spec §FR-REG-001–011](./spec.md), [Quickstart §Scenarios 1–5](./quic
 - [ ] 4.2.1 Validar Turnstile, origem, limite, e-mail, senha e aceites antes da escrita
 - [ ] 4.2.2 Criar ou convergir para usuário e cadastro pendentes pelo e-mail normalizado
 - [ ] 4.2.3 Tratar usuário ativo com mensagem explícita e resultado de recuperação sem revelar outros dados
-- [ ] 4.2.4 Persistir credencial, consentimentos, comprovação e outbox em uma transação
+- [ ] 4.2.4 Persistir credencial, consentimentos e comprovação em uma transação, mantendo o token somente em memória até o dispatch pós-commit
 - [ ] 4.2.5 Resolver constraint concorrente relendo o estado vencedor sem duplicar efeitos
 - [ ] 4.2.6 Impedir identidade ativa ou credencial utilizável em falha parcial
 - [ ] 4.2.7 Registrar evento sanitizado de início aceito ou rejeitado
@@ -250,16 +266,16 @@ Ref: [Spec §FR-REG-025–027](./spec.md), [Interface §INT-WEB-REG-004 e INT-WE
 - [ ] 4.4.6 Tornar repetição segura sem restaurar ou repetir efeitos
 - [ ] 4.4.7 Criar testes de solicitação neutra, prova inválida, cancelamento concorrente e novo cadastro
 
-### 4.5 Implementar expiração e limpeza diária `[C]`
+### 4.5 Implementar expiração e coordenar limpezas diárias `[C]`
 
-Ref: [Spec §FR-REG-023–024](./spec.md), [Data Model §Retention and Cleanup](./data-model.md)
+Ref: [Spec §FR-REG-023–024 e FR-REG-039](./spec.md), [Data Model §Retention and Cleanup](./data-model.md)
 
 - [ ] 4.5.1 Implementar seleção paginada de pendências vencidas com lock seguro
 - [ ] 4.5.2 Excluir usuário pendente, registro, credencial, consentimentos e provas na ordem íntegra
 - [ ] 4.5.3 Preservar somente tombstone permitido quando aplicável
 - [ ] 4.5.4 Impedir exclusão de usuário ativado durante corrida com o job
-- [ ] 4.5.5 Agendar execução ao menos diária com mutex compatível com múltiplas instâncias
-- [ ] 4.5.6 Criar testes com relógio controlado, lotes, repetição, concorrência e falha parcial
+- [ ] 4.5.5 Agendar ao menos diariamente o catálogo que inclui expiração de cadastros e retenção de janelas de origem, exigindo liderança vigente, `epoch` atual, estabilização e timeout transacional antes de cada lote próprio
+- [ ] 4.5.6 Criar testes com relógio controlado, lotes, repetição, troca de liderança, timeout, ausência de sobreposição, ativação concorrente, retenção de origem e falha parcial
 
 ### 4.6 Instrumentar auditoria e métricas do backend `[M]`
 
@@ -387,7 +403,7 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
 
 Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 
-- [ ] 7.1.1 Automatizar os 17 cenários do quickstart nos níveis apropriados
+- [ ] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados
 - [ ] 7.1.2 Executar cadastro local, reenvio, ativação, cancelamento e expiração contra MySQL 9
 - [ ] 7.1.3 Executar cadastro Google novo, pendente e usuário ativo com serviços simulados
 - [ ] 7.1.4 Validar roundtrip UI → facade → backend → MySQL sem exposição de entity
@@ -424,24 +440,25 @@ Ref: [Spec §SC-UR-001, SC-UR-003 e SC-UR-007](./spec.md), [Interface §Shared A
 
 Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW](./contracts/external-services.md)
 
-- [ ] 7.4.1 Medir aceite SMTP desde o commit em cenário nominal e sob carga prevista
-- [ ] 7.4.2 Confirmar SLO de 95% das aceitações em até dois minutos
-- [ ] 7.4.3 Validar métricas de outbox, retry, bloqueios, ativações, cancelamentos e limpeza
-- [ ] 7.4.4 Validar alertas para backlog SMTP, falha de job, integração indisponível e erro de migration
+- [ ] 7.4.1 Configurar o perfil do gate para permitir ao menos 100 novas pendências por origem e verificação humana controlada, executar 100 cadastros nominais contra SMTP local controlado e medir cada aceite desde o respectivo commit
+- [ ] 7.4.2 Confirmar ao menos 95 aceitações em até dois minutos, restaurar e validar separadamente o limite padrão de 20 e o Turnstile real e executar um único smoke test no SMTP real sem declarar throughput
+- [ ] 7.4.3 Validar métricas de dispatch SMTP, falhas, reenvios, bloqueios, ativações, cancelamentos e limpeza
+- [ ] 7.4.4 Validar alertas para falhas SMTP, falha de job, integração indisponível e erro de migration
 - [ ] 7.4.5 Documentar limites entre aceite SMTP e entrega final na caixa postal
 - [ ] 7.4.6 Validar inicialização por JAR atrás de proxy reverso com configuração explícita
 - [ ] 7.4.7 Produzir runbook de diagnóstico sem funcionalidades internas de backup ou restauração
 
 ### 7.5 Executar readiness e gate de dependências de release `[C]`
 
-Ref: [Spec §Escopo e FR-REG-008](./spec.md), [Plan §Implementation Sequencing](./plan.md)
+Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implementation Sequencing](./plan.md), [README §Preparação para produção](../../../README.md)
 
 - [ ] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo
 - [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente
 - [ ] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
-- [ ] 7.5.4 Confirmar checklist de requisitos 37/37 e análise cross-artifact sem blockers
+- [ ] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
 - [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy
-- [ ] 7.5.6 Registrar decisão go/no-go e impedir produção enquanto qualquer gate crítico estiver aberto
+- [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95
+- [ ] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate crítico estiver aberto
 
 ---
 
@@ -474,10 +491,10 @@ flowchart TD
 
 | Tarefa | Dependências diretas | Desbloqueia |
 |--------|----------------------|-------------|
-| 1.1–1.4 | Nenhuma | Fases 2 e 3 |
+| 1.1–1.5 | Nenhuma | Fases 2 e 3 |
 | 2.1–2.5 | 1.1, 1.2, 1.4 | Fases 4 e 5 |
 | 3.1–3.5 | 1.1–1.3 | Fases 4 e 5 |
-| 4.1–4.6 | Fases 2 e 3 | Interface local e validação |
+| 4.1–4.6 | Fases 2 e 3, incluindo 1.5 | Interface local e validação |
 | 5.1–5.3 | Fases 2 e 3 | Interface Google e validação |
 | 6.1–6.5 | Fases 4 e 5 conforme interação | Fase 7 |
 | 7.1–7.4 | Fases 4–6 | Readiness final |
@@ -497,27 +514,27 @@ flowchart TD
 
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
-| 1 - Fundação da Aplicação | 4 | 25 | 2 C, 2 A |
+| 1 - Fundação da Aplicação | 5 | 33 | 3 C, 2 A |
 | 2 - Domínio Global e Persistência | 5 | 34 | 5 C |
-| 3 - Segurança e Integrações Externas | 5 | 34 | 4 C, 1 A |
+| 3 - Segurança e Integrações Externas | 5 | 36 | 4 C, 1 A |
 | 4 - Ciclo Local do Cadastro | 6 | 43 | 4 C, 1 A, 1 M |
 | 5 - Cadastro por Google | 3 | 22 | 3 C |
 | 6 - Interface Web RFW | 5 | 37 | 5 A |
-| 7 - Qualidade e Liberação | 5 | 35 | 4 C, 1 A |
-| **Total** | **33** | **230** | **22 C, 10 A, 1 M** |
+| 7 - Qualidade e Liberação | 5 | 36 | 4 C, 1 A |
+| **Total** | **34** | **242** | **23 C, 10 A, 1 M** |
 
 ## Escopo Coberto
 
 | Item | Descrição | Fase |
 |------|-----------|------|
-| `FND-REG` | Aplicação hospedeira, configuração explícita, RFW e updater global | 1 |
+| `FND-REG` | Aplicação hospedeira, configuração explícita, RFW, updater global e coordenação automática de manutenção | 1 |
 | `DOM-REG` | Identidade, cadastro, credencial, provas, consentimentos, vínculo externo, origem e auditoria | 2 |
 | `INT-EXT` | HIBP, Turnstile, SMTP e Google OIDC | 3 |
 | `LOCAL-REG` | Início, retomada, reenvio, ativação, cancelamento, expiração e observabilidade | 4 |
 | `GOOGLE-REG` | Resolução e conclusão segura do cadastro Google | 5 |
 | `SURF-WEB-RINOS` | Cinco interações públicas definidas pela Interface Design | 6 |
 | `GATE-REG` | Testes, segurança, WCAG, usabilidade, SLO e readiness | 7 |
-| `CHK-REQ` | Todos os 37 itens do checklist foram encerrados antes da decomposição | 1–7 |
+| `CHK-REQ` | Todos os 39 itens do checklist foram encerrados antes da decomposição | 1–7 |
 
 ## Escopo Excluído
 
