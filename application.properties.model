@@ -109,5 +109,7 @@ rfw.platform.mail.body-html=true
 rfw.platform.mail.default-from-address=no-reply@localhost
 rfw.platform.mail.default-reply-to-address=
 
-# Migrações do RFW; habilite somente quando o banco configurado estiver disponível.
-rfw.platform.database.update.enabled=false
+# Migrações automáticas do banco global pelo RFW.
+rfw.platform.database.update.enabled=true
+rfw.platform.database.update.locations=classpath:db/global/update/
+rfw.platform.database.update.lock-timeout=30s

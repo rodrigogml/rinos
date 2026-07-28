@@ -52,6 +52,24 @@ class ConfigurationFileParityTest {
         .isEqualTo("SET time_zone = '+00:00'");
   }
 
+  /**
+   * Comprova que o bootstrap automático utiliza somente o catálogo global de updates.
+   *
+   * @throws Exception quando o modelo não pode ser lido
+   */
+  @Test
+  void model_shouldEnableRfwUpdaterOnlyForGlobalCatalog_whenDatabaseBootstrapIsConfigured() throws Exception {
+    Properties properties = new Properties();
+    try (Reader reader = Files.newBufferedReader(MODEL_FILE, StandardCharsets.UTF_8)) {
+      properties.load(reader);
+    }
+
+    assertThat(properties.getProperty("rfw.platform.database.update.enabled")).isEqualTo("true");
+    assertThat(properties.getProperty("rfw.platform.database.update.locations"))
+        .isEqualTo("classpath:db/global/update/");
+    assertThat(properties.getProperty("rfw.platform.database.update.lock-timeout")).isEqualTo("30s");
+  }
+
   private static List<String> structure(Path file) throws Exception {
     return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
         .map(line -> {

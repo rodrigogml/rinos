@@ -67,7 +67,7 @@ Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-m
   `src/main/resources/db/tenant/init` e `src/main/resources/db/tenant/update` como catálogos independentes
 - [x] 1.4.2 Criar no catálogo global o esqueleto `01-ddl.sql`, `02-seed.sql`, `03-procedures.sql` e
   `99-database-version.sql`
-- [ ] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global usando exclusivamente
+- [x] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global usando exclusivamente
   `classpath:db/global/update`
 - [ ] 1.4.4 Bloquear a aplicação com diagnóstico seguro quando init ou update falhar
 - [ ] 1.4.5 Criar teste de banco global vazio, banco atualizado, versão incompatível e isolamento em relação aos
