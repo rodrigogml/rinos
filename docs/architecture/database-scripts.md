@@ -32,6 +32,17 @@ Os diretórios `global` e `tenant` representam catálogos distintos. Uma execuç
 scripts de um catálogo e um `DataSource` que aponta para o banco correspondente. Os dois catálogos nunca devem ser
 combinados na mesma execução.
 
+## Nomenclatura dos schemas
+
+O prefixo `rinos_` identifica todos os schemas pertencentes à aplicação:
+
+- o schema global possui o nome fixo `rinos_global`;
+- cada schema de tenant usa `rinos_<identificadorFisico>`.
+
+O identificador físico do tenant é interno, imutável, gerado pelo sistema e seguro para composição do nome do schema.
+Ele não deve ser o nome de exibição da conta nem qualquer texto informado diretamente pelo usuário. A correspondência
+entre a identidade funcional do tenant e seu schema físico pertence ao cadastro global de armazenamento.
+
 ## Responsabilidades
 
 | Catálogo | Inicialização | Atualização |
@@ -46,6 +57,11 @@ lock. O modo automático do RFW permanece reservado ao banco global primário.
 > [!IMPORTANT]
 > O `DataSource` deve selecionar previamente o banco correto. Scripts não devem escolher dinamicamente outro banco
 > com `USE`, nem depender do nome físico de um tenant.
+
+O `lock-timeout` do updater é somente o prazo máximo para uma instância adquirir o lock nomeado de migration quando
+outra instância estiver verificando ou atualizando o mesmo schema. Depois da aquisição, o lock permanece associado à
+conexão até a execução terminar e é então liberado. Esse timeout não limita a duração da migration, não corresponde ao
+lease de manutenção da plataforma e não constitui bloqueio geral das operações do MySQL.
 
 ## Versionamento independente
 

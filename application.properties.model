@@ -30,8 +30,8 @@ rfw.platform.ui.access.theme-switcher-enabled=true
 rfw.platform.ui.access.language-switcher-enabled=true
 rfw.platform.ui.access.remember-me-enabled=false
 
-# Banco global de desenvolvimento; substitua os valores no arquivo local.
-spring.datasource.url=jdbc:mysql://localhost:3306/rinos?useUnicode=true&characterEncoding=UTF-8
+# Banco global de desenvolvimento; substitua host e credenciais no arquivo local.
+spring.datasource.url=jdbc:mysql://localhost:3306/rinos_global?useUnicode=true&characterEncoding=UTF-8
 spring.datasource.username=rinos
 spring.datasource.password=
 spring.datasource.hikari.connection-init-sql=SET time_zone = '+00:00'
@@ -112,4 +112,5 @@ rfw.platform.mail.default-reply-to-address=
 # Migrações automáticas do banco global pelo RFW.
 rfw.platform.database.update.enabled=true
 rfw.platform.database.update.locations=classpath:db/global/update/
+# Tempo máximo para adquirir o lock de migration; o lock permanece até a execução terminar.
 rfw.platform.database.update.lock-timeout=30s

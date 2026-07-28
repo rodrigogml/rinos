@@ -50,6 +50,8 @@ class ConfigurationFileParityTest {
         .isEqualTo("UTC");
     assertThat(properties.getProperty("spring.datasource.hikari.connection-init-sql"))
         .isEqualTo("SET time_zone = '+00:00'");
+    assertThat(properties.getProperty("spring.datasource.url"))
+        .isEqualTo("jdbc:mysql://localhost:3306/rinos_global?useUnicode=true&characterEncoding=UTF-8");
   }
 
   /**
