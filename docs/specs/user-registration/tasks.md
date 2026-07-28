@@ -60,14 +60,20 @@ Ref: [RFW Usage](../../architecture/rfw-platform-usage.md), [Plan §RFW Compatib
 
 ### 1.4 Preparar atualização automática do schema global `[C]`
 
-Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-model.md), `AGENTS-DATABASE.md`
+Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-model.md),
+[Organização dos scripts de banco](../../architecture/database-scripts.md), `AGENTS-DATABASE.md`
 
-- [ ] 1.4.1 Criar diretórios `src/main/resources/db/init` e `src/main/resources/db/update`
-- [ ] 1.4.2 Criar esqueleto `01-ddl.sql`, `02-seed.sql`, `03-procedures.sql` e `99-database-version.sql`
-- [ ] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global
+- [x] 1.4.1 Criar diretórios `src/main/resources/db/global/init` e `src/main/resources/db/global/update`, reservando
+  `src/main/resources/db/tenant/init` e `src/main/resources/db/tenant/update` como catálogos independentes
+- [ ] 1.4.2 Criar no catálogo global o esqueleto `01-ddl.sql`, `02-seed.sql`, `03-procedures.sql` e
+  `99-database-version.sql`
+- [ ] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global usando exclusivamente
+  `classpath:db/global/update`
 - [ ] 1.4.4 Bloquear a aplicação com diagnóstico seguro quando init ou update falhar
-- [ ] 1.4.5 Criar teste de banco vazio, banco atualizado e versão incompatível
-- [ ] 1.4.6 Documentar indisponibilidade durante migrations e intervenção externa em caso de falha
+- [ ] 1.4.5 Criar teste de banco global vazio, banco atualizado, versão incompatível e isolamento em relação aos
+  catálogos de tenant
+- [ ] 1.4.6 Documentar indisponibilidade durante migrations, intervenção externa em caso de falha e a separação entre
+  inicialização global, inicialização de tenant e seus respectivos updates
 
 ### 1.5 Implementar coordenação automática de manutenção `[C]`
 

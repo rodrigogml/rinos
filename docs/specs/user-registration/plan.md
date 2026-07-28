@@ -63,8 +63,9 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`c8b5050b1536e69ce7cd299874db27cb538f2dae`, que incorpora esse gate e a configuração pública do endpoint de
-verificação do Turnstile. O ciclo foi implementado, testado e documentado no showroom do RFW antes da atualização do
+`4d19dcd07bcf11e7eaacee10e0bd99840ce0d3e5`, que incorpora esse gate, a configuração pública do endpoint de
+verificação do Turnstile e a atualização explícita de catálogos em `DataSource` distintos. O ciclo foi implementado,
+testado e documentado no showroom do RFW antes da atualização do
 ponteiro no Rinos. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
@@ -159,11 +160,20 @@ src/
 └── test/java/br/com/rinos/app/
     └── RinosApplicationIT.java
 modules/RFW.Platform/         # submódulo e dependência-base
+src/main/resources/db/
+├── global/
+│   ├── init/
+│   └── update/
+└── tenant/
+    ├── init/
+    └── update/
 ```
 
 **Structure Decision**: o projeto Maven hospedeiro permanece na raiz e consome o RFW sem mover nem copiar o
 submódulo. O package base é `br.com.rinos.app`; os módulos funcionais serão materializados nas tarefas
 correspondentes e deverão preservar as fronteiras `ui`, `api`, `backend` e `shared` definidas pelos agentes do projeto.
+Os catálogos global e de tenant seguem a
+[organização de scripts de banco de dados](../../architecture/database-scripts.md) e nunca são combinados.
 
 ## Convenções de Borda
 

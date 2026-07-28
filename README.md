@@ -100,8 +100,10 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
 
 Consulte também:
 
+- [Índice da documentação](docs/index.md)
 - [Constituição do projeto](docs/constitution.md)
 - [Uso obrigatório da RFW Platform](docs/architecture/rfw-platform-usage.md)
+- [Organização dos scripts de banco de dados](docs/architecture/database-scripts.md)
 - [Configuração da plataforma](docs/specs/platform-configuration/spec.md)
 - [Operações da plataforma](docs/specs/platform-operations/spec.md)
 - [Provisionamento e migração de tenants](docs/specs/tenant-storage-provisioning/spec.md)

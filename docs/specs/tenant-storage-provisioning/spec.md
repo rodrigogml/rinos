@@ -200,6 +200,11 @@ Um administrador do sistema consulta o estado dos armazenamentos, identifica pro
 
 ### Versionamento e Migrações
 
+> [!NOTE]
+> A organização física dos catálogos global e de tenant é definida em
+> [Organização dos scripts de banco de dados](../../architecture/database-scripts.md). Esta especificação define o
+> comportamento; o documento de arquitetura define os paths e o contrato técnico de execução.
+
 - **FR-TSP-MIG-001**: O armazenamento global e cada armazenamento de tenant DEVEM declarar sua versão estrutural exata e verificável.
 - **FR-TSP-MIG-002**: Cada evolução DEVE possuir identificador único, ordem determinística, conteúdo verificável e histórico de aplicação.
 - **FR-TSP-MIG-003**: Evolução já distribuída ou aplicada NÃO DEVE ser alterada silenciosamente; correções posteriores DEVEM constituir nova evolução.
