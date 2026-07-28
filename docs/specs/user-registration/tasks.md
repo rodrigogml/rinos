@@ -65,7 +65,7 @@ Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-m
 
 - [x] 1.4.1 Criar diretórios `src/main/resources/db/global/init` e `src/main/resources/db/global/update`, reservando
   `src/main/resources/db/tenant/init` e `src/main/resources/db/tenant/update` como catálogos independentes
-- [ ] 1.4.2 Criar no catálogo global o esqueleto `01-ddl.sql`, `02-seed.sql`, `03-procedures.sql` e
+- [x] 1.4.2 Criar no catálogo global o esqueleto `01-ddl.sql`, `02-seed.sql`, `03-procedures.sql` e
   `99-database-version.sql`
 - [ ] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global usando exclusivamente
   `classpath:db/global/update`
