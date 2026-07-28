@@ -28,12 +28,12 @@ Escopo: implementar a identidade global e o ciclo público de cadastro local ou 
 
 Ref: [Plan §Project Structure](./plan.md), `AGENTS-JAVA-SPRING-BOOT.md`
 
-- [ ] 1.1.1 Criar o `pom.xml` raiz com Java 25, Spring Boot, Vaadin, JPA, Validation, Mail, MySQL e dependência do RFW Platform
-- [ ] 1.1.2 Criar a classe principal em `br.eng.rodrigogml.rinos`
-- [ ] 1.1.3 Criar os packages-base `config`, `shared`, `api`, `backend` e `ui` sem dependências invertidas
-- [ ] 1.1.4 Configurar build, compilação, testes unitários e testes de integração com convenções `*Test` e `*IT`
-- [ ] 1.1.5 Documentar comandos locais de build e execução sem registrar valores reais de ambiente
-- [ ] 1.1.6 Validar o build vazio e a inicialização controlada da aplicação
+- [x] 1.1.1 Criar o `pom.xml` raiz com Java 25, Spring Boot, Vaadin, JPA, Validation, Mail, MySQL e dependência do RFW Platform
+- [x] 1.1.2 Criar a classe principal em `br.com.rinos.app`
+- [x] 1.1.3 Criar os packages-base `config`, `shared`, `api`, `backend` e `ui` sem dependências invertidas
+- [x] 1.1.4 Configurar build, compilação, testes unitários e testes de integração com convenções `*Test` e `*IT`
+- [x] 1.1.5 Documentar comandos locais de build e execução sem registrar valores reais de ambiente
+- [x] 1.1.6 Validar o build vazio e a inicialização controlada da aplicação
 
 ### 1.2 Implementar configuração explícita e exclusiva `[C]`
 

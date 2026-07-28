@@ -1,0 +1,12 @@
+target/
+
+.idea/
+.project
+.classpath
+.settings/
+*.iml
+
+application.properties
+
+frontend/generated/
+node_modules/

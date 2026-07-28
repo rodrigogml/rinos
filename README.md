@@ -6,6 +6,59 @@ MySQL 9 e [RFW Platform](modules/RFW.Platform/README.md).
 O projeto está em desenvolvimento orientado por especificações, mantidas em [docs/specs](docs/specs). As regras
 obrigatórias para agentes e desenvolvedores estão em [AGENTS.md](AGENTS.md).
 
+## Desenvolvimento local
+
+### Pré-requisitos
+
+- Java 25;
+- Maven 3.9 ou posterior;
+- submódulos Git inicializados;
+- `rfw.platform:1.0.0` e suas dependências disponíveis no repositório Maven local ou configurado.
+
+Após clonar o projeto, inicialize os submódulos:
+
+```shell
+git submodule update --init --recursive
+```
+
+Quando os artefatos do RFW ainda não estiverem disponíveis no repositório Maven usado pela máquina, instale primeiro
+o Kernel e depois a Platform a partir dos submódulos. O parent `rfw.distro:1.0.0` também deve estar disponível nesse
+repositório:
+
+```shell
+mvn -f modules/RFW.Platform/modules/RFW.Kernel/pom.xml install
+mvn -f modules/RFW.Platform/pom.xml install
+```
+
+### Build e testes
+
+```shell
+mvn test
+mvn verify
+```
+
+Testes unitários usam o sufixo `*Test`; testes de integração usam `*IT` e são executados pelo Failsafe durante
+`mvn verify`.
+
+### Execução
+
+Crie o `application.properties` não versionado na raiz a partir do futuro `application.properties.model` e execute:
+
+```shell
+mvn spring-boot:run
+```
+
+O pacote executável é produzido por:
+
+```shell
+mvn clean package
+java -jar target/rinos-1.0.0.jar
+```
+
+> [!NOTE]
+> Enquanto a configuração e o schema global ainda não forem implementados, a inicialização operacional completa
+> dependerá das próximas tarefas da Fase 1. O teste de contexto desta fundação desativa integrações externas.
+
 ## Preparação para produção
 
 > [!IMPORTANT]

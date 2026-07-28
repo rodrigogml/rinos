@@ -141,15 +141,26 @@ em `checklists/requirements.md` e `tasks.md`.
 
 ### Source Code (repository root)
 
-A estrutura de código da aplicação hospedeira Rinos ainda não existe. Os únicos paths técnicos reais disponíveis hoje são:
+A fundação executável da aplicação hospedeira foi criada pela tarefa 1.1:
 
 ```text
-modules/RFW.Platform/        # submódulo e dependência-base
-docs/specs/user-registration/ # documentação desta feature
-docs/architecture/           # decisões transversais de arquitetura
+pom.xml
+src/
+├── main/java/br/com/rinos/app/
+│   ├── RinosApplication.java
+│   ├── api/
+│   ├── backend/
+│   ├── config/
+│   ├── shared/
+│   └── ui/
+└── test/java/br/com/rinos/app/
+    └── RinosApplicationIT.java
+modules/RFW.Platform/         # submódulo e dependência-base
 ```
 
-**Structure Decision**: a primeira etapa de implementação deverá criar o projeto Maven hospedeiro na raiz, sem mover nem copiar o RFW. O package base será `br.eng.rodrigogml.rinos`; os módulos funcionais deverão seguir as fronteiras `ui`, `api`, `backend` e `shared` definidas pelos agentes do projeto. A árvore detalhada só será materializada em `tasks.md` depois da Interface Design e do quality gate, evitando registrar como existente uma estrutura que ainda não foi criada.
+**Structure Decision**: o projeto Maven hospedeiro permanece na raiz e consome o RFW sem mover nem copiar o
+submódulo. O package base é `br.com.rinos.app`; os módulos funcionais serão materializados nas tarefas
+correspondentes e deverão preservar as fronteiras `ui`, `api`, `backend` e `shared` definidas pelos agentes do projeto.
 
 ## Convenções de Borda
 
@@ -158,7 +169,7 @@ docs/architecture/           # decisões transversais de arquitetura
 | Tabelas e colunas MySQL | tabelas com prefixo de módulo e nomes `camelCase`; constraints `snake_case` | scripts init/update e testes de schema | [data-model.md](./data-model.md) e migrations futuras |
 | Entity JPA | `camelCase`, igual à coluna física | annotations explícitas e estratégia física padrão | entidades backend futuras |
 | Facade, DTO e VO Java | classes `PascalCase`, campos `camelCase` | Bean Validation + regras em services | contratos Java futuros |
-| UI Vaadin | rotas em lowercase e kebab-case; chaves i18n por módulo | router, binder e facade | futura `interface-spec.md` |
+| UI Vaadin | rotas em lowercase e kebab-case; chaves i18n por módulo | router, binder e facade | [interface-spec.md](./interface-spec.md) |
 | Provedores externos | formato próprio do provedor | adaptador valida e converte para VO interno | [external-services.md](./contracts/external-services.md) |
 
 **Mapper layer (DB <-> DTO/VO)**: backend do respectivo módulo; entities e repositories nunca atravessam a facade.
