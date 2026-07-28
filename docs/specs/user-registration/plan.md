@@ -57,13 +57,16 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 
 ## RFW Compatibility Gate
 
-O commit `fb59049ef916f0854b53159542b71591db24cb8f` fornece o add-in de acesso que deve ser hospedado pelo Rinos e
-resolve todas as lacunas registradas em [rfw-gap-analysis.md](./rfw-gap-analysis.md): cadastro Google com aceites,
+O commit `fb59049ef916f0854b53159542b71591db24cb8f` encerrou originalmente as lacunas registradas em
+[rfw-gap-analysis.md](./rfw-gap-analysis.md): cadastro Google com aceites,
 issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuação de aceite durante a ativação,
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
-O ciclo foi implementado, testado e documentado no showroom do RFW antes da atualização do ponteiro no Rinos. O gate
-de compatibilidade está encerrado e a [Interface Design](./interface-spec.md) referencia os contratos finais.
+O Rinos fixa para a implementação desta feature a revisão aprovada
+`c8b5050b1536e69ce7cd299874db27cb538f2dae`, que incorpora esse gate e a configuração pública do endpoint de
+verificação do Turnstile. O ciclo foi implementado, testado e documentado no showroom do RFW antes da atualização do
+ponteiro no Rinos. O gate de compatibilidade está encerrado e a
+[Interface Design](./interface-spec.md) referencia os contratos finais.
 
 ## Transaction and Failure Strategy
 

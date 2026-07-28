@@ -7,6 +7,29 @@ spring.application.name=Rinos
 spring.main.banner-mode=console
 server.forward-headers-strategy=none
 
+# Internacionalização, tema e componente público de acesso da RFW Platform
+rfw.platform.i18n.enabled=true
+rfw.platform.i18n.supported-language-locales=pt-BR
+rfw.platform.i18n.default-language-locale=pt-BR
+rfw.platform.i18n.default-format-locale=pt-BR
+rfw.platform.i18n.default-zone-id=America/Sao_Paulo
+rfw.platform.i18n.application-basenames=messages
+rfw.platform.i18n.vaadin.enabled=true
+rfw.platform.i18n.vaadin.initialize-from-browser=true
+rfw.platform.ui.theme.project-key=rinos
+rfw.platform.ui.theme.default-theme=light
+rfw.platform.ui.theme.default-font-size=md
+rfw.platform.ui.theme.default-density=normal
+rfw.platform.ui.theme.default-visual-size=md
+rfw.platform.ui.theme.auto-apply=true
+rfw.platform.ui.theme.persist-cookies=true
+rfw.platform.ui.theme.apply-visual-size=true
+rfw.platform.ui.access.i18n-prefix=ui.access
+rfw.platform.ui.access.project-key=rinos
+rfw.platform.ui.access.theme-switcher-enabled=true
+rfw.platform.ui.access.language-switcher-enabled=true
+rfw.platform.ui.access.remember-me-enabled=false
+
 # Banco global de desenvolvimento; substitua os valores no arquivo local.
 spring.datasource.url=jdbc:mysql://localhost:3306/rinos?useUnicode=true&characterEncoding=UTF-8
 spring.datasource.username=rinos

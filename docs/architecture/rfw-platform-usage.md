@@ -7,6 +7,15 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 > [!IMPORTANT]
 > O Rinos compõe e configura o RFW. Não copia componentes da plataforma, não cria uma segunda biblioteca visual e não reimplementa localmente uma capacidade genérica já existente.
 
+## Baseline aprovada
+
+A feature `user-registration` usa a revisão
+`c8b5050b1536e69ce7cd299874db27cb538f2dae` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
+fixação; a versão Maven identifica o artefato, mas não substitui a revisão imutável do submódulo.
+
+Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
+RFW conforme o processo descrito neste documento.
+
 ## Fontes obrigatórias antes de trabalhar em interfaces
 
 Todo agente ou desenvolvedor deve consultar, nesta ordem:
@@ -45,6 +54,63 @@ O README é uma porta de entrada, mas não substitui o showroom. A documentaçã
 | Tokens, temas, classes públicas, slots e renderers | Identidade visual e conteúdo do Rinos por APIs públicas |
 | i18n-base dos componentes | Mensagens e traduções específicas do produto |
 | Showroom, documentação e laboratórios dos componentes | Testes de integração e jornadas completas do Rinos |
+
+## Integração pública da hospedeira
+
+O RFW descobre suas auto-configurações pelo próprio artefato. O Rinos não importa classes internas, não mantém um
+arquivo paralelo de auto-configurações e não recria a `RFWAccessComponentFactory`.
+
+Os padrões globais de idioma, tema e acesso pertencem exclusivamente ao `application.properties` explícito e são
+documentados no `application.properties.model`. A configuração inicial declara:
+
+- português do Brasil como único idioma integralmente suportado e como locale textual e de formatação padrão;
+- `America/Sao_Paulo` como fuso padrão de apresentação;
+- `messages` como basename do produto;
+- `rinos` como namespace estável de tema e acesso;
+- tema claro, escala e densidade médias, persistência das preferências e aplicação automática;
+- seletores de tema e idioma disponíveis e “lembrar-me” desabilitado.
+
+Uma view que hospede o fluxo de acesso deve injetar a factory pública e criar o componente diretamente:
+
+```java
+public LoginView(RFWAccessComponentFactory factory) {
+  add(factory.create());
+}
+```
+
+Configurações específicas de uma instância devem usar `RFWAccessComponentConfig`. Slots e renderers somente são
+aplicados depois de esgotadas as configurações públicas e não podem substituir regras de negócio nem a máquina de
+estados do RFW.
+
+### Providers e capabilities
+
+Providers conectam o RFW aos casos de uso do Rinos, mas não constituem a API de negócio da aplicação. Cada adapter
+Spring que implemente um provider do RFW deve depender somente de facades, DTOs e VOs públicos de `br.com.rinos.app.api`
+e de contratos compartilhados permitidos. Ele não pode acessar `backend`, entities ou repositories diretamente.
+
+> [!IMPORTANT]
+> Não registre providers vazios, provisórios ou que retornem sucesso artificial. O
+> `RFWAccessCapabilityService` anuncia uma capability pela presença do provider efetivo; portanto, ausência de
+> implementação deve resultar em capability ausente e em funcionalidade não oferecida pela interface.
+
+Implementações concretas serão registradas junto às tarefas dos respectivos casos de uso. A fundação mantém apenas a
+factory e os serviços técnicos auto-configurados, permitindo que o conjunto de capabilities cresça conforme contratos
+reais forem entregues.
+
+### Pontos de extensão locais
+
+Use os pontos de extensão nesta ordem:
+
+1. properties globais para idioma, tema e comportamento compartilhado;
+2. `RFWAccessComponentConfig` para uma instância;
+3. slots para conteúdo complementar;
+4. renderers documentados para apresentação de uma etapa;
+5. adapters de provider apoiados exclusivamente na camada `api`;
+6. componente local apenas para comportamento exclusivo do domínio Rinos.
+
+Substituir a `RFWAccessComponentFactory` auto-configurada exige uma necessidade concreta, teste de contexto e
+documentação da diferença. Um simples padrão visual ou funcional deve permanecer em properties ou na configuração da
+instância.
 
 ## Processo obrigatório de decisão
 

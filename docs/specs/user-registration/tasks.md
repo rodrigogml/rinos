@@ -51,12 +51,12 @@ Ref: [Plan §Configuration Ownership](./plan.md), [Constitution §Restrições d
 
 Ref: [RFW Usage](../../architecture/rfw-platform-usage.md), [Plan §RFW Compatibility Gate](./plan.md)
 
-- [ ] 1.3.1 Fixar a dependência na revisão do submódulo aprovada para a feature
-- [ ] 1.3.2 Configurar i18n, tema e factories públicas do RFW sem copiar componentes
-- [ ] 1.3.3 Criar configuração hospedeira do `RFWAccessComponentFactory`
-- [ ] 1.3.4 Registrar providers RFW somente por contratos da camada `api`
-- [ ] 1.3.5 Criar teste de contexto que confirme capabilities presentes e ausentes
-- [ ] 1.3.6 Documentar pontos de extensão locais e o procedimento para futuras evoluções genéricas no RFW
+- [x] 1.3.1 Fixar a dependência na revisão do submódulo aprovada para a feature
+- [x] 1.3.2 Configurar i18n, tema e factories públicas do RFW sem copiar componentes
+- [x] 1.3.3 Configurar a hospedeira para consumir a `RFWAccessComponentFactory` auto-configurada, sem duplicá-la
+- [x] 1.3.4 Registrar providers RFW somente quando houver adapters apoiados nos contratos da camada `api`
+- [x] 1.3.5 Criar teste de contexto que confirme capabilities presentes e ausentes
+- [x] 1.3.6 Documentar pontos de extensão locais e o procedimento para futuras evoluções genéricas no RFW
 
 ### 1.4 Preparar atualização automática do schema global `[C]`
 
