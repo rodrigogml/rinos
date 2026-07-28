@@ -42,11 +42,17 @@ Testes unitários usam o sufixo `*Test`; testes de integração usam `*IT` e sã
 
 ### Execução
 
-Crie o `application.properties` não versionado na raiz a partir do futuro `application.properties.model` e execute:
+Crie o `application.properties` não versionado na raiz a partir do
+[`application.properties.model`](application.properties.model), preencha os valores do ambiente e execute:
 
 ```shell
 mvn spring-boot:run
 ```
+
+O arquivo raiz é a única origem aceita pelo Rinos. Argumentos de linha de comando, propriedades JVM, variáveis de
+ambiente, `SPRING_APPLICATION_JSON`, profiles e arquivos adicionais não complementam nem sobrescrevem seus valores.
+Interpolação por placeholders e chaves de importação também são recusadas. Arquivo ausente, propriedade obrigatória
+vazia ou combinação incompatível impede a inicialização com diagnóstico operacional.
 
 O pacote executável é produzido por:
 
@@ -55,9 +61,8 @@ mvn clean package
 java -jar target/rinos-1.0.0.jar
 ```
 
-> [!NOTE]
-> Enquanto a configuração e o schema global ainda não forem implementados, a inicialização operacional completa
-> dependerá das próximas tarefas da Fase 1. O teste de contexto desta fundação desativa integrações externas.
+Os valores de desenvolvimento podem manter Turnstile, Google e migrações desabilitados. Quando uma integração for
+habilitada, todas as suas propriedades obrigatórias devem estar presentes no mesmo arquivo.
 
 ## Preparação para produção
 
@@ -70,9 +75,9 @@ java -jar target/rinos-1.0.0.jar
    explícitas. Não usar variáveis de ambiente, propriedades JVM ou argumentos de linha de comando para sobrescrevê-las.
 3. Configurar credenciais, SMTP, Cloudflare Turnstile, Google, Pwned Passwords, proxies confiáveis e demais integrações
    exigidas pelas features incluídas na versão. O `application.properties` real não pode ser versionado.
-   Cada instância deve possuir `rinos.instance.id` explícito e exclusivo; heartbeat, expiração, estabilização e timeout
-   transacional dos lotes da coordenação de manutenção usam os valores documentados no modelo de properties. O timeout
-   do lote deve permanecer inferior à estabilização.
+   Cada instância deve possuir `rinos.maintenance.instance-id` explícito e exclusivo; heartbeat, expiração,
+   estabilização e timeout transacional dos lotes da coordenação de manutenção usam os valores documentados no modelo
+   de properties. O timeout do lote deve permanecer inferior à estabilização.
 4. Preparar os bancos e as permissões operacionais. Migrações são executadas automaticamente no deploy; falha global
    mantém a aplicação indisponível e falha de tenant mantém somente o tenant afetado bloqueado para intervenção externa.
 5. Executar o backup externo coordenado do global e dos tenants antes do deploy. Backup e restauração não são

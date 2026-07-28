@@ -39,13 +39,13 @@ Ref: [Plan §Project Structure](./plan.md), `AGENTS-JAVA-SPRING-BOOT.md`
 
 Ref: [Plan §Configuration Ownership](./plan.md), [Constitution §Restrições de Arquitetura e Segurança](../../constitution.md)
 
-- [ ] 1.2.1 Ignorar `application.properties` e criar `application.properties.model` versionado na raiz
-- [ ] 1.2.2 Declarar grupos tipados para cadastro, comprovação, origem, proxy, Turnstile, Google, HIBP, SMTP e limpeza
-- [ ] 1.2.3 Impedir precedência de argumentos de linha de comando, propriedades JVM e variáveis de ambiente não declaradas no arquivo
-- [ ] 1.2.4 Validar propriedades obrigatórias e valores incompatíveis durante a inicialização
-- [ ] 1.2.5 Configurar `PhysicalNamingStrategyStandardImpl` e UTC como referência persistente
-- [ ] 1.2.6 Espelhar atributos e comentários entre o modelo e o arquivo local de desenvolvimento
-- [ ] 1.2.7 Criar testes de binding, defaults, origem exclusiva e falha de inicialização
+- [x] 1.2.1 Ignorar `application.properties` e criar `application.properties.model` versionado na raiz
+- [x] 1.2.2 Declarar grupos tipados para cadastro, comprovação, origem, proxy, Turnstile, Google, HIBP, SMTP e limpeza
+- [x] 1.2.3 Impedir precedência de argumentos de linha de comando, propriedades JVM e variáveis de ambiente não declaradas no arquivo
+- [x] 1.2.4 Validar propriedades obrigatórias e valores incompatíveis durante a inicialização
+- [x] 1.2.5 Configurar `PhysicalNamingStrategyStandardImpl` e UTC como referência persistente
+- [x] 1.2.6 Espelhar atributos e comentários entre o modelo e o arquivo local de desenvolvimento
+- [x] 1.2.7 Criar testes de binding, defaults, origem exclusiva e falha de inicialização
 
 ### 1.3 Integrar a RFW Platform como fundação pública `[A]`
 
