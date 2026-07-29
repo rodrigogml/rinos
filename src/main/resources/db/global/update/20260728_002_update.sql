@@ -1,6 +1,4 @@
--- Sugestão: CREATE DATABASE rinos_global CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- A infraestrutura cria o banco global antes de executar este catálogo.
+-- Arquivo de atualização do banco de dados, não pode ser alterado por agentes de IA.
 
 CREATE TABLE platform_maintenanceLease (
   id BIGINT AUTO_INCREMENT NOT NULL,
@@ -17,3 +15,8 @@ CREATE TABLE platform_maintenanceLease (
   CONSTRAINT pk_platform_maintenance_lease PRIMARY KEY (id),
   CONSTRAINT uk_platform_maintenance_lease_key UNIQUE (leaseKey)
 ) ENGINE = InnoDB;
+
+CREATE OR REPLACE
+SQL SECURITY INVOKER
+VIEW databaseVersion AS
+SELECT '20260728002' AS version;

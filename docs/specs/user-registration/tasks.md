@@ -80,7 +80,7 @@ Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-m
 Ref: [Platform Operations §Coordenação de Manutenção](../platform-operations/spec.md), [Research §Decision 10](./research.md)
 
 - [x] 1.5.1 Declarar `instanceId`, intervalo de heartbeat, prazo de expiração, estabilização e timeout transacional de lote como properties tipadas, com padrões de 30 minutos, quatro horas, 10 minutos e cinco minutos; rejeitar timeout igual ou superior à estabilização
-- [ ] 1.5.2 Criar migration, entity e repository globais para `platform_maintenanceLease` com `leaseKey` único, sessão, `epoch`, instantes e versionamento
+- [x] 1.5.2 Criar migration, entity e repository globais para `platform_maintenanceLease` com `leaseKey` único, sessão, `epoch`, instantes e versionamento
 - [ ] 1.5.3 Gerar `sessionId` novo por inicialização e usar exclusivamente o relógio do MySQL para aquisição, heartbeat e expiração
 - [ ] 1.5.4 Implementar aquisição e tomada atômicas com um vencedor, incremento de `epoch` e renovação condicionada ao proprietário vigente
 - [ ] 1.5.5 Impedir execução antes da estabilização de 10 minutos, exigir nova comprovação do lease antes de cada job e lote e executar cada lote em transação sujeita ao timeout configurado
