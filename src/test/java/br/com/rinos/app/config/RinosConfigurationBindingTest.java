@@ -26,6 +26,13 @@ class RinosConfigurationBindingTest {
             "rinos.proxy.trusted-proxies=10.0.0.1,10.0.0.0/24")
         .run(context -> {
           assertThat(context).hasNotFailed();
+          MaintenancePropertiesConfig maintenance =
+              context.getBean(MaintenancePropertiesConfig.class);
+          assertThat(maintenance.instanceId()).isEqualTo("test-instance");
+          assertThat(maintenance.heartbeatInterval()).isEqualTo(Duration.ofMinutes(30));
+          assertThat(maintenance.leaseTimeout()).isEqualTo(Duration.ofHours(4));
+          assertThat(maintenance.stabilizationPeriod()).isEqualTo(Duration.ofMinutes(10));
+          assertThat(maintenance.batchTransactionTimeout()).isEqualTo(Duration.ofMinutes(5));
           assertThat(context.getBean(RegistrationPropertiesConfig.class).pendingRetention())
               .isEqualTo(Duration.ofDays(15));
           assertThat(context.getBean(VerificationPropertiesConfig.class).validity())
@@ -40,7 +47,7 @@ class RinosConfigurationBindingTest {
    * Comprova que o timeout transacional não pode alcançar a estabilização.
    */
   @Test
-  void bind_shouldFail_whenBatchTimeoutIsNotShorterThanStabilization() {
+  void bind_shouldFail_whenBatchTimeoutEqualsStabilization() {
     contextRunner
         .withPropertyValues(
             "rinos.maintenance.instance-id=test-instance",
@@ -51,6 +58,95 @@ class RinosConfigurationBindingTest {
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage(
                   "batchTransactionTimeout deve ser menor que stabilizationPeriod.");
+        });
+  }
+
+  /**
+   * Comprova o binding tipado de todos os tempos da coordenação de manutenção.
+   */
+  @Test
+  void bind_shouldApplyExplicitMaintenanceValues_whenAllValuesAreProvided() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=explicit-instance",
+            "rinos.maintenance.heartbeat-interval=15m",
+            "rinos.maintenance.lease-timeout=2h",
+            "rinos.maintenance.stabilization-period=8m",
+            "rinos.maintenance.batch-transaction-timeout=3m")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          MaintenancePropertiesConfig maintenance =
+              context.getBean(MaintenancePropertiesConfig.class);
+          assertThat(maintenance.instanceId()).isEqualTo("explicit-instance");
+          assertThat(maintenance.heartbeatInterval()).isEqualTo(Duration.ofMinutes(15));
+          assertThat(maintenance.leaseTimeout()).isEqualTo(Duration.ofHours(2));
+          assertThat(maintenance.stabilizationPeriod()).isEqualTo(Duration.ofMinutes(8));
+          assertThat(maintenance.batchTransactionTimeout()).isEqualTo(Duration.ofMinutes(3));
+        });
+  }
+
+  /**
+   * Comprova que a identidade da instância deve ser declarada explicitamente.
+   */
+  @Test
+  void bind_shouldFail_whenInstanceIdIsBlank() {
+    contextRunner
+        .withPropertyValues("rinos.maintenance.instance-id= ")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("instanceId é obrigatório.");
+        });
+  }
+
+  /**
+   * Comprova que o timeout transacional não pode ultrapassar a estabilização.
+   */
+  @Test
+  void bind_shouldFail_whenBatchTimeoutExceedsStabilization() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.maintenance.stabilization-period=5m",
+            "rinos.maintenance.batch-transaction-timeout=6m")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "batchTransactionTimeout deve ser menor que stabilizationPeriod.");
+        });
+  }
+
+  /**
+   * Comprova que tempos nulos ou negativos não produzem uma coordenação inválida.
+   */
+  @Test
+  void bind_shouldFail_whenMaintenanceDurationIsNotPositive() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.maintenance.heartbeat-interval=0s")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("Os tempos de manutenção devem ser maiores que zero.");
+        });
+  }
+
+  /**
+   * Comprova que o heartbeat deve ocorrer antes de o lease expirar.
+   */
+  @Test
+  void bind_shouldFail_whenHeartbeatIsNotShorterThanLease() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.maintenance.heartbeat-interval=4h",
+            "rinos.maintenance.lease-timeout=4h")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("heartbeatInterval deve ser menor que leaseTimeout.");
         });
   }
 
