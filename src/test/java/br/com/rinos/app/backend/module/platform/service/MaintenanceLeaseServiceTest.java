@@ -217,6 +217,31 @@ class MaintenanceLeaseServiceTest {
   }
 
   /**
+   * Comprova que instantes divergentes no token local não participam da prova do MySQL.
+   */
+  @Test
+  void provesStableOwnership_shouldIgnoreLocalInstants_whenDatabaseConfirmsTokens() {
+    MaintenanceLeaseVO locallyDivergentLease = new MaintenanceLeaseVO(
+        LEASE_KEY,
+        currentSession,
+        3,
+        Instant.parse("2036-07-29T10:00:00Z"),
+        Instant.parse("2036-07-29T10:30:00Z"),
+        Instant.parse("2020-07-29T14:30:00Z"),
+        5);
+    when(repository.countStableOwnership(
+        LEASE_KEY,
+        INSTANCE_ID,
+        currentSession.sessionId().toString(),
+        3,
+        STABILIZATION_MICROSECONDS)).thenReturn(1L);
+
+    boolean result = service.provesStableOwnership(locallyDivergentLease);
+
+    assertThat(result).isTrue();
+  }
+
+  /**
    * Cria uma entidade simulada com o contrato completo de persistência.
    *
    * @param owner sessão proprietária
