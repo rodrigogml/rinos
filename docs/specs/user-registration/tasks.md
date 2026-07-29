@@ -69,7 +69,7 @@ Ref: [Plan §Transaction and Failure Strategy](./plan.md), [Data Model](./data-m
   `99-database-version.sql`
 - [x] 1.4.3 Integrar o updater do RFW ao bootstrap do schema global usando exclusivamente
   `classpath:db/global/update`
-- [ ] 1.4.4 Bloquear a aplicação com diagnóstico seguro quando init ou update falhar
+- [x] 1.4.4 Bloquear a aplicação com diagnóstico seguro quando init ou update falhar
 - [ ] 1.4.5 Criar teste de banco global vazio, banco atualizado, versão incompatível e isolamento em relação aos
   catálogos de tenant
 - [ ] 1.4.6 Documentar indisponibilidade durante migrations, intervenção externa em caso de falha e a separação entre

@@ -57,6 +57,30 @@ class RinosConfigurationSourceIT {
   }
 
   /**
+   * Comprova que a migration global impede o startup quando o banco configurado não está disponível.
+   *
+   * @throws Exception quando o processo controlado não pode ser executado
+   */
+  @Test
+  void application_shouldFailWithSafeDiagnostic_whenGlobalDataSourceIsMissing() throws Exception {
+    String properties = validProperties().replace(
+        "rfw.platform.database.update.enabled=false",
+        "rfw.platform.database.update.enabled=true");
+    Files.writeString(temporaryDirectory.resolve("application.properties"),
+        properties, StandardCharsets.UTF_8);
+
+    ProcessResult result = runApplication(List.of(), false);
+
+    assertThat(result.finished()).isTrue();
+    assertThat(result.exitCode()).isNotZero();
+    assertThat(result.output()).contains("[CONFIGURATION]", "nenhum DataSource foi encontrado");
+    assertThat(result.output()).doesNotContain(
+        "Started RinosApplication",
+        "jdbc:mysql:",
+        "spring.datasource.password");
+  }
+
+  /**
    * Comprova que o JAR real falha quando uma integração habilitada está incompleta.
    *
    * @throws Exception quando o processo controlado não pode ser executado
