@@ -31,6 +31,9 @@ class MaintenanceCoordinatorServiceTest {
   @Mock
   private MaintenanceExecutionService executionService;
 
+  @Mock
+  private MaintenanceObservabilityService observabilityService;
+
   private MaintenanceCoordinatorService service;
   private MaintenanceLeaseVO lease;
 
@@ -39,7 +42,10 @@ class MaintenanceCoordinatorServiceTest {
    */
   @BeforeEach
   void setUp() {
-    service = new MaintenanceCoordinatorService(leaseService, executionService);
+    service = new MaintenanceCoordinatorService(
+        leaseService,
+        executionService,
+        observabilityService);
     lease = lease(3, 5);
   }
 
@@ -56,6 +62,7 @@ class MaintenanceCoordinatorServiceTest {
 
     assertThat(acquired).isTrue();
     assertThat(allowed).isTrue();
+    verify(observabilityService).takenOver(lease);
   }
 
   /**
@@ -72,6 +79,7 @@ class MaintenanceCoordinatorServiceTest {
 
     assertThat(renewed).isFalse();
     assertThat(executed).isFalse();
+    verify(observabilityService).lost(lease, "heartbeat-rejected", null);
     verify(executionService, never()).executeBatch(lease, batch);
   }
 
@@ -87,6 +95,7 @@ class MaintenanceCoordinatorServiceTest {
     assertThatThrownBy(service::renewLease).isSameAs(failure);
 
     assertThat(service.canStartJob()).isFalse();
+    verify(observabilityService).lost(lease, "heartbeat-failed", failure);
     verify(executionService, never()).canStartJob(lease);
   }
 
@@ -104,6 +113,7 @@ class MaintenanceCoordinatorServiceTest {
 
     assertThat(allowed).isFalse();
     assertThat(executed).isFalse();
+    verify(observabilityService).lost(lease, "job-proof-rejected", null);
     verify(executionService, never()).executeBatch(lease, batch);
   }
 
@@ -121,6 +131,7 @@ class MaintenanceCoordinatorServiceTest {
     assertThatThrownBy(() -> service.executeBatch(firstBatch)).isSameAs(failure);
 
     assertThat(service.executeBatch(secondBatch)).isFalse();
+    verify(observabilityService).lost(lease, "batch-failed", failure);
     verify(executionService, never()).executeBatch(lease, secondBatch);
   }
 
@@ -142,6 +153,52 @@ class MaintenanceCoordinatorServiceTest {
 
     assertThat(acquired).isTrue();
     assertThat(allowed).isTrue();
+    verify(observabilityService).takenOver(renewedLease);
+  }
+
+  /**
+   * Comprova que a primeira aquisição e a tomada possuem eventos distintos.
+   */
+  @Test
+  void tryAcquire_shouldRecordAcquisition_whenEpochIsInitial() {
+    MaintenanceLeaseVO initialLease = lease(1, 0);
+    when(leaseService.tryAcquire("global-maintenance"))
+        .thenReturn(Optional.of(initialLease));
+
+    boolean acquired = service.tryAcquire("global-maintenance");
+
+    assertThat(acquired).isTrue();
+    verify(observabilityService).acquired(initialLease);
+    verify(observabilityService, never()).takenOver(initialLease);
+  }
+
+  /**
+   * Comprova que a disputa perdida é registrada como tentativa rejeitada.
+   */
+  @Test
+  void tryAcquire_shouldRecordRejection_whenAnotherSessionOwnsLease() {
+    when(leaseService.tryAcquire("global-maintenance")).thenReturn(Optional.empty());
+
+    boolean acquired = service.tryAcquire("global-maintenance");
+
+    assertThat(acquired).isFalse();
+    verify(observabilityService)
+        .rejected("global-maintenance", "owned-by-another-session", null);
+  }
+
+  /**
+   * Comprova que um heartbeat confirmado registra o token atualizado.
+   */
+  @Test
+  void renewLease_shouldRecordRenewal_whenHeartbeatSucceeds() {
+    MaintenanceLeaseVO renewedLease = lease(3, 6);
+    acquireLease();
+    when(leaseService.renew(lease)).thenReturn(Optional.of(renewedLease));
+
+    boolean renewed = service.renewLease();
+
+    assertThat(renewed).isTrue();
+    verify(observabilityService).renewed(renewedLease);
   }
 
   /**

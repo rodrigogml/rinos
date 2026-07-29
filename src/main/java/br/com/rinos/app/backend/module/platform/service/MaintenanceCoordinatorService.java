@@ -25,6 +25,7 @@ public class MaintenanceCoordinatorService {
 
   private final MaintenanceLeaseService leaseService;
   private final MaintenanceExecutionService executionService;
+  private final MaintenanceObservabilityService observabilityService;
   private final AtomicReference<MaintenanceLeaseVO> activeLease = new AtomicReference<>();
 
   /**
@@ -32,12 +33,15 @@ public class MaintenanceCoordinatorService {
    *
    * @param leaseService aquisição, renovação e prova persistidas
    * @param executionService barreira transacional de jobs e lotes
+   * @param observabilityService métricas e logs das transições
    */
   public MaintenanceCoordinatorService(
       MaintenanceLeaseService leaseService,
-      MaintenanceExecutionService executionService) {
+      MaintenanceExecutionService executionService,
+      MaintenanceObservabilityService observabilityService) {
     this.leaseService = leaseService;
     this.executionService = executionService;
+    this.observabilityService = observabilityService;
   }
 
   /**
@@ -52,9 +56,14 @@ public class MaintenanceCoordinatorService {
     try {
       Optional<MaintenanceLeaseVO> acquiredLease = leaseService.tryAcquire(leaseKey);
       activeLease.set(acquiredLease.orElse(null));
+      acquiredLease.ifPresent(this::observeAcquisition);
+      if (acquiredLease.isEmpty()) {
+        observabilityService.rejected(leaseKey, "owned-by-another-session", null);
+      }
       return acquiredLease.isPresent();
     } catch (RuntimeException exception) {
       activeLease.set(null);
+      observabilityService.rejected(leaseKey, "database-unavailable", exception);
       throw exception;
     }
   }
@@ -73,12 +82,24 @@ public class MaintenanceCoordinatorService {
     try {
       Optional<MaintenanceLeaseVO> renewedLease = leaseService.renew(expectedLease);
       if (renewedLease.isEmpty()) {
-        activeLease.compareAndSet(expectedLease, null);
+        if (activeLease.compareAndSet(expectedLease, null)) {
+          observabilityService.lost(expectedLease, "heartbeat-rejected", null);
+        }
         return false;
       }
-      return activeLease.compareAndSet(expectedLease, renewedLease.orElseThrow());
+      MaintenanceLeaseVO currentLease = renewedLease.orElseThrow();
+      boolean stored = activeLease.compareAndSet(expectedLease, currentLease);
+      if (stored) {
+        observabilityService.renewed(currentLease);
+      } else {
+        observabilityService.rejected(
+            expectedLease.leaseKey(), "local-token-changed", null);
+      }
+      return stored;
     } catch (RuntimeException exception) {
-      activeLease.compareAndSet(expectedLease, null);
+      if (activeLease.compareAndSet(expectedLease, null)) {
+        observabilityService.lost(expectedLease, "heartbeat-failed", exception);
+      }
       throw exception;
     }
   }
@@ -97,11 +118,15 @@ public class MaintenanceCoordinatorService {
     try {
       boolean allowed = executionService.canStartJob(expectedLease);
       if (!allowed) {
-        activeLease.compareAndSet(expectedLease, null);
+        if (activeLease.compareAndSet(expectedLease, null)) {
+          observabilityService.lost(expectedLease, "job-proof-rejected", null);
+        }
       }
       return allowed;
     } catch (RuntimeException exception) {
-      activeLease.compareAndSet(expectedLease, null);
+      if (activeLease.compareAndSet(expectedLease, null)) {
+        observabilityService.lost(expectedLease, "job-proof-failed", exception);
+      }
       throw exception;
     }
   }
@@ -123,12 +148,29 @@ public class MaintenanceCoordinatorService {
     try {
       boolean executed = executionService.executeBatch(expectedLease, batch);
       if (!executed) {
-        activeLease.compareAndSet(expectedLease, null);
+        if (activeLease.compareAndSet(expectedLease, null)) {
+          observabilityService.lost(expectedLease, "batch-proof-rejected", null);
+        }
       }
       return executed;
     } catch (RuntimeException exception) {
-      activeLease.compareAndSet(expectedLease, null);
+      if (activeLease.compareAndSet(expectedLease, null)) {
+        observabilityService.lost(expectedLease, "batch-failed", exception);
+      }
       throw exception;
+    }
+  }
+
+  /**
+   * Distingue a primeira aquisição de uma tomada por meio do fencing persistido.
+   *
+   * @param lease token adquirido
+   */
+  private void observeAcquisition(MaintenanceLeaseVO lease) {
+    if (lease.epoch() == 1) {
+      observabilityService.acquired(lease);
+    } else {
+      observabilityService.takenOver(lease);
     }
   }
 }

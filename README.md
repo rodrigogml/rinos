@@ -103,6 +103,10 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
 7. Iniciar o JAR executável atrás do proxy reverso e aguardar a validação automática do schema global e dos tenants.
 8. Verificar logs, saúde das integrações, resolução segura do IP de origem, aquisição do lease de manutenção por uma
    única sessão e ausência de configuração importada de fonte não autorizada.
+   As transições do lease também incrementam o contador `rinos.maintenance.lease.events`, com a tag de cardinalidade
+   fixa `event` nos valores `acquisition`, `takeover`, `renewal`, `loss` e `rejection`. Sem integração de métricas
+   instalada, o Rinos mantém um registro em memória e não publica endpoint administrativo; uma instalação pode fornecer
+   outro `MeterRegistry` para exportação sem alterar a coordenação.
 9. Executar os smoke tests e todos os gates de release das features incluídas antes de liberar o acesso. Para cadastro,
    usar 100 dispatches no SMTP local controlado, com perfil de teste que permita ao menos 100 novas pendências por
    origem e verificação humana controlada, e somente um smoke test no SMTP real; esse resultado não declara throughput
