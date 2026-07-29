@@ -83,7 +83,7 @@ Ref: [Platform Operations §Coordenação de Manutenção](../platform-operation
 - [x] 1.5.2 Criar migration, entity e repository globais para `platform_maintenanceLease` com `leaseKey` único, sessão, `epoch`, instantes e versionamento
 - [x] 1.5.3 Gerar `sessionId` novo por inicialização e usar exclusivamente o relógio do MySQL para aquisição, heartbeat e expiração
 - [x] 1.5.4 Implementar aquisição e tomada atômicas com um vencedor, incremento de `epoch` e renovação condicionada ao proprietário vigente
-- [ ] 1.5.5 Impedir execução antes da estabilização de 10 minutos, exigir nova comprovação do lease antes de cada job e lote e executar cada lote em transação sujeita ao timeout configurado
+- [x] 1.5.5 Impedir execução antes da estabilização de 10 minutos, exigir nova comprovação do lease antes de cada job e lote e executar cada lote em transação sujeita ao timeout configurado
 - [ ] 1.5.6 Suspender novos lotes diante de perda, fencing divergente, falha de heartbeat ou indisponibilidade do banco global
 - [ ] 1.5.7 Instrumentar aquisição, renovação, perda, tomada e rejeição sem criar versões em `platform-configuration`
 - [ ] 1.5.8 Criar testes com duas instâncias, mesmo `instanceId`, reinício, expiração, retorno da líder antiga, lote antigo bloqueado, timeout, ausência de sobreposição, relógio local divergente e banco indisponível

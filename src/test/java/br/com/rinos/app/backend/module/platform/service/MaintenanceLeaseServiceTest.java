@@ -31,6 +31,7 @@ class MaintenanceLeaseServiceTest {
   private static final String LEASE_KEY = "global-maintenance";
   private static final String INSTANCE_ID = "instance-one";
   private static final long LEASE_TIMEOUT_MICROSECONDS = 14_400_000_000L;
+  private static final long STABILIZATION_MICROSECONDS = 600_000_000L;
   private static final Instant ACQUIRED_AT = Instant.parse("2026-07-29T10:00:00Z");
   private static final Instant HEARTBEAT_AT = Instant.parse("2026-07-29T10:30:00Z");
   private static final Instant LEASE_UNTIL = Instant.parse("2026-07-29T14:30:00Z");
@@ -159,6 +160,60 @@ class MaintenanceLeaseServiceTest {
 
     assertThat(result).isEmpty();
     verify(repository, never()).findByLeaseKey(LEASE_KEY);
+  }
+
+  /**
+   * Comprova que a prova estabilizada usa sessão, fencing e espera persistidos.
+   */
+  @Test
+  void provesStableOwnership_shouldReturnTrue_whenDatabaseConfirmsCurrentSession() {
+    when(repository.countStableOwnership(
+        LEASE_KEY,
+        INSTANCE_ID,
+        currentSession.sessionId().toString(),
+        3,
+        STABILIZATION_MICROSECONDS)).thenReturn(1L);
+
+    boolean result = service.provesStableOwnership(leaseValue(currentSession, 3, 5));
+
+    assertThat(result).isTrue();
+  }
+
+  /**
+   * Comprova que um token de outra sessão local é rejeitado sem consultar a prova persistida.
+   */
+  @Test
+  void provesStableOwnership_shouldReturnFalse_whenTokenBelongsToAnotherSession() {
+    MaintenanceSessionVO otherSession = new MaintenanceSessionVO(
+        "instance-two",
+        UUID.fromString("88c54ec1-12f6-49a7-b267-57d643a5d8fd"));
+
+    boolean result = service.provesStableOwnership(leaseValue(otherSession, 3, 5));
+
+    assertThat(result).isFalse();
+    verify(repository, never()).countStableOwnership(
+        LEASE_KEY,
+        INSTANCE_ID,
+        currentSession.sessionId().toString(),
+        3,
+        STABILIZATION_MICROSECONDS);
+  }
+
+  /**
+   * Comprova que a ausência de linha elegível bloqueia o trabalho mesmo para a sessão atual.
+   */
+  @Test
+  void provesStableOwnership_shouldReturnFalse_whenDatabaseRejectsEligibility() {
+    when(repository.countStableOwnership(
+        LEASE_KEY,
+        INSTANCE_ID,
+        currentSession.sessionId().toString(),
+        3,
+        STABILIZATION_MICROSECONDS)).thenReturn(0L);
+
+    boolean result = service.provesStableOwnership(leaseValue(currentSession, 3, 5));
+
+    assertThat(result).isFalse();
   }
 
   /**

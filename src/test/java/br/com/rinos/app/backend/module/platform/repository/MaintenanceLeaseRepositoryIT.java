@@ -171,6 +171,59 @@ class MaintenanceLeaseRepositoryIT {
   }
 
   /**
+   * Comprova que a espera de estabilização é calculada no MySQL e bloqueia a aquisição recente.
+   *
+   * @throws SQLException quando o instante de aquisição não pode ser preparado
+   */
+  @Test
+  void countStableOwnership_shouldReturnOne_onlyAfterDatabaseStabilization() throws SQLException {
+    contextRunner().run(context -> {
+      MaintenanceLeaseRepository repository =
+          context.getBean(MaintenanceLeaseRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      String sessionId = UUID.randomUUID().toString();
+      transaction.executeWithoutResult(status -> repository.createIfAbsent(
+          LEASE_KEY,
+          "instance-one",
+          sessionId,
+          LEASE_TIMEOUT_MICROSECONDS));
+
+      Long recentCount = transaction.execute(status -> repository.countStableOwnership(
+          LEASE_KEY,
+          "instance-one",
+          sessionId,
+          1,
+          600_000_000L));
+      moveAcquisitionToElevenMinutesAgo();
+      Long stableCount = transaction.execute(status -> repository.countStableOwnership(
+          LEASE_KEY,
+          "instance-one",
+          sessionId,
+          1,
+          600_000_000L));
+
+      assertThat(recentCount).isZero();
+      assertThat(stableCount).isEqualTo(1);
+    });
+  }
+
+  /**
+   * Move somente o marco de aquisição para simular a espera sem depender do relógio do teste.
+   *
+   * @throws SQLException quando a atualização do banco descartável falha
+   */
+  private void moveAcquisitionToElevenMinutesAgo() throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate("""
+          UPDATE platform_maintenanceLease
+          SET acquiredAt = TIMESTAMPADD(MINUTE, -11, UTC_TIMESTAMP(6))
+          WHERE leaseKey = 'global-maintenance'
+          """);
+    }
+  }
+
+  /**
    * Executa duas disputas em transações e conexões independentes.
    *
    * @param repository repositório compartilhado e thread-safe

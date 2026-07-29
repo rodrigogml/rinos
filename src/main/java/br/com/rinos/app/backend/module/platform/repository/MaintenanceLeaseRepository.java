@@ -146,4 +146,34 @@ public interface MaintenanceLeaseRepository
       @Param("epoch") long epoch,
       @Param("version") long version,
       @Param("leaseTimeoutMicroseconds") long leaseTimeoutMicroseconds);
+
+  /**
+   * Comprova propriedade, fencing, vigência e estabilização usando somente o relógio do MySQL.
+   *
+   * @param leaseKey chave exclusiva do lease
+   * @param instanceId identidade estável da instância proprietária
+   * @param sessionId UUID textual da sessão proprietária
+   * @param epoch fencing token esperado
+   * @param stabilizationMicroseconds espera mínima depois da aquisição
+   * @return {@code 1} quando a sessão está apta a iniciar trabalho; {@code 0} nos demais estados
+   */
+  @Query(value = """
+      SELECT COUNT(*)
+      FROM platform_maintenanceLease
+      WHERE leaseKey = :leaseKey
+        AND instanceId = :instanceId
+        AND sessionId = :sessionId
+        AND epoch = :epoch
+        AND leaseUntil > UTC_TIMESTAMP(6)
+        AND TIMESTAMPADD(
+            MICROSECOND,
+            :stabilizationMicroseconds,
+            acquiredAt) <= UTC_TIMESTAMP(6)
+      """, nativeQuery = true)
+  long countStableOwnership(
+      @Param("leaseKey") String leaseKey,
+      @Param("instanceId") String instanceId,
+      @Param("sessionId") String sessionId,
+      @Param("epoch") long epoch,
+      @Param("stabilizationMicroseconds") long stabilizationMicroseconds);
 }

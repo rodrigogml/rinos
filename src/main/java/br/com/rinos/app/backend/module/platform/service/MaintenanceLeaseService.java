@@ -36,6 +36,7 @@ public class MaintenanceLeaseService {
   private final MaintenanceLeaseRepository repository;
   private final MaintenanceSessionService sessionService;
   private final long leaseTimeoutMicroseconds;
+  private final long stabilizationMicroseconds;
 
   /**
    * Cria o coordenador usando a sessão da inicialização e o timeout validado.
@@ -51,6 +52,7 @@ public class MaintenanceLeaseService {
     this.repository = repository;
     this.sessionService = sessionService;
     leaseTimeoutMicroseconds = toMicroseconds(properties.leaseTimeout());
+    stabilizationMicroseconds = toMicroseconds(properties.stabilizationPeriod());
   }
 
   /**
@@ -116,6 +118,33 @@ public class MaintenanceLeaseService {
         .map(this::toValue)
         .filter(lease -> lease.owner().equals(currentSession))
         .filter(lease -> lease.epoch() == expectedLease.epoch());
+  }
+
+  /**
+   * Comprova se o token pertence à sessão atual e já pode iniciar um job ou lote.
+   *
+   * <p>A prova é sempre relida no banco global e usa o relógio do MySQL para verificar vigência e
+   * estabilização. A versão não participa da prova porque um heartbeat concorrente da própria
+   * sessão pode renová-la sem alterar o {@code epoch}.
+   *
+   * @param expectedLease token obtido pela sessão atual
+   * @return {@code true} somente quando propriedade, fencing, vigência e estabilização persistidos
+   *     continuam válidos
+   * @throws NullPointerException quando o token é nulo
+   */
+  @Transactional(readOnly = true)
+  public boolean provesStableOwnership(MaintenanceLeaseVO expectedLease) {
+    Objects.requireNonNull(expectedLease, "expectedLease must not be null");
+    MaintenanceSessionVO currentSession = sessionService.getCurrentSession();
+    if (!expectedLease.owner().equals(currentSession)) {
+      return false;
+    }
+    return repository.countStableOwnership(
+        expectedLease.leaseKey(),
+        currentSession.instanceId(),
+        currentSession.sessionId().toString(),
+        expectedLease.epoch(),
+        stabilizationMicroseconds) == 1;
   }
 
   /**
