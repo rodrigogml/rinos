@@ -17,7 +17,7 @@ src/main/resources/db/
 │   │   ├── 03-procedures.sql
 │   │   └── 99-database-version.sql
 │   └── update/
-│       └── YYYYMMDD_NNN_descricao.sql
+│       └── YYYYMMDD_NNN_update.sql
 └── tenant/
     ├── init/
     │   ├── 01-ddl.sql
@@ -25,7 +25,7 @@ src/main/resources/db/
     │   ├── 03-procedures.sql
     │   └── 99-database-version.sql
     └── update/
-        └── YYYYMMDD_NNN_descricao.sql
+        └── YYYYMMDD_NNN_update.sql
 ```
 
 Os diretórios `global` e `tenant` representam catálogos distintos. Uma execução do atualizador recebe apenas os

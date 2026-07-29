@@ -63,7 +63,7 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`4d19dcd07bcf11e7eaacee10e0bd99840ce0d3e5`, que incorpora esse gate, a configuração pública do endpoint de
+`43da06374d4b1baba2379e1da711d1b4d94da4bb`, que incorpora esse gate, a configuração pública do endpoint de
 verificação do Turnstile e a atualização explícita de catálogos em `DataSource` distintos. O ciclo foi implementado,
 testado e documentado no showroom do RFW antes da atualização do
 ponteiro no Rinos. O gate de compatibilidade está encerrado e a

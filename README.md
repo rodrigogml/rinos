@@ -40,6 +40,14 @@ mvn verify
 Testes unitários usam o sufixo `*Test`; testes de integração usam `*IT` e são executados pelo Failsafe durante
 `mvn verify`.
 
+Os testes de migration global usam Testcontainers com a imagem `mysql:9.0`. Quando Docker não está disponível, esses
+cenários são reportados explicitamente como ignorados para que o build local continue utilizável; o gate completo exige
+Docker ativo e deve apresentar os quatro cenários MySQL executados, sem skips:
+
+```shell
+mvn -Dit.test=GlobalDatabaseMigrationIT verify
+```
+
 ### Execução
 
 Crie o `application.properties` não versionado na raiz a partir do
