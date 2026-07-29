@@ -50,6 +50,30 @@ entre a identidade funcional do tenant e seu schema físico pertence ao cadastro
 | Global | A infraestrutura cria o banco e executa `db/global/init` uma vez | O bootstrap da aplicação executa `db/global/update` antes de disponibilizar o sistema |
 | Tenant | O provisionador executa `db/tenant/init` ao criar o armazenamento do tenant | A fila estrutural executa `db/tenant/update` separadamente para cada tenant |
 
+## Ciclo operacional de inicialização e atualização
+
+Os quatro fluxos usam catálogos e momentos distintos:
+
+| Fluxo | Disparo | Executor | Indisponibilidade | Liberação |
+|-------|---------|----------|--------------------|-----------|
+| Init global | Instalação inicial | Infraestrutura, antes do primeiro startup | Aplicação ainda não pode iniciar | Somente depois que o init terminar com `databaseVersion` válida |
+| Update global | Deploy ou reinício com nova versão | Bootstrap automático pelo RFW | Toda a aplicação, sem modo comum, administrativo ou somente leitura | Somente depois que a versão global exata for validada |
+| Init de tenant | Provisionamento de uma conta | Fila estrutural da aplicação | Somente a conta e o tenant em preparação | Somente depois que todo o init e a versão do tenant forem validados |
+| Update de tenant | Deploy, depois da compatibilidade global | Fila estrutural, separadamente por tenant | Somente o tenant em execução; os demais continuam conforme seu próprio estado | Individualmente, depois que o tenant alcançar a versão exata esperada |
+
+O deploy segue esta ordem:
+
+1. a infraestrutura garante que o global já foi criado pelo init e inicia o novo JAR;
+2. o bootstrap descobre exclusivamente `db/global/update`, bloqueia a disponibilidade e valida ou atualiza o global;
+3. uma falha global encerra o startup; nenhum processamento de tenant ou interface fica disponível;
+4. com o global compatível, a fila estrutural identifica tenants pendentes e processa `db/tenant/update`;
+5. cada tenant permanece indisponível enquanto aguarda ou executa sua migration e é liberado individualmente;
+6. a falha de um tenant o mantém em quarentena, mas não deve interromper os demais tenants elegíveis.
+
+> [!IMPORTANT]
+> Migração não possui modo online ou somente leitura. Código e schema são tratados como um par compatível; nenhum
+> escopo pode receber operações comuns enquanto sua versão for diferente da versão exata esperada pelo código.
+
 O atualizador do RFW não cria bancos e não executa os scripts de `init`. Para atualizações adicionais ao banco
 primário, o Rinos usa uma requisição explícita do RFW com o `DataSource`, as localizações do catálogo e o timeout do
 lock. O modo automático do RFW permanece reservado ao banco global primário.
@@ -79,9 +103,41 @@ Uma falha global mantém a aplicação indisponível. Uma falha de tenant manté
 interrompe o processamento dos demais. Correções são progressivas e externas à interface; não há rollback estrutural
 automático nem repetição interna de migration falha.
 
+## Falhas e intervenção externa
+
+Falha de configuração, conexão, lock, catálogo, consistência de versão, validação de script ou execução é bloqueante no
+escopo afetado. Uma migration pode ter aplicado efeitos parciais antes de falhar, especialmente em comandos DDL do
+MySQL; por isso, reiniciar ou repetir sem diagnóstico não é uma recuperação segura.
+
+Ao ocorrer uma falha, a infraestrutura deve:
+
+1. manter indisponível a aplicação inteira, se o global falhou, ou somente o tenant em quarentena, se a falha foi local;
+2. preservar os logs da tentativa com escopo, versão atual, versão-alvo, script, comando e causa disponíveis, sem copiar
+   credenciais, URL de conexão, dados funcionais ou conteúdo desnecessário do tenant;
+3. identificar se a causa é ambiental — configuração, credencial, conectividade, permissão, capacidade ou lock — ou se
+   o banco exige correção estrutural ou de dados;
+4. examinar o estado efetivamente alcançado pelo banco antes de decidir a correção, sem presumir rollback;
+5. corrigir infraestrutura quando a causa for ambiental ou preparar um novo update incremental quando houver evolução
+   estrutural ou de dados; updates já publicados ou aplicados permanecem imutáveis;
+6. iniciar um novo ciclo controlado de deploy ou processamento estrutural para que a aplicação releia a versão e os
+   efeitos existentes; isso não constitui repetição automática dentro da execução que falhou;
+7. liberar o escopo somente depois que o mecanismo normal confirmar a versão exata esperada e todas as validações
+   estruturais terminarem com sucesso.
+
+> [!CAUTION]
+> A interface não oferece comando para executar, repetir, ignorar, corrigir, reverter ou marcar migration como
+> concluída. Também não altera manualmente `databaseVersion`. Reconhecer uma ocorrência ou registrar que ela está em
+> tratamento não modifica a condição técnica nem libera o escopo.
+
+Backup e restauração pertencem exclusivamente à infraestrutura. Se a solução escolhida envolver restauração externa, a
+aplicação ou o tenant restaurado permanece indisponível até que identidade, versão e compatibilidade sejam novamente
+validadas pelos fluxos normais. A aplicação não cria, seleciona nem restaura cópias e não promete que restauração seja a
+resposta adequada para toda falha de migration.
+
 ## Referências
 
 - [Uso da RFW Platform](rfw-platform-usage.md)
 - [Provisionamento e migração de tenants](../specs/tenant-storage-provisioning/spec.md)
 - [Operações da plataforma](../specs/platform-operations/spec.md)
+- [Governança de dados e restauração externa](../specs/tenant-data-governance/spec.md)
 - documentação `Infrastructure > Database Updater` no showroom do RFW

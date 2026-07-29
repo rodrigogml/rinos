@@ -88,6 +88,8 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
    de properties. O timeout do lote deve permanecer inferior à estabilização.
 4. Preparar os bancos e as permissões operacionais. Migrações são executadas automaticamente no deploy; falha global
    mantém a aplicação indisponível e falha de tenant mantém somente o tenant afetado bloqueado para intervenção externa.
+   Seguir o [ciclo operacional e procedimento de falha das migrations](docs/architecture/database-scripts.md), sem
+   repetição ou correção pela interface.
 5. Executar o backup externo coordenado do global e dos tenants antes do deploy. Backup e restauração não são
    funcionalidades da interface nem operações controladas pelo Rinos.
 6. Calibrar o Argon2id no mesmo tipo de servidor da produção usando a ferramenta entregue pela feature
