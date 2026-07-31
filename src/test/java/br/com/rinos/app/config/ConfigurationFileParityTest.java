@@ -72,6 +72,26 @@ class ConfigurationFileParityTest {
     assertThat(properties.getProperty("rfw.platform.database.update.lock-timeout")).isEqualTo("30s");
   }
 
+  /**
+   * Comprova que o MySQL externo de testes exige habilitação explícita e URL sem database.
+   *
+   * @throws Exception quando o modelo não pode ser lido
+   */
+  @Test
+  void model_shouldKeepExternalTestDatabaseDisabled_whenEnvironmentIsNotPrepared() throws Exception {
+    Properties properties = new Properties();
+    try (Reader reader = Files.newBufferedReader(MODEL_FILE, StandardCharsets.UTF_8)) {
+      properties.load(reader);
+    }
+
+    assertThat(properties.getProperty("rinos.test-database.external.enabled")).isEqualTo("false");
+    assertThat(properties.getProperty("rinos.test-database.external.server-url"))
+        .isEqualTo(
+            "jdbc:mysql://localhost:3306/?useUnicode=true&characterEncoding=UTF-8");
+    assertThat(properties.getProperty("rinos.test-database.external.username"))
+        .isEqualTo("rinos_test");
+  }
+
   private static List<String> structure(Path file) throws Exception {
     return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
         .map(line -> {

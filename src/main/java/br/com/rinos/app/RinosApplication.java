@@ -3,6 +3,9 @@ package br.com.rinos.app;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import com.vaadin.flow.component.dependency.StyleSheet;
+import com.vaadin.flow.component.page.AppShellConfigurator;
+
 /**
  * Ponto de entrada da aplicação hospedeira Rinos.
  *
@@ -10,7 +13,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 2026-07-27
  */
 @SpringBootApplication
-public class RinosApplication {
+@StyleSheet("context://rfw-platform/styles.css")
+public class RinosApplication implements AppShellConfigurator {
 
   /**
    * Inicializa o contexto Spring Boot e o servidor web da aplicação.

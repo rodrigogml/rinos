@@ -39,6 +39,12 @@ O prefixo `rinos_` identifica todos os schemas pertencentes à aplicação:
 - o schema global possui o nome fixo `rinos_global`;
 - cada schema de tenant usa `rinos_<identificadorFisico>`.
 
+O prefixo mais específico `rinos_test_` é reservado à infraestrutura automatizada de testes e não identifica tenants.
+Cada execução cria somente schemas `rinos_test_<uuid>` com credencial MySQL própria, sem acesso ao global ou aos
+tenants, e os remove ao terminar. A URL administrativa de testes deve apontar ao servidor sem selecionar previamente
+um database. Essa convenção permite validar init, updates, mappings e concorrência numa instância MySQL 9 existente sem
+alterar conteúdo operacional.
+
 O identificador físico do tenant é interno, imutável, gerado pelo sistema e seguro para composição do nome do schema.
 Ele não deve ser o nome de exibição da conta nem qualquer texto informado diretamente pelo usuário. A correspondência
 entre a identidade funcional do tenant e seu schema físico pertence ao cadastro global de armazenamento.

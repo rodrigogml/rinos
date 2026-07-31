@@ -5,6 +5,7 @@
 - [Constituição](constitution.md)
 - [Briefing](briefing/)
 - [Especificações](specs/)
+- [Documentos jurídicos](legal/)
 
 ## Arquitetura
 

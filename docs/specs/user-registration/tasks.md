@@ -96,60 +96,60 @@ Ref: [Platform Operations §Coordenação de Manutenção](../platform-operation
 
 Ref: [Spec §FR-USR-001–010](./spec.md), [Data Model §User e §Registration](./data-model.md)
 
-- [ ] 2.1.1 Criar enums de estado, origem e transição no backend
-- [ ] 2.1.2 Criar `UserEntity` com e-mail normalizado, estado, versionamento e timestamps
-- [ ] 2.1.3 Criar `RegistrationEntity` 1:1 com origem, expiração e estado do processo
-- [ ] 2.1.4 Mapear transições permitidas sem colocar regra de negócio nas entities
-- [ ] 2.1.5 Criar repositories restritos ao backend com consultas por e-mail normalizado e estado
-- [ ] 2.1.6 Implementar services de identidade, normalização e lifecycle
-- [ ] 2.1.7 Criar testes unitários de estados e integração de unicidade e optimistic locking
+- [x] 2.1.1 Criar enums de estado, origem e transição no backend
+- [x] 2.1.2 Criar `UserEntity` com e-mail normalizado, estado, versionamento e timestamps
+- [x] 2.1.3 Criar `RegistrationEntity` 1:1 com origem, expiração e estado do processo
+- [x] 2.1.4 Mapear transições permitidas sem colocar regra de negócio nas entities
+- [x] 2.1.5 Criar repositories restritos ao backend com consultas por e-mail normalizado e estado
+- [x] 2.1.6 Implementar services de identidade, normalização e lifecycle
+- [x] 2.1.7 Criar testes unitários de estados e integração de unicidade e optimistic locking
 
 ### 2.2 Modelar credenciais e comprovações `[C]`
 
 Ref: [Spec §FR-USR-012 e FR-REG-012–019](./spec.md), [Data Model §LocalCredential e §Verification](./data-model.md)
 
-- [ ] 2.2.1 Criar `LocalCredentialEntity` sem exposição fora do backend
-- [ ] 2.2.2 Criar `VerificationEntity` para e-mail e cancelamento com hash, propósito, estado e validade
-- [ ] 2.2.3 Criar repositories para credencial vigente e comprovação aberta bloqueável
-- [ ] 2.2.4 Implementar geração criptográfica, hashing e comparação constante de provas
-- [ ] 2.2.5 Implementar invalidação de provas anteriores por propósito
-- [ ] 2.2.6 Garantir remoção da credencial local ao reutilizar pendência pelo Google
-- [ ] 2.2.7 Criar testes de uso único, expiração, prova cruzada, replay e ausência de segredo em retornos
+- [x] 2.2.1 Criar `LocalCredentialEntity` sem exposição fora do backend
+- [x] 2.2.2 Criar `VerificationEntity` para e-mail e cancelamento com hash, propósito, estado e validade
+- [x] 2.2.3 Criar repositories para credencial vigente e comprovação aberta bloqueável
+- [x] 2.2.4 Implementar geração criptográfica, hashing e comparação constante de provas
+- [x] 2.2.5 Implementar invalidação de provas anteriores por propósito
+- [x] 2.2.6 Garantir remoção da credencial local ao reutilizar pendência pelo Google
+- [x] 2.2.7 Criar testes de uso único, expiração, prova cruzada, replay e ausência de segredo em retornos
 
 ### 2.3 Modelar documentos legais e consentimentos `[C]`
 
 Ref: [Spec §FR-USR-010–011 e FR-REG-005–006](./spec.md), [Data Model §LegalDocumentVersion e §LegalConsent](./data-model.md)
 
-- [ ] 2.3.1 Criar `LegalDocumentVersionEntity` com versão, vigência, obrigatoriedade e finalidade
-- [ ] 2.3.2 Criar `LegalConsentEntity` associado ao usuário e à versão aceita
-- [ ] 2.3.3 Criar repositories para versões vigentes e consentimentos existentes
-- [ ] 2.3.4 Implementar service que valide conjunto obrigatório e preserve decisões opcionais separadas
-- [ ] 2.3.5 Implementar detecção de versão alterada durante cadastro pendente
-- [ ] 2.3.6 Criar testes de vigência, duplicidade, alteração legal e minimização na expiração
+- [x] 2.3.1 Criar `LegalDocumentVersionEntity` com versão, vigência, obrigatoriedade e finalidade
+- [x] 2.3.2 Criar `LegalConsentEntity` associado ao usuário e à versão aceita
+- [x] 2.3.3 Criar repositories para versões vigentes e consentimentos existentes
+- [x] 2.3.4 Implementar service que valide conjunto obrigatório e preserve decisões opcionais separadas
+- [x] 2.3.5 Implementar detecção de versão alterada durante cadastro pendente
+- [x] 2.3.6 Criar testes de vigência, duplicidade, alteração legal e minimização na expiração
 
 ### 2.4 Modelar identidade externa, origem e auditoria `[C]`
 
 Ref: [Spec §FR-USR-007 e FR-REG-029, FR-REG-037–049](./spec.md), [Data Model §ExternalIdentity, §OriginWindow e §IdentityEvent](./data-model.md)
 
-- [ ] 2.4.1 Criar `ExternalIdentityEntity` com unicidade por `issuer + subject`
-- [ ] 2.4.2 Criar `OriginWindowEntity` global com IP normalizado em `VARBINARY(16)`, operação, política, janela, contador e bloqueio
-- [ ] 2.4.3 Criar `IdentityEventEntity` sem PII ou segredos
-- [ ] 2.4.4 Criar repositories com consultas por vínculo externo, janela e eventos
-- [ ] 2.4.5 Implementar service de auditoria de transições e resultados públicos
-- [ ] 2.4.6 Implementar tombstone de cancelamento sem identificador direto
-- [ ] 2.4.7 Criar testes de unicidade externa, normalização IPv4/IPv6, retenção de origem e sanitização de eventos
+- [x] 2.4.1 Criar `ExternalIdentityEntity` com unicidade por `issuer + subject`
+- [x] 2.4.2 Criar `OriginWindowEntity` global com IP normalizado em `VARBINARY(16)`, operação, política, janela, contador e bloqueio
+- [x] 2.4.3 Criar `IdentityEventEntity` sem PII ou segredos
+- [x] 2.4.4 Criar repositories com consultas por vínculo externo, janela e eventos
+- [x] 2.4.5 Implementar service de auditoria de transições e resultados públicos
+- [x] 2.4.6 Implementar tombstone de cancelamento sem identificador direto
+- [x] 2.4.7 Criar testes de unicidade externa, normalização IPv4/IPv6, retenção de origem e sanitização de eventos
 
 ### 2.5 Criar schema, constraints e validação de paridade `[C]`
 
 Ref: [Data Model §Cross-Entity Invariants e §Referential Actions](./data-model.md), `AGENTS-DATABASE.md`
 
-- [ ] 2.5.1 Materializar tabelas globais no `01-ddl.sql` com nomes, tipos e nulidade documentados
-- [ ] 2.5.2 Criar PKs, FKs, UKs e índices para e-mail, token, `issuer + subject`, estados e janelas
-- [ ] 2.5.3 Definir `ON DELETE` e `ON UPDATE` explicitamente conforme retenção e integridade
-- [ ] 2.5.4 Atualizar `99-database-version.sql` com a versão inicial efetiva
-- [ ] 2.5.5 Criar teste de paridade entre mappings JPA e schema MySQL 9
-- [ ] 2.5.6 Criar testes concorrentes para e-mail e identidade externa únicos
-- [ ] 2.5.7 Validar init completo, rollback de falha e ausência de objetos tenant neste domínio
+- [x] 2.5.1 Materializar tabelas globais no `01-ddl.sql` com nomes, tipos e nulidade documentados
+- [x] 2.5.2 Criar PKs, FKs, UKs e índices para e-mail, token, `issuer + subject`, estados e janelas
+- [x] 2.5.3 Definir `ON DELETE` e `ON UPDATE` explicitamente conforme retenção e integridade
+- [x] 2.5.4 Atualizar `99-database-version.sql` com a versão inicial efetiva
+- [x] 2.5.5 Criar teste de paridade entre mappings JPA e schema MySQL 9
+- [x] 2.5.6 Criar testes concorrentes para e-mail e identidade externa únicos
+- [x] 2.5.7 Validar init completo, interrupção sem avanço falso de versão em falha e ausência de objetos tenant neste domínio, sem prometer rollback total de DDL
 
 ---
 
@@ -159,63 +159,63 @@ Ref: [Data Model §Cross-Entity Invariants e §Referential Actions](./data-model
 
 Ref: [Spec §FR-REG-003–004](./spec.md), [Contracts §Pwned Passwords](./contracts/external-services.md)
 
-- [ ] 3.1.1 Implementar normalizador canônico de e-mail e validação estrutural
-- [ ] 3.1.2 Implementar política de 10–128 caracteres e classes obrigatórias com erros públicos por regra
-- [ ] 3.1.3 Implementar consulta HIBP por prefixo SHA-1 com `Add-Padding`
-- [ ] 3.1.4 Implementar timeout, payload defensivo e política fail-closed
-- [ ] 3.1.5 Configurar Argon2id por `PasswordEncoder` com properties tipadas e piso de 19.456 KiB, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes
-- [ ] 3.1.6 Garantir limpeza de senha, hashes intermediários e resposta HIBP de logs e auditoria
-- [ ] 3.1.7 Criar testes unitários e de integração local para senhas válidas, comuns, comprometidas e indisponibilidade
-- [ ] 3.1.8 Criar ferramenta reproduzível de calibração com aquecimento, no mínimo 50 medições e relatório de mediana e percentil 95 sem expor senha ou hash
-- [ ] 3.1.9 Validar identificador, parâmetros codificados, verificação de hashes anteriores e rejeição de configuração abaixo do piso
+- [x] 3.1.1 Implementar normalizador canônico de e-mail e validação estrutural
+- [x] 3.1.2 Implementar política de 10–128 caracteres e classes obrigatórias com erros públicos por regra
+- [x] 3.1.3 Implementar consulta HIBP por prefixo SHA-1 com `Add-Padding`
+- [x] 3.1.4 Implementar timeout, payload defensivo e política fail-closed
+- [x] 3.1.5 Configurar Argon2id por `PasswordEncoder` com properties tipadas e piso de 19.456 KiB, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes
+- [x] 3.1.6 Garantir limpeza de senha, hashes intermediários e resposta HIBP de logs e auditoria
+- [x] 3.1.7 Criar testes unitários e de integração local para senhas válidas, comuns, comprometidas e indisponibilidade
+- [x] 3.1.8 Criar ferramenta reproduzível de calibração com aquecimento, no mínimo 50 medições e relatório de mediana e percentil 95 sem expor senha ou hash
+- [x] 3.1.9 Validar identificador, parâmetros codificados, verificação de hashes anteriores e rejeição de configuração abaixo do piso
 
 ### 3.2 Implementar origem confiável e limites por IP `[C]`
 
 Ref: [Spec §FR-REG-037–041](./spec.md), [Research §Decision 6](./research.md)
 
-- [ ] 3.2.1 Implementar resolução do endereço remoto com allowlist explícita de proxies
-- [ ] 3.2.2 Rejeitar cadeias encaminhadas inconsistentes ou originadas fora de proxy confiável
-- [ ] 3.2.3 Implementar normalização canônica de IPv4/IPv6 e persistência binária da origem sem HMAC ou criptografia
-- [ ] 3.2.4 Implementar janela persistida e contador atômico para limiar Turnstile e limite máximo absoluto, com padrões de 20 novas pendências em 24 horas
-- [ ] 3.2.5 Retornar bloqueio temporário com instante de liberação sem exceção por Turnstile válido
-- [ ] 3.2.6 Integrar ao catálogo diário coordenado uma limpeza idempotente, em lotes próprios, que exclua a origem até 30 dias depois do fim da janela sob o lease e timeout transacional vigentes
-- [ ] 3.2.7 Garantir que somente a criação efetiva de nova pendência incremente o limite, excluindo rejeições, retomadas, reenvios, cancelamentos e convergências idempotentes
-- [ ] 3.2.8 Criar testes de NAT compartilhado, proxy forjado, concorrência, vigésima primeira criação, término automático do bloqueio, retenção máxima, troca de liderança e repetição segura da limpeza
+- [x] 3.2.1 Implementar resolução do endereço remoto com allowlist explícita de proxies
+- [x] 3.2.2 Rejeitar cadeias encaminhadas inconsistentes ou originadas fora de proxy confiável
+- [x] 3.2.3 Implementar normalização canônica de IPv4/IPv6 e persistência binária da origem sem HMAC ou criptografia
+- [x] 3.2.4 Implementar janela persistida e contador atômico para limiar Turnstile e limite máximo absoluto, com padrões de 20 novas pendências em 24 horas
+- [x] 3.2.5 Retornar bloqueio temporário com instante de liberação sem exceção por Turnstile válido
+- [x] 3.2.6 Integrar ao catálogo diário coordenado uma limpeza idempotente, em lotes próprios, que exclua a origem até 30 dias depois do fim da janela sob o lease e timeout transacional vigentes
+- [x] 3.2.7 Garantir que somente a criação efetiva de nova pendência incremente o limite, excluindo rejeições, retomadas, reenvios, cancelamentos e convergências idempotentes
+- [x] 3.2.8 Criar testes de NAT compartilhado, proxy forjado, concorrência, vigésima primeira criação, término automático do bloqueio, retenção máxima, troca de liderança e repetição segura da limpeza
 
 ### 3.3 Integrar Cloudflare Turnstile pelo RFW `[C]`
 
 Ref: [Spec §FR-REG-028 e FR-REG-034–042](./spec.md), [Contracts §Cloudflare Turnstile](./contracts/external-services.md)
 
-- [ ] 3.3.1 Implementar `RFWHumanVerificationRequirementProvider` por operação e origem
-- [ ] 3.3.2 Configurar `RFWTurnstileVerificationService` com site key, secret, hostname, action e timeout
-- [ ] 3.3.3 Gerar `idempotency_key` por tentativa de Siteverify
-- [ ] 3.3.4 Mapear token inválido, divergência, indisponibilidade e configuração inválida para resultados públicos
-- [ ] 3.3.5 Garantir validação antes de qualquer persistência do cadastro
-- [ ] 3.3.6 Criar testes com servidor local simulado para sucesso, replay, timeout, hostname e action divergentes
+- [x] 3.3.1 Implementar `RFWHumanVerificationRequirementProvider` por operação e origem
+- [x] 3.3.2 Configurar `RFWTurnstileVerificationService` com site key, secret, hostname, action e timeout
+- [x] 3.3.3 Gerar `idempotency_key` por tentativa de Siteverify
+- [x] 3.3.4 Mapear token inválido, divergência, indisponibilidade e configuração inválida para resultados públicos
+- [x] 3.3.5 Garantir validação antes de qualquer persistência do cadastro
+- [x] 3.3.6 Criar testes com servidor local simulado para sucesso, replay, timeout, hostname e action divergentes
 
 ### 3.4 Implementar despacho SMTP pós-commit pelo RFW `[A]`
 
 Ref: [Spec §FR-REG-012, FR-REG-014 e FR-REG-032](./spec.md), [Contracts §SMTP por RFW](./contracts/external-services.md)
 
-- [ ] 3.4.1 Montar a mensagem de comprovação em memória pelo serviço de template do RFW, com locale e correlation ID
-- [ ] 3.4.2 Executar o dispatch somente depois do commit, com timeouts explícitos de conexão e transporte
-- [ ] 3.4.3 Confirmar envio à UI somente depois da aceitação pelo SMTP
-- [ ] 3.4.4 Preservar a pendência e retornar orientação de retomada e reenvio em falha de template, timeout ou transporte
-- [ ] 3.4.5 Impedir destinatário completo, token, URL secreta e mensagem renderizada em persistência, logs ou eventos operacionais
-- [ ] 3.4.6 Medir tempo do commit até aceitação SMTP e tentativas por resultado
-- [ ] 3.4.7 Criar testes de commit, aceitação, timeout, falha de template/transporte e recuperação por reenvio sem retentativa automática
+- [x] 3.4.1 Montar a mensagem de comprovação em memória pelo serviço de template do RFW, com locale e correlation ID
+- [x] 3.4.2 Executar o dispatch somente depois do commit, com timeouts explícitos de conexão e transporte
+- [x] 3.4.3 Confirmar envio à UI somente depois da aceitação pelo SMTP
+- [x] 3.4.4 Preservar a pendência e retornar orientação de retomada e reenvio em falha de template, timeout ou transporte
+- [x] 3.4.5 Impedir destinatário completo, token, URL secreta e mensagem renderizada em persistência, logs ou eventos operacionais
+- [x] 3.4.6 Medir tempo do commit até aceitação SMTP e tentativas por resultado
+- [x] 3.4.7 Criar testes de commit, aceitação, timeout, falha de template/transporte e recuperação por reenvio sem retentativa automática
 
 ### 3.5 Configurar e validar Google OpenID Connect `[C]`
 
 Ref: [Spec §FR-REG-043–052](./spec.md), [Contracts §Google OpenID Connect](./contracts/external-services.md)
 
-- [ ] 3.5.1 Configurar `RFWGoogleSignInComponent` e `RFWGoogleIdentityProvider`
-- [ ] 3.5.2 Validar issuer, assinatura, audience, expiração, emissão, nonce e e-mail verificado
-- [ ] 3.5.3 Implementar `RFWExternalIdentityResolver` com VO sem token bruto
-- [ ] 3.5.4 Mapear identidade inválida, conflito, usuário ativo e indisponibilidade para resultados públicos
-- [ ] 3.5.5 Impedir escopos Google além de identidade e e-mail
-- [ ] 3.5.6 Garantir efemeridade de ID token, nonce e claims não necessários
-- [ ] 3.5.7 Criar testes com emissor local simulado para sucesso, replay, claim ausente, conflito e timeout
+- [x] 3.5.1 Configurar `RFWGoogleSignInComponent` e `RFWGoogleIdentityProvider`
+- [x] 3.5.2 Validar issuer, assinatura, audience, expiração, emissão, nonce e e-mail verificado
+- [x] 3.5.3 Implementar `RFWExternalIdentityResolver` com VO sem token bruto
+- [x] 3.5.4 Mapear identidade inválida, conflito, usuário ativo e indisponibilidade para resultados públicos
+- [x] 3.5.5 Impedir escopos Google além de identidade e e-mail
+- [x] 3.5.6 Garantir efemeridade de ID token, nonce e claims não necessários
+- [x] 3.5.7 Criar testes com emissor local simulado para sucesso, replay, claim ausente, conflito e timeout
 
 ---
 
@@ -225,11 +225,14 @@ Ref: [Spec §FR-REG-043–052](./spec.md), [Contracts §Google OpenID Connect](.
 
 Ref: [Plan §Architecture and Responsibility Boundaries](./plan.md), [RFW Compatibility](./rfw-gap-analysis.md)
 
-- [ ] 4.1.1 Criar DTOs estruturais e VOs públicos sem entities ou segredos
-- [ ] 4.1.2 Criar facade pública para início, ativação, reenvio, cancelamento e consulta segura de estado
-- [ ] 4.1.3 Implementar facade transacional no backend
+- [x] 4.1.1 Criar DTOs estruturais e VOs públicos sem entities ou segredos
+  - Evidência: [contratos públicos, imutabilidade e redação diagnóstica](./evidence/4.1.1/README.md).
+- [x] 4.1.2 Criar facade pública para início, ativação, reenvio, cancelamento e consulta segura de estado
+  - Evidência: [facades públicas e outcomes seguros sem consulta enumerável](./evidence/4.1.2/README.md).
+- [x] 4.1.3 Implementar facade transacional no backend
+  - Evidência: [fronteiras transacionais internas e dispatch pós-commit](./evidence/4.1.3/README.md).
 - [ ] 4.1.4 Implementar `RFWRegistrationProvider`
-- [ ] 4.1.5 Implementar `RFWActivationConsentProvider`
+- [x] 4.1.5 Implementar `RFWActivationConsentProvider`
 - [ ] 4.1.6 Implementar `RFWRegistrationCancellationProvider`
 - [ ] 4.1.7 Criar testes de paridade entre contratos Rinos, outcomes RFW e erros por campo
 
@@ -237,62 +240,62 @@ Ref: [Plan §Architecture and Responsibility Boundaries](./plan.md), [RFW Compat
 
 Ref: [Spec §FR-REG-001–011](./spec.md), [Quickstart §Scenarios 1–5](./quickstart.md)
 
-- [ ] 4.2.1 Validar Turnstile, origem, limite, e-mail, senha e aceites antes da escrita
-- [ ] 4.2.2 Criar ou convergir para usuário e cadastro pendentes pelo e-mail normalizado
-- [ ] 4.2.3 Tratar usuário ativo com mensagem explícita e resultado de recuperação sem revelar outros dados
-- [ ] 4.2.4 Persistir credencial, consentimentos e comprovação em uma transação, mantendo o token somente em memória até o dispatch pós-commit
-- [ ] 4.2.5 Resolver constraint concorrente relendo o estado vencedor sem duplicar efeitos
-- [ ] 4.2.6 Impedir identidade ativa ou credencial utilizável em falha parcial
-- [ ] 4.2.7 Registrar evento sanitizado de início aceito ou rejeitado
-- [ ] 4.2.8 Criar testes unitários, integração MySQL e concorrência para todos os resultados
+- [x] 4.2.1 Validar Turnstile, origem, limite, e-mail, senha e aceites antes da escrita
+- [x] 4.2.2 Criar ou convergir para usuário e cadastro pendentes pelo e-mail normalizado
+- [x] 4.2.3 Tratar usuário ativo com mensagem explícita e resultado de recuperação sem revelar outros dados
+- [x] 4.2.4 Persistir credencial, consentimentos e comprovação em uma transação, mantendo o token somente em memória até o dispatch pós-commit
+- [x] 4.2.5 Resolver constraint concorrente relendo o estado vencedor sem duplicar efeitos
+- [x] 4.2.6 Impedir identidade ativa ou credencial utilizável em falha parcial
+- [x] 4.2.7 Registrar evento sanitizado de início aceito ou rejeitado
+- [x] 4.2.8 Criar testes unitários, integração MySQL e concorrência para todos os resultados
 
 ### 4.3 Implementar comprovação, reenvio e ativação `[C]`
 
 Ref: [Spec §FR-REG-012–024](./spec.md), [Interface §INT-WEB-REG-002](./interface-spec.md)
 
-- [ ] 4.3.1 Consumir prova válida com lock e releitura do cadastro
-- [ ] 4.3.2 Rejeitar prova ausente, cruzada, expirada, usada, invalidada ou de processo encerrado
-- [ ] 4.3.3 Implementar limite de três reenvios em 15 minutos com tempo restante
-- [ ] 4.3.4 Invalidar provas abertas antes de emitir e despachar a nova
-- [ ] 4.3.5 Detectar documentos obrigatórios alterados e emitir continuação opaca de aceite
-- [ ] 4.3.6 Revalidar referência, expiração, uso único e documentos na conclusão do aceite
-- [ ] 4.3.7 Ativar exatamente um usuário e invalidar todas as provas na mesma transação
-- [ ] 4.3.8 Tornar ativação e continuação idempotentes para repetições
-- [ ] 4.3.9 Criar testes de reenvio, replay, mudança legal, race de ativação e acesso inicial
+- [x] 4.3.1 Consumir prova válida com lock e releitura do cadastro
+- [x] 4.3.2 Rejeitar prova ausente, cruzada, expirada, usada, invalidada ou de processo encerrado
+- [x] 4.3.3 Implementar limite de três reenvios em 15 minutos com tempo restante
+- [x] 4.3.4 Invalidar provas abertas antes de emitir e despachar a nova
+- [x] 4.3.5 Detectar documentos obrigatórios alterados e emitir continuação opaca de aceite
+- [x] 4.3.6 Revalidar referência, expiração, uso único e documentos na conclusão do aceite
+- [x] 4.3.7 Ativar exatamente um usuário e invalidar todas as provas na mesma transação
+- [x] 4.3.8 Tornar ativação e continuação idempotentes para repetições
+- [x] 4.3.9 Criar testes de reenvio, replay, mudança legal, race de ativação e acesso inicial
 
 ### 4.4 Implementar cancelamento de cadastro pendente `[C]`
 
 Ref: [Spec §FR-REG-025–027](./spec.md), [Interface §INT-WEB-REG-004 e INT-WEB-REG-005](./interface-spec.md)
 
-- [ ] 4.4.1 Solicitar cancelamento com resposta neutra e política Turnstile própria
-- [ ] 4.4.2 Emitir prova `REGISTRATION_CANCEL` sem cancelar antes da confirmação
-- [ ] 4.4.3 Confirmar controle do e-mail com prova válida e uso único
-- [ ] 4.4.4 Invalidar provas, remover credencial e liberar o e-mail atomicamente
-- [ ] 4.4.5 Criar tombstone sem PII e registrar evento sanitizado
-- [ ] 4.4.6 Tornar repetição segura sem restaurar ou repetir efeitos
-- [ ] 4.4.7 Criar testes de solicitação neutra, prova inválida, cancelamento concorrente e novo cadastro
+- [x] 4.4.1 Solicitar cancelamento com resposta neutra e política Turnstile própria
+- [x] 4.4.2 Emitir prova `REGISTRATION_CANCEL` sem cancelar antes da confirmação
+- [x] 4.4.3 Confirmar controle do e-mail com prova válida e uso único
+- [x] 4.4.4 Invalidar provas, remover credencial e liberar o e-mail atomicamente
+- [x] 4.4.5 Criar tombstone sem PII e registrar evento sanitizado
+- [x] 4.4.6 Tornar repetição segura sem restaurar ou repetir efeitos
+- [x] 4.4.7 Criar testes de solicitação neutra, prova inválida, cancelamento concorrente e novo cadastro
 
 ### 4.5 Implementar expiração e coordenar limpezas diárias `[C]`
 
 Ref: [Spec §FR-REG-023–024 e FR-REG-039](./spec.md), [Data Model §Retention and Cleanup](./data-model.md)
 
-- [ ] 4.5.1 Implementar seleção paginada de pendências vencidas com lock seguro
-- [ ] 4.5.2 Excluir usuário pendente, registro, credencial, consentimentos e provas na ordem íntegra
-- [ ] 4.5.3 Preservar somente tombstone permitido quando aplicável
-- [ ] 4.5.4 Impedir exclusão de usuário ativado durante corrida com o job
-- [ ] 4.5.5 Agendar ao menos diariamente o catálogo que inclui expiração de cadastros e retenção de janelas de origem, exigindo liderança vigente, `epoch` atual, estabilização e timeout transacional antes de cada lote próprio
-- [ ] 4.5.6 Criar testes com relógio controlado, lotes, repetição, troca de liderança, timeout, ausência de sobreposição, ativação concorrente, retenção de origem e falha parcial
+- [x] 4.5.1 Implementar seleção paginada de pendências vencidas com lock seguro
+- [x] 4.5.2 Excluir usuário pendente, registro, credencial, consentimentos e provas na ordem íntegra
+- [x] 4.5.3 Preservar somente tombstone permitido quando aplicável
+- [x] 4.5.4 Impedir exclusão de usuário ativado durante corrida com o job
+- [x] 4.5.5 Agendar ao menos diariamente o catálogo que inclui expiração de cadastros e retenção de janelas de origem, exigindo liderança vigente, `epoch` atual, estabilização e timeout transacional antes de cada lote próprio
+- [x] 4.5.6 Criar testes com relógio controlado, lotes, repetição, troca de liderança, timeout, ausência de sobreposição, ativação concorrente, retenção de origem e falha parcial
 
 ### 4.6 Instrumentar auditoria e métricas do backend `[M]`
 
 Ref: [Spec §FR-USR-007 e FR-REG-029–030](./spec.md), [Interface §Telemetry](./interface-spec.md)
 
-- [ ] 4.6.1 Definir nomes estáveis para eventos e métricas do ciclo local
-- [ ] 4.6.2 Registrar duração, resultado público, operação e correlation ID
-- [ ] 4.6.3 Medir pendências, ativações, cancelamentos, expirações, bloqueios e dispatch SMTP
-- [ ] 4.6.4 Sanitizar mensagens e parâmetros antes de log e auditoria
-- [ ] 4.6.5 Criar testes de ausência de e-mail, IP bruto, senha, token, prova e URL secreta
-- [ ] 4.6.6 Documentar métricas, alertas recomendados e limites de responsabilidade operacional
+- [x] 4.6.1 Definir nomes estáveis para eventos e métricas do ciclo local
+- [x] 4.6.2 Registrar duração, resultado público, operação e correlation ID
+- [x] 4.6.3 Medir pendências, ativações, cancelamentos, expirações, bloqueios e dispatch SMTP
+- [x] 4.6.4 Sanitizar mensagens e parâmetros antes de log e auditoria
+- [x] 4.6.5 Criar testes de ausência de e-mail, IP bruto, senha, token, prova e URL secreta
+- [x] 4.6.6 Documentar métricas, alertas recomendados e limites de responsabilidade operacional
 
 ---
 
@@ -302,66 +305,93 @@ Ref: [Spec §FR-USR-007 e FR-REG-029–030](./spec.md), [Interface §Telemetry](
 
 Ref: [Spec §FR-REG-043–049](./spec.md), [Quickstart §Scenarios 10–12](./quickstart.md)
 
-- [ ] 5.1.1 Localizar vínculo existente por `issuer + subject`
-- [ ] 5.1.2 Rejeitar vínculo externo associado a outro usuário sem expor sua identidade
-- [ ] 5.1.3 Localizar usuário ativo pelo e-mail sem criar vínculo automático
-- [ ] 5.1.4 Localizar e bloquear cadastro pendente pelo e-mail normalizado
-- [ ] 5.1.5 Iniciar nova pendência Google quando não existir identidade correspondente
-- [ ] 5.1.6 Emitir continuação opaca com e-mail verificado somente leitura
-- [ ] 5.1.7 Registrar resultado sanitizado sem ID token ou claims desnecessários
-- [ ] 5.1.8 Criar testes de todas as ramificações e constraints concorrentes
+- [x] 5.1.1 Localizar vínculo existente por `issuer + subject`
+- [x] 5.1.2 Rejeitar vínculo externo associado a outro usuário sem expor sua identidade
+- [x] 5.1.3 Localizar usuário ativo pelo e-mail sem criar vínculo automático
+- [x] 5.1.4 Localizar e bloquear cadastro pendente pelo e-mail normalizado
+- [x] 5.1.5 Iniciar nova pendência Google quando não existir identidade correspondente
+- [x] 5.1.6 Emitir continuação opaca com e-mail verificado somente leitura
+- [x] 5.1.7 Registrar resultado sanitizado sem ID token ou claims desnecessários
+- [x] 5.1.8 Criar testes de todas as ramificações e constraints concorrentes
 
 ### 5.2 Concluir cadastro externo e ativação `[C]`
 
 Ref: [Spec §FR-REG-045–047 e FR-REG-050](./spec.md), [Interface §INT-WEB-REG-003](./interface-spec.md)
 
-- [ ] 5.2.1 Implementar `RFWExternalRegistrationProvider`
-- [ ] 5.2.2 Revalidar referência, expiração, uso único e identidade externa
-- [ ] 5.2.3 Validar documentos legais vigentes e aceites opcionais separados
-- [ ] 5.2.4 Invalidar e remover credencial local e provas da pendência reutilizada
-- [ ] 5.2.5 Persistir vínculo externo único e consentimentos antes da ativação
-- [ ] 5.2.6 Ativar usuário sem senha local ou confirmação adicional por e-mail
-- [ ] 5.2.7 Publicar autenticação somente após commit completo
-- [ ] 5.2.8 Criar testes transacionais, idempotência, mudança legal e race com ativação local
+- [x] 5.2.1 Implementar `RFWExternalRegistrationProvider`
+- [x] 5.2.2 Revalidar referência, expiração, uso único e identidade externa
+- [x] 5.2.3 Validar documentos legais vigentes e aceites opcionais separados
+- [x] 5.2.4 Invalidar e remover credencial local e provas da pendência reutilizada
+- [x] 5.2.5 Persistir vínculo externo único e consentimentos antes da ativação
+- [x] 5.2.6 Ativar usuário sem senha local ou confirmação adicional por e-mail
+- [x] 5.2.7 Publicar autenticação somente após commit completo
+- [x] 5.2.8 Criar testes transacionais, idempotência, mudança legal e race com ativação local
 
 ### 5.3 Cobrir falhas, replay e indisponibilidade Google `[C]`
 
 Ref: [Spec §FR-REG-048–052](./spec.md), [Contracts §Google Failure mapping](./contracts/external-services.md)
 
-- [ ] 5.3.1 Rejeitar token inválido, expirado, reapresentado ou sem e-mail verificado
-- [ ] 5.3.2 Rejeitar referência externa expirada, usada ou conflitante sem escrita parcial
-- [ ] 5.3.3 Oferecer cadastro local quando o Google estiver indisponível
-- [ ] 5.3.4 Encaminhar usuário ativo sem vínculo para futura reautenticação
-- [ ] 5.3.5 Garantir que falhas não removam credencial pendente antes da transação de conclusão
-- [ ] 5.3.6 Criar testes de integração para falhas antes, durante e depois da resolução
+- [x] 5.3.1 Rejeitar token inválido, expirado, reapresentado ou sem e-mail verificado
+- [x] 5.3.2 Rejeitar referência externa expirada, usada ou conflitante sem escrita parcial
+- [x] 5.3.3 Oferecer cadastro local quando o Google estiver indisponível
+- [x] 5.3.4 Encaminhar usuário ativo sem vínculo para futura reautenticação
+- [x] 5.3.5 Garantir que falhas não removam credencial pendente antes da transação de conclusão
+- [x] 5.3.6 Criar testes de integração para falhas antes, durante e depois da resolução
 
 ---
 
 ## FASE 6 - Interface Web RFW
 
+### 6.0 Consolidar documentos jurídicos iniciais `[A]`
+
+Ref: [Documentos jurídicos](../../legal/), [Data Model §LegalDocumentVersion](./data-model.md),
+[Spec §FR-USR-011](./spec.md)
+
+- [x] 6.0.1 Definir localização, escopo, gates e procedimento de versionamento/publicação
+- [x] 6.0.2 Criar esboços não vigentes para Termos de Uso e Política de Privacidade
+- [ ] 6.0.3 Completar decisões organizacionais, inventário de dados e fornecedores reais
+- [ ] 6.0.4 Obter revisão jurídica especializada e autorização expressa da versão
+- [ ] 6.0.5 Publicar os arquivos aprovados, seed/update global, hash e testes de conteúdo exato
+
+> [!IMPORTANT]
+> Os itens 6.0.3–6.0.5 bloqueiam a liberação do cadastro em produção, mas não a implementação
+> da interface com fixtures de teste e indisponibilidade explícita quando não houver documento
+> vigente. Arquivos em `docs/legal/drafts/` nunca podem ser carregados pela aplicação.
+
 ### 6.1 Implementar INT-WEB-REG-001 - Cadastro local `[A]`
 
 Ref: [Interface §INT-WEB-REG-001](./interface-spec.md), [Spec §FR-REG-001–011 e FR-REG-028–042](./spec.md)
 
-- [ ] 6.1.1 Compor `REGISTRATION` na rota pública usando `RFWAccessComponentFactory`
-- [ ] 6.1.2 Configurar documentos legais, Turnstile condicional, idioma, tema e slots autorizados
-- [ ] 6.1.3 Integrar dados reais pelo provider sem acesso da UI ao backend
-- [ ] 6.1.4 Mapear estados inicial, ready, processing, success, erros, offline e conteúdo obsoleto
-- [ ] 6.1.5 Preservar somente e-mail e aceites; limpar senha, confirmação e token em toda submissão
+- [x] 6.1.1 Compor `REGISTRATION` na rota pública usando `RFWAccessComponentFactory`
+- [x] 6.1.2 Configurar documentos legais, Turnstile condicional, idioma, tema e slots autorizados
+- [x] 6.1.3 Integrar dados reais pelo provider sem acesso da UI ao backend
+- [x] 6.1.4 Mapear estados inicial, ready, processing, success, erros, offline e conteúdo obsoleto
+- [x] 6.1.5 Preservar somente e-mail e aceites; limpar senha, confirmação e token em toda submissão
 - [ ] 6.1.6 Disponibilizar recuperação preenchida quando a capability obrigatória de release estiver presente
-- [ ] 6.1.7 Cobrir teclado, leitor de tela, touch, telefone, desktop e localização
-- [ ] 6.1.8 Criar testes de componente, integração Vaadin, E2E e inspeção visual registrada
+- [x] 6.1.7 Cobrir teclado, leitor de tela, touch, telefone, desktop e localização
+  - Evidência: instrução localizada associada à senha; foco no primeiro campo inválido e nas
+    validações locais; feedback atômico e assertivo; labels, estados required/invalid, reflow,
+    largura responsiva e alvos de toque fornecidos pelo componente RFW documentado no showroom.
+- [x] 6.1.8 Criar testes de componente, integração Vaadin, E2E e inspeção visual registrada
+  - Evidência: [testes e inspeção visual em desktop e telefone](./evidence/6.1.8/README.md).
 
 ### 6.2 Implementar INT-WEB-REG-002 - Ativação e retomada `[A]`
 
 Ref: [Interface §INT-WEB-REG-002](./interface-spec.md), [Spec §FR-REG-012–024](./spec.md)
 
-- [ ] 6.2.1 Compor `ACTIVATION` para código manual e deep link opaco
-- [ ] 6.2.2 Integrar ativação, reenvio, limite, cancelamento e retorno seguro ao login
-- [ ] 6.2.3 Compor `ACTIVATION_CONSENT` para novas versões legais
-- [ ] 6.2.4 Exibir somente e-mail seguro e documentos exigidos pela continuação
-- [ ] 6.2.5 Cobrir provas inválidas, expiradas, usadas, cadastro encerrado e falha SMTP
-- [ ] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
+- [x] 6.2.1 Compor `ACTIVATION` para código manual e deep link opaco
+- [x] 6.2.2 Integrar ativação, reenvio, limite, cancelamento e retorno seguro ao login
+  - Evidência: [integração da ativação e retorno seguro](./evidence/6.2.2/README.md).
+- [x] 6.2.3 Compor `ACTIVATION_CONSENT` para novas versões legais
+  - Evidência: [composição da continuação de aceites](./evidence/6.2.3/README.md).
+- [x] 6.2.4 Exibir somente e-mail seguro e documentos exigidos pela continuação
+  - Evidência: [e-mail minimizado e seleção exata de documentos](./evidence/6.2.4/README.md).
+- [x] 6.2.5 Cobrir provas inválidas, expiradas, usadas, cadastro encerrado e falha SMTP
+  - Evidência: [estados públicos e recuperação de falha SMTP](./evidence/6.2.5/README.md).
+- [!] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
+  - Bloqueada temporariamente pela evolução concorrente do RFW Platform para a versão 2.0, que altera
+    contratos relacionados à apresentação e à geração de códigos. Retomar prioritariamente após a
+    migração do ponteiro do submódulo, reavaliando primeiro as capacidades entregues pela nova versão.
 - [ ] 6.2.7 Integrar com providers reais e validar ausência de ID interno nas URLs
 - [ ] 6.2.8 Criar testes de componente, E2E de retomada e inspeção visual nos form factors
 
@@ -417,6 +447,8 @@ Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 - [ ] 7.1.6 Medir cobertura dos comportamentos críticos e registrar lacunas
 - [ ] 7.1.7 Executar build e testes do Rinos e validação isolada do RFW referenciado
 - [ ] 7.1.8 Atualizar `tasks.md`, documentação e evidências com os resultados
+- [x] 7.1.9 Isolar os testes MySQL em schemas descartáveis com provedor externo explícito, privilégios restritos,
+  validação de MySQL 9 e fallback por Testcontainers
 
 ### 7.2 Executar gate de segurança e concorrência `[C]`
 
@@ -425,10 +457,13 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
 - [ ] 7.2.1 Testar concorrência do mesmo e-mail e `issuer + subject`
 - [ ] 7.2.2 Testar replay, prova cruzada, cancelamento e race de ativação
 - [ ] 7.2.3 Testar proxy forjado, limite absoluto, Turnstile e expiração de janelas
-- [ ] 7.2.4 Revisar logs, auditoria, métricas, exceptions e banco para segredos e PII
+- [x] 7.2.4 Revisar logs, auditoria, métricas, exceptions e banco para segredos e PII
+  - Evidência: [auditoria de segredos e PII](./evidence/7.2.4/README.md).
 - [ ] 7.2.5 Executar análise de dependências e verificações estáticas disponíveis
 - [ ] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
 - [ ] 7.2.7 Registrar e corrigir achados bloqueantes antes do release
+  - Achado aberto: revalidar e, se ainda necessário, corrigir no RFW Platform 2.0 a representação
+    diagnóstica de `TurnstileConfig`, garantindo que `secretKey` nunca integre `toString()`.
 
 ### 7.3 Executar gate de interface, WCAG e usabilidade `[C]`
 
@@ -526,8 +561,8 @@ flowchart TD
 | 4 - Ciclo Local do Cadastro | 6 | 43 | 4 C, 1 A, 1 M |
 | 5 - Cadastro por Google | 3 | 22 | 3 C |
 | 6 - Interface Web RFW | 5 | 37 | 5 A |
-| 7 - Qualidade e Liberação | 5 | 36 | 4 C, 1 A |
-| **Total** | **34** | **242** | **23 C, 10 A, 1 M** |
+| 7 - Qualidade e Liberação | 5 | 37 | 4 C, 1 A |
+| **Total** | **34** | **243** | **23 C, 10 A, 1 M** |
 
 ## Escopo Coberto
 

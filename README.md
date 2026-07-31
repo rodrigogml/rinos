@@ -14,6 +14,8 @@ obrigatórias para agentes e desenvolvedores estão em [AGENTS.md](AGENTS.md).
 - Maven 3.9 ou posterior;
 - submódulos Git inicializados;
 - `rfw.platform:1.0.0` e suas dependências disponíveis no repositório Maven local ou configurado.
+- MySQL 9 externo exclusivo para testes ou Docker Desktop com contêineres Linux, para executar o gate completo de
+  integração.
 
 Após clonar o projeto, inicialize os submódulos:
 
@@ -40,14 +42,88 @@ mvn verify
 Testes unitários usam o sufixo `*Test`; testes de integração usam `*IT` e são executados pelo Failsafe durante
 `mvn verify`.
 
-Os testes de migration global e coordenação concorrente usam Testcontainers com a imagem `mysql:9.0`. Quando Docker não
-está disponível, esses cenários são reportados explicitamente como ignorados para que o build local continue utilizável.
-O gate completo exige Docker ativo e deve apresentar os quatro cenários de migration e os oito cenários do lease
-executados, sem skips:
+Os testes de migration global, coordenação concorrente e persistência usam um schema descartável
+`rinos_test_<uuid>`. O provedor preferencial é uma instância MySQL 9 externa explicitamente habilitada no
+`application.properties`; sem essa configuração, o projeto usa Testcontainers com a imagem `mysql:9.0`. Quando nenhum
+provedor está disponível, esses cenários são reportados explicitamente como ignorados para que o build local continue
+utilizável.
+
+O gate completo deve apresentar os cinco cenários de migration, os oito cenários do lease, os 22 cenários de
+persistência da identidade e o cenário de timeout HIBP local executados, sem skips:
 
 ```shell
-mvn -Dit.test=GlobalDatabaseMigrationIT,MaintenanceLeaseRepositoryIT verify
+mvn -Dit.test=GlobalDatabaseMigrationIT,MaintenanceLeaseRepositoryIT,IdentityRepositoryIT,PwnedPasswordsServiceIT verify
 ```
+
+#### Uso seguro de uma instância MySQL 9 existente
+
+> [!CAUTION]
+> Nunca habilite os testes com o usuário operacional do Rinos, uma URL que selecione `rinos_global` ou qualquer schema
+> de tenant. O harness rejeita URLs com database e nomes fora de `rinos_test_<uuid>`, mas a separação de privilégios no
+> servidor é a barreira independente contra erro de configuração.
+
+Um administrador do MySQL deve criar uma vez um usuário exclusivo. Ajuste host e senha para o ambiente; os caracteres
+`_` do prefixo são escapados porque o `GRANT` interpreta `_` e `%` como curingas:
+
+```sql
+CREATE USER 'rinos_test'@'localhost' IDENTIFIED BY 'substitua-por-uma-senha-local';
+GRANT ALL PRIVILEGES ON `rinos\_test\_%`.* TO 'rinos_test'@'localhost';
+```
+
+No `application.properties` não versionado, habilite o provedor e informe somente a URL do servidor:
+
+```properties
+rinos.test-database.external.enabled=true
+rinos.test-database.external.server-url=jdbc:mysql://localhost:3306/?useUnicode=true&characterEncoding=UTF-8
+rinos.test-database.external.username=rinos_test
+rinos.test-database.external.password=senha-local
+```
+
+Cada classe usa um schema aleatório, recriado antes de cada cenário e removido no encerramento. Builds concorrentes não
+compartilham schema. Uma interrupção abrupta pode deixar apenas um schema órfão com o prefixo reservado, nunca dados no
+global ou em tenants. A configuração é lida diretamente do arquivo raiz; variáveis de ambiente, propriedades JVM e
+argumentos Maven não habilitam nem sobrescrevem o provedor.
+
+#### Fallback com Docker no Windows
+
+O Testcontainers detecta automaticamente o Docker Desktop pelo named pipe do Windows; o projeto não exige
+`DOCKER_HOST` nem contêiner permanente. Use o backend WSL 2 e contêineres Linux.
+
+Em uma máquina Windows 11 ainda sem WSL, execute uma vez em PowerShell **como administrador** e reinicie:
+
+```powershell
+wsl --install --no-distribution
+```
+
+Depois da reinicialização, atualize o WSL e instale o Docker Desktop:
+
+```powershell
+wsl --update
+winget install --id Docker.DockerDesktop --exact
+```
+
+Inicie o Docker Desktop, aceite os termos aplicáveis ao ambiente, mantenha o engine baseado em WSL 2 e aguarde o
+estado operacional. Não selecione o engine de contêineres Windows, que não é suportado por estes testes.
+
+Valide o ambiente antes do Maven:
+
+```powershell
+wsl --version
+docker version
+docker info
+docker run --rm hello-world
+```
+
+`docker version` deve exibir as seções Client e Server. Se exibir apenas o Client, inicie ou aguarde o Docker Desktop.
+Remova variáveis `DOCKER_HOST`, `DOCKER_TLS_VERIFY` ou `DOCKER_CERT_PATH` definidas manualmente, salvo quando houver um
+runtime remoto deliberadamente configurado. Em seguida, execute o gate completo acima e confirme que os testes
+MySQL não foram ignorados.
+
+Referências operacionais:
+
+- [Instalação do WSL](https://learn.microsoft.com/windows/wsl/install)
+- [Instalação do Docker Desktop no Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+- [Ambientes suportados pelo Testcontainers](https://java.testcontainers.org/supported_docker_environment/)
 
 ### Execução
 
@@ -101,13 +177,31 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
    - ajustar memória ou iterações para obter mediana entre 500 ms e 1 segundo e percentil 95 de até 1,5 segundo;
    - registrar hardware, JVM, parâmetros, data e resultados;
    - não liberar a versão se o piso de segurança ou o limite de latência não forem atendidos.
+
+   A ferramenta lê os parâmetros exclusivamente do `application.properties` na pasta corrente:
+
+   ```shell
+   mvn -q -DskipTests compile dependency:copy-dependencies -DincludeScope=runtime
+   java -cp 'target/classes:target/dependency/*' br.com.rinos.app.backend.module.identity.service.PasswordHashCalibrationTool
+   ```
 7. Iniciar o JAR executável atrás do proxy reverso e aguardar a validação automática do schema global e dos tenants.
+   Definir `server.port=7070` para a porta interna padronizada e
+   `rinos.application.public-base-url=https://app.rinos.com.br` como a origem pública canônica. Links externos são
+   montados exclusivamente a partir dessa propriedade; cabeçalhos `Host` e `Forwarded` recebidos não podem alterar a
+   origem de links enviados por e-mail.
 8. Verificar logs, saúde das integrações, resolução segura do IP de origem, aquisição do lease de manutenção por uma
    única sessão e ausência de configuração importada de fonte não autorizada.
    As transições do lease também incrementam o contador `rinos.maintenance.lease.events`, com a tag de cardinalidade
    fixa `event` nos valores `acquisition`, `takeover`, `renewal`, `loss` e `rejection`. Sem integração de métricas
    instalada, o Rinos mantém um registro em memória e não publica endpoint administrativo; uma instalação pode fornecer
    outro `MeterRegistry` para exportação sem alterar a coordenação.
+   Com `spring.datasource.url` explícita, o primeiro heartbeat disputa `global-maintenance`; o catálogo de limpeza
+   inicia depois de um intervalo de heartbeat e repete conforme `rinos.cleanup.interval`. Confirmar que somente a sessão
+   estabilizada executa os lotes de expiração, retenção de IP e tombstones, e que uma falha parcial não interrompe as
+   tarefas independentes seguintes.
+   Validar também as métricas, tags, alertas iniciais e limites de responsabilidade definidos no
+   [guia operacional do cadastro](docs/specs/user-registration/operations.md). O `correlationId` deve permanecer
+   somente nos logs; dados pessoais e segredos não podem aparecer em tags ou mensagens.
 9. Executar os smoke tests e todos os gates de release das features incluídas antes de liberar o acesso. Para cadastro,
    usar 100 dispatches no SMTP local controlado, com perfil de teste que permita ao menos 100 novas pendências por
    origem e verificação humana controlada, e somente um smoke test no SMTP real; esse resultado não declara throughput

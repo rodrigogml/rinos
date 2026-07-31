@@ -6,6 +6,10 @@
 spring.application.name=Rinos
 spring.main.banner-mode=console
 server.forward-headers-strategy=none
+# Porta interna do JAR; o proxy reverso publica a origem canônica separadamente
+server.port=7070
+# Origem pública canônica usada em links absolutos enviados para fora da aplicação
+rinos.application.public-base-url=http://localhost:7070
 
 # Internacionalização, tema e componente público de acesso da RFW Platform
 rfw.platform.i18n.enabled=true
@@ -39,6 +43,13 @@ spring.jpa.hibernate.ddl-auto=none
 spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 spring.jpa.properties.hibernate.jdbc.time_zone=UTC
 spring.jackson.time-zone=UTC
+
+# MySQL 9 externo exclusivo para testes; desabilitado utiliza Testcontainers como fallback.
+# A URL deve apontar apenas para o servidor, sem selecionar database.
+rinos.test-database.external.enabled=false
+rinos.test-database.external.server-url=jdbc:mysql://localhost:3306/?useUnicode=true&characterEncoding=UTF-8
+rinos.test-database.external.username=rinos_test
+rinos.test-database.external.password=
 
 # Identificação e coordenação de manutenção
 rinos.maintenance.instance-id=rinos-instance-01
@@ -78,6 +89,7 @@ rinos.password-hash.salt-length=16
 rinos.password-hash.hash-length=32
 
 # Cloudflare Turnstile fornecido pelo RFW Platform
+# A action é derivada de cada operação pelo RFW e validada no retorno do Siteverify.
 rfw.platform.authentication.turnstile.enabled=false
 rfw.platform.authentication.turnstile.site-key=
 rfw.platform.authentication.turnstile.secret-key=
@@ -89,6 +101,8 @@ rfw.platform.authentication.turnstile.timeout=10s
 rfw.platform.authentication.google.enabled=false
 rfw.platform.authentication.google.client-id=
 rfw.platform.authentication.google.issuer=https://accounts.google.com
+rfw.platform.authentication.google.timeout=10s
+rfw.platform.authentication.google.clock-skew=60s
 
 # SMTP e templates de e-mail consumidos pelo Spring Mail e RFW Platform
 spring.mail.host=localhost

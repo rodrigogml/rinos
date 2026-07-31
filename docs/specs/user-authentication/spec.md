@@ -153,6 +153,8 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-010**: O sistema DEVE impedir a remoção ou invalidação do último método utilizável sem que outro tenha sido confirmado.
 - **FR-AUTH-011**: Alterações de estado do usuário para bloqueado, desativado ou cancelado DEVEM invalidar todas as sessões e provas temporárias existentes.
 - **FR-AUTH-012**: Alterações sensíveis de métodos de autenticação DEVEM exigir reautenticação recente e ser registradas em auditoria.
+- **FR-AUTH-013**: Depois de validar todos os fatores de autenticação, o sistema DEVE comparar os aceites imutáveis do usuário com as versões vigentes dos documentos legais obrigatórios antes de criar ou liberar uma sessão plenamente autenticada.
+- **FR-AUTH-014**: Quando faltar aceite de versão obrigatória vigente, o sistema DEVE impedir o acesso às funcionalidades autenticadas e apresentar uma continuação de aceite. A conclusão DEVE registrar nova evidência sem alterar as anteriores; documento opcional ausente ou atualizado NÃO DEVE bloquear o acesso nem ser considerado aceito automaticamente.
 
 ### Senha Local
 
@@ -301,3 +303,4 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **SC-AUTH-013**: Em 100% dos testes, o último método utilizável de um usuário não pode ser removido.
 - **SC-AUTH-014**: Em 100% dos testes de concorrência e repetição, cada prova ou código de uso único produz no máximo um efeito.
 - **SC-AUTH-015**: O login, a configuração de 2FA, a recuperação e a gestão de sessões podem ser concluídos apenas por teclado e sem bloqueios críticos de acessibilidade.
+- **SC-AUTH-016**: Em 100% dos testes com documento obrigatório atualizado, credenciais e fatores válidos não liberam acesso antes do novo aceite; após a decisão válida, a sessão é liberada sem alterar as evidências das versões anteriores.

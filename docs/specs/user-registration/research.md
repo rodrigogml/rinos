@@ -42,7 +42,7 @@ Nenhuma senha, hash SHA-1 completo ou sufixo comparado será registrado em logs 
 
 ## Decision 4: Comprovação do e-mail
 
-**Decision**: emitir um token opaco de alta entropia para um link HTTPS, persistindo somente seu hash SHA-256, estado, emissão e expiração. O token será de uso único, válido por 24 horas; nova emissão invalida as anteriores. A aplicação Rinos será responsável pelo significado, persistência e política, reutilizando os contratos de entrega e o serviço de e-mail do RFW.
+**Decision**: emitir um token opaco de alta entropia para um link HTTPS, persistindo somente seu hash SHA-256, estado, emissão e expiração. O token será de uso único, válido por 24 horas; nova emissão invalida as anteriores. A mesma prova de 256 bits é exibida no e-mail como código copiável para a entrada manual, sem criar um código curto ou um segundo segredo. A aplicação Rinos será responsável pelo significado, persistência e política, reutilizando os contratos de entrega e o serviço de e-mail do RFW.
 
 O registro pendente e a comprovação serão confirmados na mesma transação. O envio SMTP ocorrerá diretamente pelo serviço de e-mail do RFW após o commit, com timeout explícito e sem outbox ou retentativa automática no primeiro incremento. Se o envio falhar ou o processo for interrompido entre o commit e o dispatch, o cadastro permanece retomável e o reenvio solicitado pela pessoa gera uma nova comprovação. Token, URL secreta e mensagem renderizada não serão persistidos para envio posterior.
 
@@ -73,7 +73,11 @@ Os limites por IP usarão janelas persistidas no schema global. O endereço vali
 
 As credenciais do Turnstile, os limites, as janelas e a lista explícita de proxies confiáveis serão definições exclusivas de `application.properties`. O limiar padrão do Turnstile será zero. O limite absoluto padrão será de 20 novas pendências de cadastro local por origem em uma janela de 24 horas iniciada pela primeira criação contabilizada. Somente uma nova pendência efetivamente persistida consumirá esse limite; rejeições anteriores à persistência, retomadas, reenvios, cancelamentos e convergências idempotentes não serão contabilizados. Falha do Siteverify será tratada como indisponibilidade e impedirá o cadastro quando o desafio for obrigatório.
 
-O RFW atualmente exige a prova sempre que o provider está presente e valida o hostname, mas ainda não recebe uma decisão dinâmica por operação/origem nem valida `action`. Essas lacunas reutilizáveis devem ser evoluídas no RFW, após autorização, sem criar um segundo adapter no Rinos. A análise completa está em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
+O RFW recebe a decisão dinâmica por operação/origem, deriva e valida a `action`, gera uma `idempotency_key` por
+tentativa e aceita um `RFWRemoteAddressProvider` para que a hospedeira entregue apenas a origem já validada. A
+plataforma também distingue prova inválida, divergência de contexto, indisponibilidade e configuração inválida sem
+expor códigos técnicos. Essas capacidades foram evoluídas no RFW, com autorização, sem criar um segundo cliente
+Turnstile no Rinos. A análise completa está em [rfw-gap-analysis.md](./rfw-gap-analysis.md).
 
 **Rationale**: o RFW já concentra o contrato técnico reutilizável com o provedor, enquanto regras de cadastro pertencem ao Rinos. A retenção curta, a finalidade antifraude e a necessidade operacional de diagnóstico não justificam chave compartilhada, sincronização entre instâncias e rotação para pseudonimizar o IP. A lista de proxies confiáveis impede aceitar cabeçalhos forjados por clientes diretos.
 

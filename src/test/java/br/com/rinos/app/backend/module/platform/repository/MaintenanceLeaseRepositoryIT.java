@@ -21,8 +21,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sql.DataSource;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
@@ -35,20 +38,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
-
 import br.com.rinos.app.backend.module.platform.entity.MaintenanceLeaseEntity;
 import br.com.rinos.app.backend.module.platform.service.MaintenanceExecutionService;
 import br.com.rinos.app.backend.module.platform.service.MaintenanceLeaseService;
 import br.com.rinos.app.backend.module.platform.vo.MaintenanceLeaseVO;
 import br.com.rinos.app.backend.module.platform.vo.MaintenanceSessionVO;
 import br.com.rinos.app.config.MaintenancePropertiesConfig;
+import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 
 /**
  * Valida as mutações condicionais do lease contra um MySQL 9 descartável.
@@ -56,36 +55,43 @@ import br.com.rinos.app.config.MaintenancePropertiesConfig;
  * @author Rodrigo Leitão
  * @since 2026-07-29
  */
-@Testcontainers(disabledWithoutDocker = true)
 @DisplayName("Persistência concorrente do lease de manutenção")
 class MaintenanceLeaseRepositoryIT {
 
   private static final String LEASE_KEY = "global-maintenance";
   private static final long LEASE_TIMEOUT_MICROSECONDS = 300_000_000L;
 
-  @Container
-  private static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.0")
-      .withDatabaseName("rinos_global")
-      .withUsername("rinos")
-      .withPassword("rinos-test");
+  private static MySqlTestDatabase testDatabase;
 
   private DataSource dataSource;
 
   /**
+   * Seleciona o provedor MySQL e reserva o schema exclusivo da classe.
+   */
+  @BeforeAll
+  static void startDatabase() {
+    testDatabase = MySqlTestDatabase.openIfAvailable().orElse(null);
+  }
+
+  /**
+   * Remove o schema exclusivo e encerra eventual contêiner.
+   */
+  @AfterAll
+  static void stopDatabase() {
+    if (testDatabase != null) {
+      testDatabase.close();
+    }
+  }
+
+  /**
    * Recria a tabela real antes de cada cenário.
-   *
-   * @throws SQLException quando o schema descartável não pode ser limpo
    */
   @BeforeEach
-  void resetDatabase() throws SQLException {
-    dataSource = new DriverManagerDataSource(
-        MYSQL.getJdbcUrl(),
-        MYSQL.getUsername(),
-        MYSQL.getPassword());
-    try (Connection connection = dataSource.getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("DROP TABLE IF EXISTS platform_maintenanceLease");
-    }
+  void resetDatabase() {
+    Assumptions.assumeTrue(
+        testDatabase != null,
+        "Configure o MySQL externo de testes ou disponibilize Docker para executar este gate.");
+    dataSource = testDatabase.recreateSchema();
     ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
         new ClassPathResource("db/global/init/01-ddl.sql"));
     populator.execute(dataSource);

@@ -13,20 +13,19 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.core.NestedExceptionUtils;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
+import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateErrorCategoryEnum;
 import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateException;
@@ -37,38 +36,50 @@ import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateExceptio
  * @author Rodrigo Leitão
  * @since 2026-07-28
  */
-@Testcontainers(disabledWithoutDocker = true)
 @DisplayName("Migração do banco global")
 class GlobalDatabaseMigrationIT {
 
   private static final String GLOBAL_UPDATE_LOCATIONS = String.join(",",
       "classpath:db/global/update/20260728_001_update.sql",
-      "classpath:db/global/update/20260728_002_update.sql");
-  private static final String TARGET_VERSION = "20260728002";
+      "classpath:db/global/update/20260728_002_update.sql",
+      "classpath:db/global/update/20260729_001_update.sql",
+      "classpath:db/global/update/20260729_002_update.sql",
+      "classpath:db/global/update/20260729_003_update.sql",
+      "classpath:db/global/update/20260729_004_update.sql",
+      "classpath:db/global/update/20260729_005_update.sql");
+  private static final String TARGET_VERSION = "20260729005";
 
-  @Container
-  private static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.0")
-      .withDatabaseName("rinos_global")
-      .withUsername("rinos")
-      .withPassword("rinos-test");
+  private static MySqlTestDatabase testDatabase;
 
   private DataSource dataSource;
 
   /**
+   * Seleciona o provedor MySQL e reserva o schema exclusivo da classe.
+   */
+  @BeforeAll
+  static void startDatabase() {
+    testDatabase = MySqlTestDatabase.openIfAvailable().orElse(null);
+  }
+
+  /**
+   * Remove o schema exclusivo e encerra eventual contêiner.
+   */
+  @AfterAll
+  static void stopDatabase() {
+    if (testDatabase != null) {
+      testDatabase.close();
+    }
+  }
+
+  /**
    * Prepara um schema vazio e independente antes de cada cenário.
-   *
-   * @throws SQLException quando o schema descartável não pode ser limpo
    */
   @BeforeEach
-  void resetDatabase() throws SQLException {
-    dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
-    try (Connection connection = dataSource.getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("DROP VIEW IF EXISTS databaseVersion");
-      statement.execute("DROP TABLE IF EXISTS platform_maintenanceLease");
-      statement.execute("DROP TABLE IF EXISTS testGlobalMigrationMarker");
-      statement.execute("DROP TABLE IF EXISTS testTenantMigrationMarker");
-    }
+  void resetDatabase() {
+    Assumptions.assumeTrue(
+        testDatabase != null,
+        "Configure o MySQL externo de testes ou disponibilize Docker para executar este gate.");
+    dataSource = testDatabase.recreateSchema();
   }
 
   /**
@@ -96,7 +107,17 @@ class GlobalDatabaseMigrationIT {
 
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
     assertThat(tableExists("platform_maintenanceLease")).isTrue();
+    assertThat(tableExists("identity_user")).isTrue();
+    assertThat(tableExists("identity_registration")).isTrue();
+    assertThat(tableExists("identity_localCredential")).isTrue();
+    assertThat(tableExists("identity_verification")).isTrue();
+    assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
+    assertThat(tableExists("identity_legalConsent")).isTrue();
+    assertThat(tableExists("identity_externalIdentity")).isTrue();
+    assertThat(tableExists("security_originWindow")).isTrue();
+    assertThat(tableExists("identity_event")).isTrue();
     assertThat(tableExists("testGlobalMigrationMarker")).isFalse();
+    assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
   }
 
@@ -131,8 +152,45 @@ class GlobalDatabaseMigrationIT {
     assertThat(tableExists("testGlobalMigrationMarker")).isTrue();
     assertThat(tableExists("testTenantMigrationMarker")).isFalse();
     assertThat(tableExists("platform_maintenanceLease")).isTrue();
+    assertThat(tableExists("identity_user")).isTrue();
+    assertThat(tableExists("identity_registration")).isTrue();
+    assertThat(tableExists("identity_localCredential")).isTrue();
+    assertThat(tableExists("identity_verification")).isTrue();
+    assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
+    assertThat(tableExists("identity_legalConsent")).isTrue();
+    assertThat(tableExists("identity_externalIdentity")).isTrue();
+    assertThat(tableExists("security_originWindow")).isTrue();
+    assertThat(tableExists("identity_event")).isTrue();
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
+  }
+
+  /**
+   * Comprova que a falha interrompe o catálogo e não publica versão falsa.
+   *
+   * <p>DDL anterior pode permanecer no MySQL; por isso o contrato exige intervenção externa em
+   * vez de prometer rollback total.
+   *
+   * @throws SQLException quando o estado parcial não pode ser consultado
+   */
+  @Test
+  void startup_shouldStopWithoutAdvancingVersion_whenUpdateFailsPartially()
+      throws SQLException {
+    initializeDatabase();
+    String locations = GLOBAL_UPDATE_LOCATIONS
+        + ",classpath:db/global/failure/20260729_006_update.sql";
+
+    contextRunner(locations).run(context -> {
+      assertThat(context).hasFailed();
+      assertFailureCategory(
+          context.getStartupFailure(),
+          RFWDatabaseUpdateErrorCategoryEnum.EXECUTION);
+    });
+
+    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(tableExists("testFailedUpdateMarker")).isTrue();
+    assertThat(tableExists("testUnexpectedUpdateContinuation")).isFalse();
   }
 
   /**
@@ -141,13 +199,45 @@ class GlobalDatabaseMigrationIT {
    * @return executor descartável de contexto Spring
    */
   private ApplicationContextRunner contextRunner() {
+    return contextRunner(GLOBAL_UPDATE_LOCATIONS);
+  }
+
+  /**
+   * Cria o contexto mínimo com um catálogo explicitamente delimitado.
+   *
+   * @param locations locations globais a descobrir
+   * @return executor descartável de contexto Spring
+   */
+  private ApplicationContextRunner contextRunner(String locations) {
     return new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(RFWPlatformAutoConfiguration.class))
         .withPropertyValues(
             "rfw.platform.database.update.enabled=true",
-            "rfw.platform.database.update.locations=" + GLOBAL_UPDATE_LOCATIONS,
+            "rfw.platform.database.update.locations=" + locations,
             "rfw.platform.database.update.lock-timeout=30s")
         .withBean(DataSource.class, () -> dataSource);
+  }
+
+  /**
+   * Confirma que a identidade global não introduziu tabela ou coluna de tenant.
+   *
+   * @throws SQLException quando os metadados não podem ser consultados
+   */
+  private void assertIdentitySchemaHasNoTenantReferences() throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement("""
+            SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name REGEXP '^(identity|security)_'
+              AND LOWER(column_name) = 'tenantid'
+            """);
+        ResultSet result = statement.executeQuery()) {
+      assertThat(result.next()).isTrue();
+      assertThat(result.getInt(1)).isZero();
+    }
+    assertThat(tableExists("tenant_user")).isFalse();
+    assertThat(tableExists("account_user")).isFalse();
   }
 
   /**
@@ -328,9 +418,12 @@ class GlobalDatabaseMigrationIT {
    */
   private void assertFailureCategory(Throwable startupFailure,
       RFWDatabaseUpdateErrorCategoryEnum expectedCategory) {
-    Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(startupFailure);
-    assertThat(rootCause).isInstanceOf(RFWDatabaseUpdateException.class);
-    assertThat(((RFWDatabaseUpdateException) rootCause).getCategory())
+    Throwable current = startupFailure;
+    while (current != null && !(current instanceof RFWDatabaseUpdateException)) {
+      current = current.getCause();
+    }
+    assertThat(current).isInstanceOf(RFWDatabaseUpdateException.class);
+    assertThat(((RFWDatabaseUpdateException) current).getCategory())
         .isEqualTo(expectedCategory);
   }
 }

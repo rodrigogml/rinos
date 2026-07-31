@@ -2,6 +2,7 @@ package br.com.rinos.app.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
@@ -38,8 +39,26 @@ class RinosConfigurationBindingTest {
           assertThat(context.getBean(VerificationPropertiesConfig.class).validity())
               .isEqualTo(Duration.ofHours(24));
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
+          assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())
+              .isEqualTo(URI.create("http://localhost:7070"));
           assertThat(context.getBean(ProxyPropertiesConfig.class).trustedProxies())
               .isEqualTo(List.of("10.0.0.1", "10.0.0.0/24"));
+        });
+  }
+
+  /**
+   * Comprova que a origem pública de produção é lida sem depender da porta interna.
+   */
+  @Test
+  void bind_shouldApplyCanonicalProductionOrigin_whenExplicitlyConfigured() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.application.public-base-url=https://app.rinos.com.br")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())
+              .isEqualTo(URI.create("https://app.rinos.com.br"));
         });
   }
 

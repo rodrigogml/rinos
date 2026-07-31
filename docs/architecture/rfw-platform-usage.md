@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`43da06374d4b1baba2379e1da711d1b4d94da4bb` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
+`f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
 fixação; a versão Maven identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
@@ -59,6 +59,19 @@ O README é uma porta de entrada, mas não substitui o showroom. A documentaçã
 
 O RFW descobre suas auto-configurações pelo próprio artefato. O Rinos não importa classes internas, não mantém um
 arquivo paralelo de auto-configurações e não recria a `RFWAccessComponentFactory`.
+
+O App Shell da hospedeira deve carregar explicitamente a folha agregada pública do RFW:
+
+```java
+@StyleSheet("context://rfw-platform/styles.css")
+public class RinosApplication implements AppShellConfigurator {
+}
+```
+
+Esse carregamento é obrigatório em produção e nos harnesses de inspeção visual. Sem ele, os componentes continuam
+funcionais, mas perdem tokens, temas e estilos estruturais, produzindo uma interface nativa que não representa o
+contrato visual da plataforma. Por isso, cada entrypoint Vaadin executável deve declarar o mesmo recurso público. O
+Rinos não deve copiar as folhas internas nem substituir esse import por CSS paralelo.
 
 Os padrões globais de idioma, tema e acesso pertencem exclusivamente ao `application.properties` explícito e são
 documentados no `application.properties.model`. A configuração inicial declara:

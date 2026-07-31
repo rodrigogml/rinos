@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
+    ApplicationPropertiesConfig.class,
     CleanupPropertiesConfig.class,
     MaintenancePropertiesConfig.class,
     OriginPropertiesConfig.class,

@@ -55,6 +55,20 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 | `user-authentication` | Login, sessão, recuperação, 2FA, passkeys e vínculo Google de usuário já ativo. A recuperação mínima de senha é dependência de release de `user-registration`. |
 | `user-dashboard` | Conteúdo e operações do painel acessível depois da ativação. |
 
+Os documentos apresentados pela rota são consultados por uma facade pública do catálogo
+global. Arquivos em `docs/legal/drafts/` são somente material de elaboração e não integram o
+classpath nem qualquer fallback de runtime. Sem Termos de Uso e Política de Privacidade
+vigentes, a composição mantém a rota acessível, desliga a capacidade de cadastro e informa a
+indisponibilidade. A leitura de uma versão já publicada usa `/legal-document/{reference}` e o
+renderer Markdown sanitizado do RFW depois da verificação do hash persistido.
+
+A consulta segura do estado do cadastro não é uma operação genérica de pesquisa por e-mail,
+prova ou identificador interno. Cada caso de uso público devolve seu próprio resultado tipado:
+início, ativação, reenvio e cancelamento informam somente o estado público necessário, erros por
+campo, espera aplicável e eventual continuação opaca. Essa abordagem mantém a UI desacoplada das
+entities, evita uma superfície adicional de enumeração e permite que adapters do RFW traduzam os
+resultados sem consultar repositories ou services.
+
 ## RFW Compatibility Gate
 
 O commit `fb59049ef916f0854b53159542b71591db24cb8f` encerrou originalmente as lacunas registradas em
@@ -63,20 +77,52 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`43da06374d4b1baba2379e1da711d1b4d94da4bb`, que incorpora esse gate, a configuração pública do endpoint de
-verificação do Turnstile e a atualização explícita de catálogos em `DataSource` distintos. O ciclo foi implementado,
-testado e documentado no showroom do RFW antes da atualização do
+`f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que incorpora esse gate, a configuração pública do endpoint de
+verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
+atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
+timeouts explícitos para discovery OIDC e JWKS. O ciclo foi implementado, testado e documentado no
+showroom do RFW antes da atualização do
 ponteiro no Rinos. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
+Na implementação de `INT-WEB-REG-001`, os estados `initial` e `ready` pertencem ao renderer
+`REGISTRATION`; `processing` usa o bloqueio e `aria-busy` do `RFWAccessComponent`; sucesso,
+rejeição, limitação e indisponibilidade são outcomes tipados do provider; e a desconexão usa a
+reconexão padrão do Vaadin sem presumir confirmação da operação. Mudança de versão legal não cria
+estado obsoleto nessa tela: a pendência conserva a fotografia aceita e a ativação aplica o gate das
+versões obrigatórias vigentes.
+
 ## Transaction and Failure Strategy
 
+As implementações backend das facades delimitam o caso de uso público, mas não abrem a
+transação diretamente. Cada comando persistente completo delega a um único método público de
+service com `@Transactional`: criação, reenvio, ativação, conclusão de novos aceites, emissão da
+prova de cancelamento ou confirmação do cancelamento. Essa fronteira interna permite que a facade
+trate colisões e indisponibilidades depois da decisão transacional e garante que o callback SMTP
+registrado durante a escrita execute somente depois do commit. UI, adapters e facades públicas não
+acessam repositories nem controlam transações.
+
 1. A submissão local valida contrato, origem, limite, Turnstile e senha antes de iniciar escrita.
-2. Uma transação cria ou reutiliza a identidade pendente, substitui a credencial local quando permitido, registra aceites, invalida comprovações anteriores e cria nova comprovação com token armazenado somente como hash.
+2. Uma transação cria ou reutiliza a identidade pendente, substitui a credencial local quando permitido, registra exatamente as versões publicadas apresentadas e aceitas, invalida comprovações anteriores e cria nova comprovação com token armazenado somente como hash. Uma versão retirada depois de apresentada ainda pode originar a pendência; referências desconhecidas, futuras, duplicadas por finalidade ou sem os dois documentos-base são rejeitadas.
 3. O commit ocorre antes do envio SMTP direto pelo RFW. A chamada usa timeout explícito e somente confirma envio depois da aceitação pelo SMTP. Falha ou interrupção não reverte nem duplica o cadastro, não dispara retentativa automática e orienta retomada e reenvio; nenhuma outbox, mensagem renderizada, URL secreta ou token recuperável é persistido no primeiro incremento.
-4. A ativação bloqueia e relê cadastro, usuário, comprovação e documentos vigentes na mesma transação. Repetição retorna o estado já alcançado sem recriar efeitos.
-5. O fluxo Google valida integralmente a resposta antes de escrever. Ao reutilizar pendência, invalida credencial local e comprovações antes de gravar o vínculo e ativar.
-6. Expiração de cadastros e retenção de janelas de origem usam o mesmo job diário coordenado, com tarefas idempotentes, lotes próprios e métricas separadas. Antes de cada lote, a sessão comprova lease global vigente, `epoch` atual e estabilização. Cada lote executa em uma transação com timeout padrão de cinco minutos, validado como inferior aos 10 minutos de estabilização; dentro da transação, relê o estado de negócio antes da exclusão. Assim, um lote antigo termina ou é abortado antes de a nova coordenadora iniciar, sem sobreposição de escritas.
+4. A ativação bloqueia e relê cadastro, usuário, comprovação e documentos vigentes na mesma transação. Se faltarem
+   versões legais atuais, a prova original permanece aberta e funciona como referência opaca da continuação; ela só
+   é consumida ao registrar os aceites e ativar. Repetição antes ou depois da conclusão retorna o mesmo estágio
+   lógico sem recriar efeitos. Se o fluxo local vencer uma corrida contra uma continuação Google ainda pendente, as
+   provas e vínculos externos não ativados são removidos dentro da ativação local.
+5. O fluxo Google valida integralmente a resposta no RFW antes de escrever. O Rinos reduz o resultado a
+   `providerId`, `issuer`, `subject`, e-mail verificado e correlation ID; cria ou reutiliza uma pendência com vínculo
+   externo `PENDING`; substitui qualquer candidata externa anterior desse usuário; e emite uma continuação opaca cujo
+   token é persistido somente como hash. Ao concluir os aceites de uma pendência local reutilizada, revalida a única
+   candidata, invalida credencial local e comprovações dentro da mesma transação, antes de ativar vínculo, cadastro e
+   usuário. O adapter RFW só publica o principal autenticado depois que o commit retorna e não aceita replay da prova.
+6. Expiração de cadastros, retenção de janelas de origem e remoção de tombstones terminais usam o mesmo catálogo diário
+   coordenado, com tarefas idempotentes, lotes próprios e métricas separadas. O heartbeat adquire ou renova
+   `global-maintenance`; antes de cada tarefa e lote, a sessão comprova lease global vigente, `epoch` atual e
+   estabilização. Cada lote executa em uma transação com timeout padrão de cinco minutos, validado como inferior aos 10
+   minutos de estabilização; dentro da transação, relê o estado de negócio antes da exclusão. Assim, um lote antigo
+   termina ou é abortado antes de a nova coordenadora iniciar, sem sobreposição de escritas. Falha parcial é contida por
+   tarefa e não impede as tarefas independentes seguintes.
 
 ## Configuration Ownership
 
@@ -108,6 +154,12 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 | Usabilidade | mínimo de 10 participantes alheios ao desenvolvimento, sem orientação; pelo menos quatro jornadas em telefone e quatro em desktop; gates de envio e ativação satisfeitos por no mínimo 9 participantes |
 | End-to-end | cadastro local, cadastro Google, retomada, cancelamento, expiração, duplicidade simultânea e isolamento de acesso após ativação |
 
+No cancelamento, `RFWRegistrationCancellationProvider` sempre abre a confirmação para uma solicitação
+sintaticamente válida. A referência da challenge é aleatória e não identifica a prova persistida; somente a pendência
+elegível recebe a prova por e-mail. A confirmação usa e-mail mais token para bloquear o cadastro, consumir
+`REGISTRATION_CANCEL`, invalidar as provas concorrentes e apagar a raiz `User` por cascade antes de gravar o tombstone
+sem PII. Essa assimetria interna não atravessa a resposta da solicitação e impede enumeração.
+
 ## Requirement Traceability
 
 | Requirement group | Design authority | Principal validation |
@@ -131,6 +183,7 @@ docs/specs/user-registration/
 ├── research.md
 ├── rfw-gap-analysis.md
 ├── data-model.md
+├── operations.md
 ├── quickstart.md
 ├── contracts/
 │   └── external-services.md
@@ -202,6 +255,8 @@ Os catálogos global e de tenant seguem a
 8. No ambiente equivalente ao de produção, calibrar Argon2id, registrar a evidência no checklist operacional e somente então concluir o gate de liberação.
 
 Essa sequência é arquitetural; a decomposição executável pertence a `tasks.md`.
+A nomenclatura, as tags, os alertas iniciais e os limites de responsabilidade da etapa 6 estão em
+[operations.md](./operations.md).
 
 ## Complexity Tracking
 

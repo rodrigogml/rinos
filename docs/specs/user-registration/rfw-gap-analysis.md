@@ -1,6 +1,6 @@
 # RFW Compatibility Analysis: Cadastro de Usuário
 
-**RFW commit analyzed**: `fb59049ef916f0854b53159542b71591db24cb8f`
+**RFW commit analyzed**: `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`
 **Date**: 2026-07-26
 **Status**: todas as nove lacunas resolvidas
 
@@ -21,7 +21,10 @@ O Rinos deve hospedar esse componente e implementar seus providers. Não há jus
 As cinco lacunas funcionais e a melhoria de segurança originalmente identificadas foram implementadas no RFW pelo
 commit `072f7de9affa7d24fdcb1671aeed6e4ce27d9c31`, com código, testes, traduções, documentação e laboratórios no
 showroom. As três lacunas adicionais encontradas pela Interface Design foram resolvidas no commit
-`fb59049ef916f0854b53159542b71591db24cb8f`, encerrando o gate de compatibilidade para esta feature.
+`fb59049ef916f0854b53159542b71591db24cb8f`. O endurecimento da origem atrás de proxy e a classificação pública das
+falhas do Turnstile foram concluídos no commit `ce2ff13e4b4d762e839f7263ce28060bf84b5b38`. A exigência dos claims
+temporais do Google, a tolerância limitada e os timeouts explícitos de discovery OIDC e JWKS foram concluídos no
+commit `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que constitui a baseline aprovada para a implementação.
 
 | Lacuna original | Situação no commit analisado |
 |-----------------|------------------------------|
@@ -34,6 +37,9 @@ showroom. As três lacunas adicionais encontradas pela Interface Design foram re
 | `GAP-RFW-REG-007` | Resolvida por continuação tipada de aceite durante a ativação e provider próprio |
 | `GAP-RFW-REG-008` | Resolvida por ação direta de recuperação com e-mail preenchido |
 | `GAP-RFW-REG-009` | Resolvida pela preservação restrita a e-mail e IDs de documentos legais |
+| `GAP-RFW-REG-010` | Resolvida por `RFWRemoteAddressProvider` e fallback compatível para a conexão direta |
+| `GAP-RFW-REG-011` | Resolvida pela classificação pública de prova, contexto, disponibilidade e configuração |
+| `GAP-RFW-REG-012` | Resolvida pela validação obrigatória de `exp` e `iat`, clock skew limitado e timeout comum de discovery OIDC e JWKS |
 
 ## GAP-RFW-REG-001: Continuação de cadastro por identidade externa
 

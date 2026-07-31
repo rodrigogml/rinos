@@ -8,5 +8,11 @@ target/
 
 application.properties
 
-frontend/generated/
+/src/main/frontend/generated/
+/src/main/frontend/index.html
+/src/main/bundles/
 node_modules/
+/package.json
+/package-lock.json
+/tsconfig.json
+/types.d.ts
