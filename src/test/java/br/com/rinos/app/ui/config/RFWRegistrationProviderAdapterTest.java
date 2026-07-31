@@ -198,6 +198,25 @@ class RFWRegistrationProviderAdapterTest {
   }
 
   @Test
+  void register_shouldMapUnavailableFacadeToPublicError() {
+    RegistrationStartFacade facade = Mockito.mock(RegistrationStartFacade.class);
+    when(facade.start(any())).thenReturn(CompletableFuture.completedFuture(
+        RegistrationStartResultVO.of(RegistrationStartStatusEnum.UNAVAILABLE)));
+    RFWRegistrationProviderAdapter adapter =
+        adapter(facade, ignored -> "203.0.113.10");
+    attachRequest();
+
+    RFWAuthenticationOutcomeVO outcome = adapter.register(new RFWRegistrationRequestDTO(
+        "person@example.test",
+        "ValidPassword1!",
+        List.of("1"),
+        "verified-upstream")).toCompletableFuture().join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().messageKey()).isEqualTo("registration.unavailable");
+  }
+
+  @Test
   void resendActivation_shouldKeepActivationOpenAndMapRateLimit() {
     RegistrationStartFacade startFacade = Mockito.mock(RegistrationStartFacade.class);
     RegistrationResendFacade resendFacade = Mockito.mock(RegistrationResendFacade.class);
@@ -249,6 +268,46 @@ class RFWRegistrationProviderAdapterTest {
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
     assertThat(outcome.error().messageKey())
         .isEqualTo("registration.resend-email-dispatch-failed");
+  }
+
+  @Test
+  void resendActivation_shouldPreserveFacadeFieldErrors() {
+    RegistrationResendFacade resendFacade = Mockito.mock(RegistrationResendFacade.class);
+    when(resendFacade.resend(any())).thenReturn(CompletableFuture.completedFuture(
+        new RegistrationResendResultVO(
+            RegistrationResendStatusEnum.VALIDATION_REJECTED,
+            Map.of("identifier", "registration.error.email.invalid"),
+            null)));
+    RFWRegistrationProviderAdapter adapter = new RFWRegistrationProviderAdapter(
+        Mockito.mock(RegistrationStartFacade.class),
+        resendFacade,
+        Mockito.mock(RegistrationActivationFacade.class),
+        ignored -> "203.0.113.10");
+
+    RFWAuthenticationOutcomeVO outcome =
+        adapter.resendActivation("invalid-email").toCompletableFuture().join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("identifier", "registration.error.email.invalid");
+  }
+
+  @Test
+  void resendActivation_shouldMapUnavailableFacadeToPublicError() {
+    RegistrationResendFacade resendFacade = Mockito.mock(RegistrationResendFacade.class);
+    when(resendFacade.resend(any())).thenReturn(CompletableFuture.completedFuture(
+        RegistrationResendResultVO.of(RegistrationResendStatusEnum.UNAVAILABLE)));
+    RFWRegistrationProviderAdapter adapter = new RFWRegistrationProviderAdapter(
+        Mockito.mock(RegistrationStartFacade.class),
+        resendFacade,
+        Mockito.mock(RegistrationActivationFacade.class),
+        ignored -> "203.0.113.10");
+
+    RFWAuthenticationOutcomeVO outcome =
+        adapter.resendActivation("person@example.test").toCompletableFuture().join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().messageKey()).isEqualTo("registration.unavailable");
   }
 
   @Test
@@ -367,6 +426,27 @@ class RFWRegistrationProviderAdapterTest {
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
     assertThat(outcome.error().messageKey())
         .isEqualTo("registration.activation.registration-closed");
+  }
+
+  @Test
+  void activate_shouldPreserveFacadeFieldErrors() {
+    RFWAuthenticationOutcomeVO outcome = RFWRegistrationProviderAdapter.mapActivation(
+        RegistrationActivationResultVO.validationRejected(
+            Map.of("proof", "registration.activation.invalid-proof")));
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("proof", "registration.activation.invalid-proof");
+  }
+
+  @Test
+  void activate_shouldMapUnavailableFacadeToPublicError() {
+    RFWAuthenticationOutcomeVO outcome = RFWRegistrationProviderAdapter.mapActivation(
+        RegistrationActivationResultVO.of(
+            RegistrationActivationStatusEnum.UNAVAILABLE));
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().messageKey()).isEqualTo("registration.unavailable");
   }
 
   private static RFWRegistrationProviderAdapter adapter(

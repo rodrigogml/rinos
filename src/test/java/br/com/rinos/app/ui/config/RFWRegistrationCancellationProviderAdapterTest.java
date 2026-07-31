@@ -20,6 +20,7 @@ import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationCancellationConfirmationDTO;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationCancellationRequestDTO;
 import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
 
 @DisplayName("Adapter RFW do cancelamento de cadastro")
 class RFWRegistrationCancellationProviderAdapterTest {
@@ -36,7 +37,7 @@ class RFWRegistrationCancellationProviderAdapterTest {
     RFWRegistrationCancellationProviderAdapter adapter =
         new RFWRegistrationCancellationProviderAdapter(facade);
 
-    var outcome = adapter.requestCancellation(
+    RFWAuthenticationOutcomeVO outcome = adapter.requestCancellation(
         new RFWRegistrationCancellationRequestDTO("person@example.com", null))
         .toCompletableFuture()
         .join();
@@ -48,6 +49,28 @@ class RFWRegistrationCancellationProviderAdapterTest {
   }
 
   @Test
+  void requestCancellation_shouldPreserveFacadeFieldErrors() {
+    RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
+    when(facade.requestCancellation(any())).thenReturn(CompletableFuture.completedFuture(
+        new RegistrationCancellationRequestResultVO(
+            RegistrationCancellationRequestStatusEnum.VALIDATION_REJECTED,
+            null,
+            null,
+            Map.of("identifier", "registration.error.email.invalid"))));
+    RFWRegistrationCancellationProviderAdapter adapter =
+        new RFWRegistrationCancellationProviderAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.requestCancellation(
+        new RFWRegistrationCancellationRequestDTO("invalid-email", null))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("identifier", "registration.error.email.invalid");
+  }
+
+  @Test
   void confirmCancellation_shouldMapSuccessfulRemoval() {
     RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
     when(facade.confirmCancellation(any())).thenReturn(CompletableFuture.completedFuture(
@@ -56,7 +79,7 @@ class RFWRegistrationCancellationProviderAdapterTest {
     RFWRegistrationCancellationProviderAdapter adapter =
         new RFWRegistrationCancellationProviderAdapter(facade);
 
-    var outcome = adapter.confirmCancellation(
+    RFWAuthenticationOutcomeVO outcome = adapter.confirmCancellation(
         new RFWRegistrationCancellationConfirmationDTO(
             "person@example.com",
             "opaque-proof"))
@@ -65,5 +88,89 @@ class RFWRegistrationCancellationProviderAdapterTest {
 
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.COMPLETED);
     assertThat(outcome.messageKey()).isEqualTo("registration.cancellation.completed");
+  }
+
+  @Test
+  void confirmCancellation_shouldMapInvalidProofToProofField() {
+    RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
+    when(facade.confirmCancellation(any())).thenReturn(CompletableFuture.completedFuture(
+        RegistrationCancellationConfirmationResultVO.of(
+            RegistrationCancellationConfirmationStatusEnum.INVALID_PROOF)));
+    RFWRegistrationCancellationProviderAdapter adapter =
+        new RFWRegistrationCancellationProviderAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.confirmCancellation(
+        new RFWRegistrationCancellationConfirmationDTO(
+            "person@example.com",
+            "invalid-proof"))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("proof", "registration.cancellation.invalid-proof");
+  }
+
+  @Test
+  void confirmCancellation_shouldMapExpiredProofToProofField() {
+    RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
+    when(facade.confirmCancellation(any())).thenReturn(CompletableFuture.completedFuture(
+        RegistrationCancellationConfirmationResultVO.of(
+            RegistrationCancellationConfirmationStatusEnum.EXPIRED_PROOF)));
+    RFWRegistrationCancellationProviderAdapter adapter =
+        new RFWRegistrationCancellationProviderAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.confirmCancellation(
+        new RFWRegistrationCancellationConfirmationDTO(
+            "person@example.com",
+            "expired-proof"))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("proof", "registration.cancellation.expired-proof");
+  }
+
+  @Test
+  void confirmCancellation_shouldPreserveFacadeFieldErrors() {
+    RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
+    when(facade.confirmCancellation(any())).thenReturn(CompletableFuture.completedFuture(
+        new RegistrationCancellationConfirmationResultVO(
+            RegistrationCancellationConfirmationStatusEnum.VALIDATION_REJECTED,
+            Map.of("proof", "registration.error.proof.required"))));
+    RFWRegistrationCancellationProviderAdapter adapter =
+        new RFWRegistrationCancellationProviderAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.confirmCancellation(
+        new RFWRegistrationCancellationConfirmationDTO(
+            "person@example.com",
+            null))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().fieldErrors())
+        .containsEntry("proof", "registration.error.proof.required");
+  }
+
+  @Test
+  void confirmCancellation_shouldMapUnavailableFacadeToPublicError() {
+    RegistrationCancellationFacade facade = mock(RegistrationCancellationFacade.class);
+    when(facade.confirmCancellation(any())).thenReturn(CompletableFuture.completedFuture(
+        RegistrationCancellationConfirmationResultVO.of(
+            RegistrationCancellationConfirmationStatusEnum.UNAVAILABLE)));
+    RFWRegistrationCancellationProviderAdapter adapter =
+        new RFWRegistrationCancellationProviderAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.confirmCancellation(
+        new RFWRegistrationCancellationConfirmationDTO(
+            "person@example.com",
+            "opaque-proof"))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.error().messageKey()).isEqualTo("registration.unavailable");
   }
 }

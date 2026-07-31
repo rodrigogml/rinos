@@ -231,10 +231,13 @@ Ref: [Plan §Architecture and Responsibility Boundaries](./plan.md), [RFW Compat
   - Evidência: [facades públicas e outcomes seguros sem consulta enumerável](./evidence/4.1.2/README.md).
 - [x] 4.1.3 Implementar facade transacional no backend
   - Evidência: [fronteiras transacionais internas e dispatch pós-commit](./evidence/4.1.3/README.md).
-- [ ] 4.1.4 Implementar `RFWRegistrationProvider`
+- [x] 4.1.4 Implementar `RFWRegistrationProvider`
+  - Evidência: [adapter completo do ciclo local e capability RFW](./evidence/4.1.4/README.md).
 - [x] 4.1.5 Implementar `RFWActivationConsentProvider`
-- [ ] 4.1.6 Implementar `RFWRegistrationCancellationProvider`
-- [ ] 4.1.7 Criar testes de paridade entre contratos Rinos, outcomes RFW e erros por campo
+- [x] 4.1.6 Implementar `RFWRegistrationCancellationProvider`
+  - Evidência: [provider público de solicitação e confirmação do cancelamento](./evidence/4.1.6/README.md).
+- [x] 4.1.7 Criar testes de paridade entre contratos Rinos, outcomes RFW e erros por campo
+  - Evidência: [matriz exaustiva de outcomes e erros por campo](./evidence/4.1.7/README.md).
 
 ### 4.2 Implementar início do cadastro local `[C]`
 
