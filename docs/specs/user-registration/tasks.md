@@ -395,7 +395,8 @@ Ref: [Interface §INT-WEB-REG-002](./interface-spec.md), [Spec §FR-REG-012–02
   - Bloqueada temporariamente pela evolução concorrente do RFW Platform para a versão 2.0, que altera
     contratos relacionados à apresentação e à geração de códigos. Retomar prioritariamente após a
     migração do ponteiro do submódulo, reavaliando primeiro as capacidades entregues pela nova versão.
-- [ ] 6.2.7 Integrar com providers reais e validar ausência de ID interno nas URLs
+- [x] 6.2.7 Integrar com providers reais e validar ausência de ID interno nas URLs
+  - Evidência: [providers reais e referências públicas opacas](./evidence/6.2.7/README.md).
 - [ ] 6.2.8 Criar testes de componente, E2E de retomada e inspeção visual nos form factors
 
 ### 6.3 Implementar INT-WEB-REG-003 - Conclusão Google `[A]`
