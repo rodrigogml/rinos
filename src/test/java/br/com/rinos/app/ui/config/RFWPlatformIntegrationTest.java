@@ -27,6 +27,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.server.VaadinService;
@@ -249,6 +250,18 @@ class RFWPlatformIntegrationTest {
           assertThat(descendants(component, Anchor.class))
               .extracting(anchor -> anchor.getElement().getAttribute("href"))
               .containsExactly("/legal-document/22");
+          assertThat(descendants(component, Paragraph.class))
+              .filteredOn(paragraph -> paragraph.getElement()
+                  .hasAttribute("data-rfw-activation-expiration"))
+              .singleElement()
+              .satisfies(expiration -> {
+                assertThat(expiration.getText())
+                    .contains("30/07/2026", "12:00");
+                assertThat(expiration.getElement().getAttribute("role"))
+                    .isEqualTo("status");
+                assertThat(expiration.getElement().getAttribute("aria-live"))
+                    .isEqualTo("polite");
+              });
           assertThat(component.getElement().getText())
               .doesNotContain("person@example.com", "opaque-activation-proof");
         });

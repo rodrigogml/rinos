@@ -225,7 +225,7 @@ class PublicContractSecurityTest {
         Map.of()))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatNoException().isThrownBy(() -> {
-      RegistrationStartResultVO.of(RegistrationStartStatusEnum.EMAIL_SENT);
+      RegistrationStartResultVO.emailSent(Instant.parse("2026-07-31T12:00:00Z"));
       RegistrationResendResultVO.of(RegistrationResendStatusEnum.REQUEST_ACCEPTED);
       new RegistrationCancellationConfirmationResultVO(
           RegistrationCancellationConfirmationStatusEnum.CANCELLED,

@@ -179,10 +179,10 @@ public class RegistrationStartFacadeImpl implements RegistrationStartFacade {
         auditRejected(null, request, result.status(), occurredAt);
         return completed(result);
       }
-      return transaction.dispatch().thenApply(dispatch -> RegistrationStartResultVO.of(
-          dispatch.accepted()
-              ? RegistrationStartStatusEnum.EMAIL_SENT
-              : RegistrationStartStatusEnum.EMAIL_DISPATCH_FAILED));
+      return transaction.dispatch().thenApply(dispatch -> dispatch.accepted()
+          ? RegistrationStartResultVO.emailSent(transaction.expiresAt())
+          : RegistrationStartResultVO.of(
+              RegistrationStartStatusEnum.EMAIL_DISPATCH_FAILED));
     } catch (DataIntegrityViolationException collision) {
       Optional<UserEntity> winner = identityService.findByEmail(request.getEmail());
       RegistrationStartResultVO result = winner

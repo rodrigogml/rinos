@@ -50,8 +50,9 @@ class RFWRegistrationProviderAdapterTest {
   void register_shouldResolveCanonicalOriginAndOpenActivation_whenEmailIsAccepted() {
     RegistrationStartFacade facade = Mockito.mock(RegistrationStartFacade.class);
     RFWRemoteAddressProvider remoteAddressProvider = ignored -> "203.0.113.10";
+    Instant expiresAt = Instant.parse("2026-08-01T12:00:00Z");
     when(facade.start(any())).thenReturn(CompletableFuture.completedFuture(
-        RegistrationStartResultVO.of(RegistrationStartStatusEnum.EMAIL_SENT)));
+        RegistrationStartResultVO.emailSent(expiresAt)));
     RFWRegistrationProviderAdapter adapter = adapter(facade, remoteAddressProvider);
     attachRequest();
 
@@ -63,6 +64,11 @@ class RFWRegistrationProviderAdapterTest {
 
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.ACTIVATION_REQUIRED);
     assertThat(outcome.messageKey()).isEqualTo("registration.email-sent");
+    assertThat(outcome.challenge()).satisfies(challenge -> {
+      assertThat(challenge.challengeId()).isNotBlank();
+      assertThat(challenge.expiresAt()).isEqualTo(expiresAt);
+      assertThat(challenge.maskedDestination()).isNull();
+    });
     ArgumentCaptor<RegistrationStartRequestDTO> command =
         ArgumentCaptor.forClass(RegistrationStartRequestDTO.class);
     verify(facade).start(command.capture());
@@ -220,8 +226,9 @@ class RFWRegistrationProviderAdapterTest {
   void resendActivation_shouldKeepActivationOpenAndMapRateLimit() {
     RegistrationStartFacade startFacade = Mockito.mock(RegistrationStartFacade.class);
     RegistrationResendFacade resendFacade = Mockito.mock(RegistrationResendFacade.class);
+    Instant expiresAt = Instant.parse("2026-08-01T13:00:00Z");
     when(resendFacade.resend(any())).thenReturn(CompletableFuture.completedFuture(
-        RegistrationResendResultVO.of(RegistrationResendStatusEnum.REQUEST_ACCEPTED)));
+        RegistrationResendResultVO.acceptedWithExpiration(expiresAt)));
     RFWRegistrationProviderAdapter adapter = new RFWRegistrationProviderAdapter(
         startFacade,
         resendFacade,
@@ -233,6 +240,7 @@ class RFWRegistrationProviderAdapterTest {
 
     assertThat(accepted.status()).isEqualTo(RFWAccessStatusEnum.ACTIVATION_REQUIRED);
     assertThat(accepted.messageKey()).isEqualTo("registration.activation-resent");
+    assertThat(accepted.challenge().expiresAt()).isEqualTo(expiresAt);
 
     when(resendFacade.resend(any())).thenReturn(CompletableFuture.completedFuture(
         new RegistrationResendResultVO(

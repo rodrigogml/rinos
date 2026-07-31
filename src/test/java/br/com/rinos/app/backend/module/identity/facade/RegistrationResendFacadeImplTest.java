@@ -106,10 +106,14 @@ class RegistrationResendFacadeImplTest {
     when(registration.getId()).thenReturn(31L);
     when(resendService.resend(31L, Locale.of("pt", "BR"), CORRELATION_ID, NOW))
         .thenReturn(
-            RegistrationResendTransactionVO.scheduled(CompletableFuture.completedFuture(
-                dispatch(VerificationEmailDispatchStatusEnum.TRANSPORT_FAILURE))),
-            RegistrationResendTransactionVO.scheduled(CompletableFuture.completedFuture(
-                dispatch(VerificationEmailDispatchStatusEnum.ACCEPTED))));
+            RegistrationResendTransactionVO.scheduled(
+                NOW.plusSeconds(3_600),
+                CompletableFuture.completedFuture(
+                    dispatch(VerificationEmailDispatchStatusEnum.TRANSPORT_FAILURE))),
+            RegistrationResendTransactionVO.scheduled(
+                NOW.plusSeconds(7_200),
+                CompletableFuture.completedFuture(
+                    dispatch(VerificationEmailDispatchStatusEnum.ACCEPTED))));
 
     RegistrationResendResultVO first =
         facade.resend(request("person@example.test")).toCompletableFuture().join();
@@ -120,6 +124,7 @@ class RegistrationResendFacadeImplTest {
         .isEqualTo(RegistrationResendStatusEnum.EMAIL_DISPATCH_FAILED);
     assertThat(second.status())
         .isEqualTo(RegistrationResendStatusEnum.REQUEST_ACCEPTED);
+    assertThat(second.expiresAt()).isEqualTo(NOW.plusSeconds(7_200));
     verify(resendService, org.mockito.Mockito.times(2))
         .resend(31L, Locale.of("pt", "BR"), CORRELATION_ID, NOW);
   }

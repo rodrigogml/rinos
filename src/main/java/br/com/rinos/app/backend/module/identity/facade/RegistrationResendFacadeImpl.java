@@ -133,10 +133,10 @@ public class RegistrationResendFacadeImpl implements RegistrationResendFacade {
             Map.of(),
             retryAfter.isNegative() ? Duration.ZERO : retryAfter));
       }
-      return transaction.dispatch().thenApply(dispatch -> RegistrationResendResultVO.of(
-          dispatch.accepted()
-              ? RegistrationResendStatusEnum.REQUEST_ACCEPTED
-              : RegistrationResendStatusEnum.EMAIL_DISPATCH_FAILED));
+      return transaction.dispatch().thenApply(dispatch -> dispatch.accepted()
+          ? RegistrationResendResultVO.acceptedWithExpiration(transaction.expiresAt())
+          : RegistrationResendResultVO.of(
+              RegistrationResendStatusEnum.EMAIL_DISPATCH_FAILED));
     } catch (RuntimeException unavailable) {
       return completed(RegistrationResendResultVO.of(
           RegistrationResendStatusEnum.UNAVAILABLE));

@@ -148,8 +148,8 @@ class RegistrationStartFacadeImplTest {
     prepareValidRequest();
     when(registrationCreationService.create(
         any(), any(), any(), any(), any(), any(), any()))
-        .thenReturn(new RegistrationCreationTransactionVO(
-            null,
+        .thenReturn(RegistrationCreationTransactionVO.scheduled(
+            NOW.plusSeconds(3_600),
             CompletableFuture.completedFuture(new VerificationEmailDispatchResultVO(
                 VerificationEmailDispatchStatusEnum.ACCEPTED,
                 request().getCorrelationId(),
@@ -159,6 +159,7 @@ class RegistrationStartFacadeImplTest {
         facade.start(request()).toCompletableFuture().join();
 
     assertThat(result.status()).isEqualTo(RegistrationStartStatusEnum.EMAIL_SENT);
+    assertThat(result.expiresAt()).isEqualTo(NOW.plusSeconds(3_600));
     verify(observabilityService).recordOperation(
         RegistrationOperationEnum.START,
         RegistrationStartStatusEnum.EMAIL_SENT.name(),
@@ -172,8 +173,8 @@ class RegistrationStartFacadeImplTest {
     prepareValidRequest();
     when(registrationCreationService.create(
         any(), any(), any(), any(), any(), any(), any()))
-        .thenReturn(new RegistrationCreationTransactionVO(
-            null,
+        .thenReturn(RegistrationCreationTransactionVO.scheduled(
+            NOW.plusSeconds(3_600),
             CompletableFuture.completedFuture(new VerificationEmailDispatchResultVO(
                 VerificationEmailDispatchStatusEnum.TRANSPORT_FAILURE,
                 request().getCorrelationId(),
@@ -191,7 +192,7 @@ class RegistrationStartFacadeImplTest {
     prepareValidRequest();
     when(registrationCreationService.create(
         any(), any(), any(), any(), any(), any(), any()))
-        .thenReturn(new RegistrationCreationTransactionVO(NOW.plusSeconds(60), null));
+        .thenReturn(RegistrationCreationTransactionVO.blocked(NOW.plusSeconds(60)));
 
     RegistrationStartResultVO result =
         facade.start(request()).toCompletableFuture().join();

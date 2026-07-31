@@ -9,6 +9,7 @@ import java.util.concurrent.CompletionStage;
  *
  * @param eligible indica que a pendência ainda admite reemissão
  * @param blockedUntil fim da janela quando limitada
+ * @param expiresAt expiração UTC da nova comprovação
  * @param dispatch resultado pós-commit quando uma prova foi emitida
  * @author Rodrigo Leitão
  * @since 2026-07-29
@@ -16,11 +17,17 @@ import java.util.concurrent.CompletionStage;
 public record RegistrationResendTransactionVO(
     boolean eligible,
     Instant blockedUntil,
+    Instant expiresAt,
     CompletionStage<VerificationEmailDispatchResultVO> dispatch) {
 
   public RegistrationResendTransactionVO {
-    if ((!eligible && (blockedUntil != null || dispatch != null))
-        || (eligible && (blockedUntil == null) == (dispatch == null))) {
+    boolean notEligible = !eligible
+        && blockedUntil == null && expiresAt == null && dispatch == null;
+    boolean blocked = eligible
+        && blockedUntil != null && expiresAt == null && dispatch == null;
+    boolean scheduled = eligible
+        && blockedUntil == null && expiresAt != null && dispatch != null;
+    if (!notEligible && !blocked && !scheduled) {
       throw new IllegalArgumentException("invalid resend transaction outcome");
     }
   }
@@ -31,7 +38,7 @@ public record RegistrationResendTransactionVO(
    * @return resultado não elegível
    */
   public static RegistrationResendTransactionVO notEligible() {
-    return new RegistrationResendTransactionVO(false, null, null);
+    return new RegistrationResendTransactionVO(false, null, null, null);
   }
 
   /**
@@ -44,20 +51,24 @@ public record RegistrationResendTransactionVO(
     return new RegistrationResendTransactionVO(
         true,
         Objects.requireNonNull(blockedUntil, "blockedUntil must not be null"),
+        null,
         null);
   }
 
   /**
    * Cria resultado com despacho registrado para depois do commit.
    *
+   * @param expiresAt expiração UTC da prova emitida
    * @param dispatch estágio pós-commit
    * @return resultado elegível com nova prova
    */
   public static RegistrationResendTransactionVO scheduled(
+      Instant expiresAt,
       CompletionStage<VerificationEmailDispatchResultVO> dispatch) {
     return new RegistrationResendTransactionVO(
         true,
         null,
+        Objects.requireNonNull(expiresAt, "expiresAt must not be null"),
         Objects.requireNonNull(dispatch, "dispatch must not be null"));
   }
 

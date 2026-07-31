@@ -95,7 +95,7 @@ public class RegistrationCreationService {
         OriginOperationEnum.USER_REGISTRATION);
     if (reservation.status() == OriginReservationStatusEnum.BLOCKED) {
       TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-      return new RegistrationCreationTransactionVO(reservation.blockedUntil(), null);
+      return RegistrationCreationTransactionVO.blocked(reservation.blockedUntil());
     }
 
     RegistrationEntity registration = identityService.createPendingIdentity(
@@ -123,8 +123,8 @@ public class RegistrationCreationService {
         "LOCAL",
         occurredAt);
 
-    return new RegistrationCreationTransactionVO(
-        null,
+    return RegistrationCreationTransactionVO.scheduled(
+        verification.getExpiresAt(),
         dispatchService.scheduleAfterCommit(new VerificationEmailDispatchRequestVO(
             registration.getUser().getEmail(),
             uriService.activationUri(verification.getToken()),

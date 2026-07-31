@@ -77,7 +77,7 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`8057720bb2e2161e6bc6b9e107ad9dc34f738e52`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
+`4a91e16a28072de54c39757f3a3d14604784045a`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
 gate, consolida o antigo Kernel no artefato único e preserva a configuração pública do endpoint de
 verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
 atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
@@ -87,6 +87,11 @@ showroom do RFW antes da atualização do ponteiro no Rinos. A migração para 2
 hospedeira as dependências das capacidades consumidas e substituiu a exceção genérica legada de e-mail pela hierarquia
 tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
+
+Para `INT-WEB-REG-002`, essa baseline também define no renderer padrão o foco inicial da ativação, mantém
+`autocomplete="one-time-code"` sem restringir a prova opaca a números, apresenta a expiração pelo locale de formato
+e fuso da sessão, e acrescenta ao alerta o `retryAfter` arredondado para cima com singular ou plural localizado. O
+Rinos fornece o `Instant` real emitido pelo domínio; o RFW permanece responsável pela apresentação.
 
 Na implementação de `INT-WEB-REG-001`, os estados `initial` e `ready` pertencem ao renderer
 `REGISTRATION`; `processing` usa o bloqueio e `aria-busy` do `RFWAccessComponent`; sucesso,

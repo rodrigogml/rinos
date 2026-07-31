@@ -1,7 +1,9 @@
 package br.com.rinos.app.ui.config;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -23,7 +25,9 @@ import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationRequestDTO;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAuthenticationMethodEnum;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessChallengeVO;
 import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessErrorVO;
 import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWActivationConsentChallengeVO;
 import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
@@ -105,7 +109,7 @@ public class RFWRegistrationProviderAdapter implements RFWRegistrationProvider {
     return switch (result.status()) {
       case EMAIL_SENT -> RFWAuthenticationOutcomeVO.activationRequired(
           "registration.email-sent",
-          null);
+          activationChallenge(result.expiresAt()));
       case EMAIL_DISPATCH_FAILED -> RFWAuthenticationOutcomeVO.rejected(
           RFWAccessErrorVO.of("registration.email-dispatch-failed"));
       case EMAIL_ALREADY_EXISTS -> RFWAuthenticationOutcomeVO.rejected(
@@ -137,7 +141,7 @@ public class RFWRegistrationProviderAdapter implements RFWRegistrationProvider {
     return switch (result.status()) {
       case REQUEST_ACCEPTED -> RFWAuthenticationOutcomeVO.activationRequired(
           "registration.activation-resent",
-          null);
+          activationChallenge(result.expiresAt()));
       case EMAIL_DISPATCH_FAILED -> RFWAuthenticationOutcomeVO.rejected(
           RFWAccessErrorVO.of("registration.resend-email-dispatch-failed"));
       case RATE_LIMITED -> RFWAuthenticationOutcomeVO.rateLimited(
@@ -159,6 +163,19 @@ public class RFWRegistrationProviderAdapter implements RFWRegistrationProvider {
   private static RFWAuthenticationOutcomeVO unavailable() {
     return RFWAuthenticationOutcomeVO.rejected(
         RFWAccessErrorVO.of("registration.unavailable"));
+  }
+
+  private static RFWAccessChallengeVO activationChallenge(
+      Instant expiresAt) {
+    if (expiresAt == null) {
+      return null;
+    }
+    return new RFWAccessChallengeVO(
+        UUID.randomUUID().toString(),
+        RFWAuthenticationMethodEnum.EMAIL_CODE,
+        null,
+        expiresAt,
+        Set.of(RFWAuthenticationMethodEnum.EMAIL_CODE));
   }
 
   private static CompletionStage<RFWAuthenticationOutcomeVO> completed(

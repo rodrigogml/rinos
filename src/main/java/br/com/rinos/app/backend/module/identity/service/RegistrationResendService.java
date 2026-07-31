@@ -136,6 +136,7 @@ public class RegistrationResendService {
         occurredAt);
 
     return RegistrationResendTransactionVO.scheduled(
+        verification.getExpiresAt(),
         dispatchService.scheduleAfterCommit(new VerificationEmailDispatchRequestVO(
             registration.getUser().getEmail(),
             uriService.activationUri(verification.getToken()),

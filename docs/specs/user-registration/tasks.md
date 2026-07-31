@@ -394,9 +394,8 @@ Ref: [Interface §INT-WEB-REG-002](./interface-spec.md), [Spec §FR-REG-012–02
   - Evidência: [e-mail minimizado e seleção exata de documentos](./evidence/6.2.4/README.md).
 - [x] 6.2.5 Cobrir provas inválidas, expiradas, usadas, cadastro encerrado e falha SMTP
   - Evidência: [estados públicos e recuperação de falha SMTP](./evidence/6.2.5/README.md).
-- [ ] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
-  - Desbloqueada pela migração validada para o RFW 2.0. A execução deve começar pela reavaliação da geração de códigos,
-    da preparação de valores e dos componentes de formulário documentados no showroom da revisão fixada.
+- [x] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
+  - Evidência: [foco, semântica, anúncios e apresentação temporal](./evidence/6.2.6/README.md).
 - [x] 6.2.7 Integrar com providers reais e validar ausência de ID interno nas URLs
   - Evidência: [providers reais e referências públicas opacas](./evidence/6.2.7/README.md).
 - [ ] 6.2.8 Criar testes de componente, E2E de retomada e inspeção visual nos form factors
