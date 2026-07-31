@@ -467,7 +467,10 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
   - Evidência: [auditoria de segredos e PII](./evidence/7.2.4/README.md).
 - [x] 7.2.5 Executar análise de dependências e verificações estáticas disponíveis
   - Evidência: [análise de dependências e verificações estáticas](./evidence/7.2.5/README.md).
-- [ ] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
+- [!] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
+  - Evidência parcial: [isolamento inicial e dependências para validar o Painel](./evidence/7.2.6/README.md).
+  - A ausência de tenant, conta e concessão automática está comprovada. O gate de acesso real permanece bloqueado até
+    `user-authentication` materializar a sessão e `user-dashboard` fornecer a rota e as operações do próprio usuário.
 - [x] 7.2.7 Registrar e corrigir achados bloqueantes antes do release
   - Evidência: [triagem e correção dos achados bloqueantes](./evidence/7.2.7/README.md).
 
