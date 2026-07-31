@@ -27,6 +27,10 @@ temporais do Google, a tolerância limitada e os timeouts explícitos de discove
 commit `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que constituiu a baseline funcional analisada para a implementação.
 Essa baseline foi posteriormente endurecida na revisão
 `a7be938c795e1cf3443c7dc9611797ce56a7a729`, sem alterar os contratos avaliados neste documento.
+A baseline executável atual foi migrada para a revisão
+`8057720bb2e2161e6bc6b9e107ad9dc34f738e52`, artefato `br.eng.rodrigogml.rfw:rfw:2.0.0`. A consolidação do Kernel,
+a nova hierarquia de exceções e as dependências de hospedeira explícitas exigiram adaptações técnicas no Rinos, mas
+não reabriram as lacunas funcionais deste catálogo.
 
 | Lacuna original | Situação no commit analisado |
 |-----------------|------------------------------|

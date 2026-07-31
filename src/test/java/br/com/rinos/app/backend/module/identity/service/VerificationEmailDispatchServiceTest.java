@@ -28,7 +28,9 @@ import br.com.rinos.app.backend.module.identity.enums.VerificationEmailDispatchS
 import br.com.rinos.app.backend.module.identity.enums.VerificationEmailTemplateEnum;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchRequestVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
-import br.eng.rodrigogml.rfw.kernel.exceptions.RFWFailException;
+import br.eng.rodrigogml.rfw.exception.RFWExceptionCodeDefinitions;
+import br.eng.rodrigogml.rfw.exception.RFWInfrastructureException;
+import br.eng.rodrigogml.rfw.exception.RFWIntegrationException;
 import br.eng.rodrigogml.rfw.platform.mail.ClasspathEmailTemplateResolver;
 import br.eng.rodrigogml.rfw.platform.mail.EmailDispatchService;
 import br.eng.rodrigogml.rfw.platform.mail.EmailDispatcher;
@@ -132,7 +134,9 @@ class VerificationEmailDispatchServiceTest {
     AtomicInteger attempts = new AtomicInteger();
     EmailDispatchService emailDispatchService = new EmailDispatchService(
         (templateName, locale) -> {
-          throw new RFWFailException("template unavailable");
+          throw new RFWInfrastructureException(
+              RFWExceptionCodeDefinitions.EMAIL_TEMPLATE_NOT_FOUND,
+              "template unavailable");
         },
         new PositionalEmailTemplateRenderer(),
         ignored -> attempts.incrementAndGet());
@@ -154,7 +158,9 @@ class VerificationEmailDispatchServiceTest {
     AtomicInteger attempts = new AtomicInteger();
     EmailDispatcher failingDispatcher = ignored -> {
       attempts.incrementAndGet();
-      throw new RFWFailException("SMTP timeout");
+      throw new RFWIntegrationException(
+          RFWExceptionCodeDefinitions.SMTP_DISPATCH_FAILED,
+          "SMTP timeout");
     };
     VerificationEmailDispatchService service =
         service(failingDispatcher, new SimpleMeterRegistry());
@@ -179,7 +185,9 @@ class VerificationEmailDispatchServiceTest {
         "opaque-proof",
         "https://rinos.test/login?step=activation&proof=secret-token");
     EmailDispatcher failingDispatcher = ignored -> {
-      throw new RFWFailException(sensitiveFailure);
+      throw new RFWIntegrationException(
+          RFWExceptionCodeDefinitions.SMTP_DISPATCH_FAILED,
+          sensitiveFailure);
     };
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     VerificationEmailDispatchService service =
@@ -206,7 +214,9 @@ class VerificationEmailDispatchServiceTest {
     AtomicInteger attempts = new AtomicInteger();
     EmailDispatcher dispatcher = ignored -> {
       if (attempts.incrementAndGet() == 1) {
-        throw new RFWFailException("first attempt failed");
+        throw new RFWIntegrationException(
+            RFWExceptionCodeDefinitions.SMTP_DISPATCH_FAILED,
+            "first attempt failed");
       }
     };
     VerificationEmailDispatchService service =

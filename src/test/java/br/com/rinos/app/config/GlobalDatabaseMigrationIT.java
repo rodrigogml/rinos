@@ -26,6 +26,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateErrorCategoryEnum;
 import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateException;
@@ -210,7 +211,9 @@ class GlobalDatabaseMigrationIT {
    */
   private ApplicationContextRunner contextRunner(String locations) {
     return new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(RFWPlatformAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(
+            RFWLoggingAutoConfiguration.class,
+            RFWPlatformAutoConfiguration.class))
         .withPropertyValues(
             "rfw.platform.database.update.enabled=true",
             "rfw.platform.database.update.locations=" + locations,

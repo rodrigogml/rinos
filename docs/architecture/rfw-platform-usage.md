@@ -10,8 +10,9 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`a7be938c795e1cf3443c7dc9611797ce56a7a729` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
-fixação; a versão Maven identifica o artefato, mas não substitui a revisão imutável do submódulo.
+`8057720bb2e2161e6bc6b9e107ad9dc34f738e52` da RFW Platform, publicada como
+`br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
+identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
 RFW conforme o processo descrito neste documento.
@@ -59,6 +60,16 @@ O README é uma porta de entrada, mas não substitui o showroom. A documentaçã
 
 O RFW descobre suas auto-configurações pelo próprio artefato. O Rinos não importa classes internas, não mantém um
 arquivo paralelo de auto-configurações e não recria a `RFWAccessComponentFactory`.
+
+Desde o RFW 2.0, as capacidades antes divididas entre Platform e Kernel estão consolidadas no artefato `rfw`. A
+aplicação hospedeira não deve manter dependência, instalação ou import de `rfw.kernel`. A nova hierarquia pública de
+falhas fica em `br.eng.rodrigogml.rfw.exception` e distingue validação, configuração, infraestrutura e integração por
+tipos e códigos estáveis.
+
+As integrações declaradas como `provided` pelo POM do RFW pertencem ao classpath da hospedeira. O Rinos declara
+explicitamente apenas o conjunto exigido pelas capacidades que utiliza, incluindo Vaadin, persistência, validação,
+e-mail, Spring Security, Google/WebAuthn, contexto Micrometer e renderização Markdown/HTML. Ao ativar outra capacidade,
+compare primeiro seu contrato e o POM da revisão fixada; não dependa de uma transitividade acidental de versão anterior.
 
 O App Shell da hospedeira deve carregar explicitamente a folha agregada pública do RFW:
 

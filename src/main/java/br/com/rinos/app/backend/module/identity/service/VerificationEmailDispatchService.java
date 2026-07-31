@@ -23,7 +23,8 @@ import org.springframework.web.util.HtmlUtils;
 import br.com.rinos.app.backend.module.identity.enums.VerificationEmailDispatchStatusEnum;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchRequestVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
-import br.eng.rodrigogml.rfw.kernel.exceptions.RFWFailException;
+import br.eng.rodrigogml.rfw.exception.RFWInfrastructureException;
+import br.eng.rodrigogml.rfw.exception.RFWIntegrationException;
 import br.eng.rodrigogml.rfw.platform.mail.EmailDispatchService;
 import br.eng.rodrigogml.rfw.platform.mail.EmailMessage;
 import io.micrometer.core.instrument.Counter;
@@ -137,7 +138,7 @@ public class VerificationEmailDispatchService {
           HtmlUtils.htmlEscape(request.confirmationUrl().toASCIIString()),
           formatExpiry(request.expiresAt(), request.locale()),
           HtmlUtils.htmlEscape(request.manualCode() == null ? "" : request.manualCode()));
-    } catch (RFWFailException | RuntimeException exception) {
+    } catch (RFWInfrastructureException | RuntimeException exception) {
       return complete(
           request,
           startedAt,
@@ -152,7 +153,7 @@ public class VerificationEmailDispatchService {
           startedAt,
           VerificationEmailDispatchStatusEnum.ACCEPTED,
           null);
-    } catch (RFWFailException | RuntimeException exception) {
+    } catch (RFWIntegrationException | RuntimeException exception) {
       return complete(
           request,
           startedAt,

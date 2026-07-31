@@ -11,7 +11,7 @@ Este plano não inclui autenticação de sessão, recuperação de acesso, conte
 ## Technical Context
 
 **Language/Version**: Java 25
-**Primary Dependencies**: Spring Boot 4.0.1, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Vaadin 25.0.2 e RFW Platform 1.0.0, conforme o submódulo atual
+**Primary Dependencies**: Spring Boot 4.0.7, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Vaadin 25.0.2 e RFW 2.0.0, conforme o submódulo atual
 **Storage**: MySQL 9, schema global do sistema
 **Testing**: JUnit 5, Spring Boot Test, testes de integração com MySQL compatível e testes de UI Vaadin/Playwright na etapa de implementação
 **Target Platform**: JAR executável em servidor Linux atrás de proxy reverso confiável
@@ -77,13 +77,15 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`a7be938c795e1cf3443c7dc9611797ce56a7a729`, que incorpora esse gate, a configuração pública do endpoint de
+`8057720bb2e2161e6bc6b9e107ad9dc34f738e52`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
+gate, consolida o antigo Kernel no artefato único e preserva a configuração pública do endpoint de
 verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
 atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
 timeouts explícitos para discovery OIDC e JWKS. A revisão também censura o segredo do Turnstile na representação
 diagnóstica e adota as correções de segurança da pilha Spring e Jackson. O ciclo foi implementado, testado e documentado no
-showroom do RFW antes da atualização do
-ponteiro no Rinos. O gate de compatibilidade está encerrado e a
+showroom do RFW antes da atualização do ponteiro no Rinos. A migração para 2.0 também tornou explícitas no POM da
+hospedeira as dependências das capacidades consumidas e substituiu a exceção genérica legada de e-mail pela hierarquia
+tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
 Na implementação de `INT-WEB-REG-001`, os estados `initial` e `ready` pertencem ao renderer

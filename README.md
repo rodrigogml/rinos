@@ -13,7 +13,7 @@ obrigatórias para agentes e desenvolvedores estão em [AGENTS.md](AGENTS.md).
 - Java 25;
 - Maven 3.9 ou posterior;
 - submódulos Git inicializados;
-- `rfw.platform:1.0.0` e suas dependências disponíveis no repositório Maven local ou configurado.
+- `br.eng.rodrigogml.rfw:rfw:2.0.0` e suas dependências de hospedeira disponíveis no classpath.
 - MySQL 9 externo exclusivo para testes ou Docker Desktop com contêineres Linux, para executar o gate completo de
   integração.
 
@@ -23,14 +23,19 @@ Após clonar o projeto, inicialize os submódulos:
 git submodule update --init --recursive
 ```
 
-Quando os artefatos do RFW ainda não estiverem disponíveis no repositório Maven usado pela máquina, instale primeiro
-o Kernel e depois a Platform a partir dos submódulos. O parent `rfw.distro:1.0.0` também deve estar disponível nesse
-repositório:
+Quando o artefato do RFW ainda não estiver disponível no repositório Maven usado pela máquina, instale a versão fixada
+pelo submódulo. Desde a versão 2.0, o antigo Kernel está consolidado no artefato único `rfw`; o parent
+`rfw.distro:1.0.0` também deve estar disponível nesse repositório:
 
 ```shell
-mvn -f modules/RFW.Platform/modules/RFW.Kernel/pom.xml install
-mvn -f modules/RFW.Platform/pom.xml install
+mvn -f modules/RFW.Platform/pom.xml clean install
 ```
+
+> [!IMPORTANT]
+> O RFW 2.0 declara como `provided` as integrações que pertencem à aplicação hospedeira. O `pom.xml` do Rinos deve
+> declarar explicitamente as bibliotecas das capacidades usadas, como Spring Security, contexto Micrometer e o
+> renderizador Markdown. Consulte [Uso da RFW Platform](docs/architecture/rfw-platform-usage.md) antes de alterar esse
+> conjunto.
 
 ### Build e testes
 

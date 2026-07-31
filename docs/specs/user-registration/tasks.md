@@ -57,6 +57,9 @@ Ref: [RFW Usage](../../architecture/rfw-platform-usage.md), [Plan §RFW Compatib
 - [x] 1.3.4 Registrar providers RFW somente quando houver adapters apoiados nos contratos da camada `api`
 - [x] 1.3.5 Criar teste de contexto que confirme capabilities presentes e ausentes
 - [x] 1.3.6 Documentar pontos de extensão locais e o procedimento para futuras evoluções genéricas no RFW
+- [x] 1.3.7 Migrar a baseline para `br.eng.rodrigogml.rfw:rfw:2.0.0`, remover o contrato legado do Kernel e validar as
+  dependências explícitas da hospedeira
+  - Evidência: [migração e compatibilidade do RFW 2.0](./evidence/1.3.7/README.md).
 
 ### 1.4 Preparar atualização automática do schema global `[C]`
 
@@ -391,10 +394,9 @@ Ref: [Interface §INT-WEB-REG-002](./interface-spec.md), [Spec §FR-REG-012–02
   - Evidência: [e-mail minimizado e seleção exata de documentos](./evidence/6.2.4/README.md).
 - [x] 6.2.5 Cobrir provas inválidas, expiradas, usadas, cadastro encerrado e falha SMTP
   - Evidência: [estados públicos e recuperação de falha SMTP](./evidence/6.2.5/README.md).
-- [!] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
-  - Bloqueada temporariamente pela evolução concorrente do RFW Platform para a versão 2.0, que altera
-    contratos relacionados à apresentação e à geração de códigos. Retomar prioritariamente após a
-    migração do ponteiro do submódulo, reavaliando primeiro as capacidades entregues pela nova versão.
+- [ ] 6.2.6 Cobrir foco, `one-time-code`, anúncios, responsividade e localização temporal
+  - Desbloqueada pela migração validada para o RFW 2.0. A execução deve começar pela reavaliação da geração de códigos,
+    da preparação de valores e dos componentes de formulário documentados no showroom da revisão fixada.
 - [x] 6.2.7 Integrar com providers reais e validar ausência de ID interno nas URLs
   - Evidência: [providers reais e referências públicas opacas](./evidence/6.2.7/README.md).
 - [ ] 6.2.8 Criar testes de componente, E2E de retomada e inspeção visual nos form factors

@@ -42,6 +42,7 @@ import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
+import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
@@ -75,6 +76,7 @@ class RFWPlatformIntegrationTest {
       .withConfiguration(AutoConfigurations.of(
           RFWI18nAutoConfiguration.class,
           RFWExecutionContextAutoConfiguration.class,
+          RFWLoggingAutoConfiguration.class,
           RFWVaadinSessionAutoConfiguration.class,
           RFWVaadinI18nAutoConfiguration.class,
           RFWVaadinExecutionContextAutoConfiguration.class,
