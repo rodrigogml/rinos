@@ -28,7 +28,7 @@ compatíveis. A compilação limpa não identificou outras alterações obrigat�
 ```shell
 mvn -f modules/RFW.Platform/pom.xml clean install
 mvn -f modules/RFW.Platform/modules/rfw.showroom/pom.xml clean verify
-mvn clean test
+mvn clean verify
 ```
 
 Resultados obtidos em 2026-07-31:
