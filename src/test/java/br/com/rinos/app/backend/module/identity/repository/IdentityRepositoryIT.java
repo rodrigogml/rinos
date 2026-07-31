@@ -819,6 +819,15 @@ class IdentityRepositoryIT {
       assertThat(persisted.getEventCount()).isEqualTo(20);
       assertThat(persisted.getActiveMarker()).isTrue();
       assertThat(repository.count()).isEqualTo(1);
+
+      OriginAddressVO otherOrigin = new OriginAddressService().normalize("192.0.2.11");
+      OriginReservationStatusEnum otherOriginReservation = transaction.execute(
+          status -> service.reserveNewRegistration(
+              otherOrigin,
+              OriginOperationEnum.USER_REGISTRATION).status());
+
+      assertThat(otherOriginReservation).isEqualTo(OriginReservationStatusEnum.RESERVED);
+      assertThat(repository.count()).isEqualTo(2);
     });
   }
 

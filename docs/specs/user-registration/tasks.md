@@ -457,9 +457,12 @@ Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 
 Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation Strategy](./plan.md)
 
-- [ ] 7.2.1 Testar concorrência do mesmo e-mail e `issuer + subject`
-- [ ] 7.2.2 Testar replay, prova cruzada, cancelamento e race de ativação
-- [ ] 7.2.3 Testar proxy forjado, limite absoluto, Turnstile e expiração de janelas
+- [x] 7.2.1 Testar concorrência do mesmo e-mail e `issuer + subject`
+  - Evidência: [unicidade concorrente no MySQL 9.7](./evidence/7.2.1/README.md).
+- [x] 7.2.2 Testar replay, prova cruzada, cancelamento e race de ativação
+  - Evidência: [uso único, prova cruzada e corridas transacionais](./evidence/7.2.2/README.md).
+- [x] 7.2.3 Testar proxy forjado, limite absoluto, Turnstile e expiração de janelas
+  - Evidência: [proxy confiável, Siteverify e limites por origem](./evidence/7.2.3/README.md).
 - [x] 7.2.4 Revisar logs, auditoria, métricas, exceptions e banco para segredos e PII
   - Evidência: [auditoria de segredos e PII](./evidence/7.2.4/README.md).
 - [ ] 7.2.5 Executar análise de dependências e verificações estáticas disponíveis
