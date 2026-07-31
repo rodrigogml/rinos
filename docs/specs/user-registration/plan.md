@@ -77,10 +77,11 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que incorpora esse gate, a configuração pública do endpoint de
+`a7be938c795e1cf3443c7dc9611797ce56a7a729`, que incorpora esse gate, a configuração pública do endpoint de
 verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
 atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
-timeouts explícitos para discovery OIDC e JWKS. O ciclo foi implementado, testado e documentado no
+timeouts explícitos para discovery OIDC e JWKS. A revisão também censura o segredo do Turnstile na representação
+diagnóstica e adota as correções de segurança da pilha Spring e Jackson. O ciclo foi implementado, testado e documentado no
 showroom do RFW antes da atualização do
 ponteiro no Rinos. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.

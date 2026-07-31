@@ -72,7 +72,8 @@ public class ExternalIntegrationPropertiesValidatorConfig {
     if (isBlank(mail.getHost())) {
       throw new IllegalStateException("spring.mail.host é obrigatório.");
     }
-    if (mail.getPort() == null || mail.getPort() <= 0 || mail.getPort() > 65_535) {
+    Integer port = mail.getPort();
+    if (port == null || port <= 0 || port > 65_535) {
       throw new IllegalStateException("spring.mail.port deve estar entre 1 e 65535.");
     }
     if (isBlank(templates.getDefaultFromAddress())) {

@@ -468,13 +468,8 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
 - [x] 7.2.5 Executar análise de dependências e verificações estáticas disponíveis
   - Evidência: [análise de dependências e verificações estáticas](./evidence/7.2.5/README.md).
 - [ ] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
-- [ ] 7.2.7 Registrar e corrigir achados bloqueantes antes do release
-  - Achado aberto: revalidar e, se ainda necessário, corrigir no RFW Platform 2.0 a representação
-    diagnóstica de `TurnstileConfig`, garantindo que `secretKey` nunca integre `toString()`.
-  - Achado aberto: triar 58 associações do OSV distribuídas por 15 dependências de runtime,
-    confirmar aplicabilidade e atualizar a pilha quando necessário.
-  - Achado aberto: triar 74 alertas do SpotBugs, começando pelo possível acesso nulo em
-    `ExternalIntegrationPropertiesValidatorConfig.validateMail`.
+- [x] 7.2.7 Registrar e corrigir achados bloqueantes antes do release
+  - Evidência: [triagem e correção dos achados bloqueantes](./evidence/7.2.7/README.md).
 
 ### 7.3 Executar gate de interface, WCAG e usabilidade `[C]`
 

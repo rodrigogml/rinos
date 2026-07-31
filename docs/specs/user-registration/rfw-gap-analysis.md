@@ -24,7 +24,9 @@ showroom. As três lacunas adicionais encontradas pela Interface Design foram re
 `fb59049ef916f0854b53159542b71591db24cb8f`. O endurecimento da origem atrás de proxy e a classificação pública das
 falhas do Turnstile foram concluídos no commit `ce2ff13e4b4d762e839f7263ce28060bf84b5b38`. A exigência dos claims
 temporais do Google, a tolerância limitada e os timeouts explícitos de discovery OIDC e JWKS foram concluídos no
-commit `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que constitui a baseline aprovada para a implementação.
+commit `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que constituiu a baseline funcional analisada para a implementação.
+Essa baseline foi posteriormente endurecida na revisão
+`a7be938c795e1cf3443c7dc9611797ce56a7a729`, sem alterar os contratos avaliados neste documento.
 
 | Lacuna original | Situação no commit analisado |
 |-----------------|------------------------------|

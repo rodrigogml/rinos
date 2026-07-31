@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
+`a7be938c795e1cf3443c7dc9611797ce56a7a729` da RFW Platform. O ponteiro Git do submódulo é a fonte executável dessa
 fixação; a versão Maven identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
