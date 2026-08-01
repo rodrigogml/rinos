@@ -407,7 +407,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
 
 - [x] 6.3.1 Integrar o início Google na etapa de login do componente RFW
   - Evidência: [adapter real, capability e componente Google no login](./evidence/6.3.1/README.md).
-- [ ] 6.3.2 Compor `EXTERNAL_REGISTRATION` com e-mail verificado somente leitura
+- [x] 6.3.2 Compor `EXTERNAL_REGISTRATION` com e-mail verificado somente leitura
+  - Evidência: [continuação tipada e e-mail verificado imutável](./evidence/6.3.2/README.md).
 - [ ] 6.3.3 Exibir documentos legais sem senha ou dados adicionais do perfil Google
 - [ ] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
 - [ ] 6.3.5 Cobrir identidade existente, conflito, expiração, indisponibilidade e documento alterado

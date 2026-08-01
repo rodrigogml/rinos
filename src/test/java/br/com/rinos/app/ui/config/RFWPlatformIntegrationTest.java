@@ -1,6 +1,7 @@
 package br.com.rinos.app.ui.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -9,7 +10,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
@@ -37,6 +40,7 @@ import com.vaadin.flow.server.VaadinSession;
 
 import br.com.rinos.app.RinosApplication;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
@@ -44,6 +48,7 @@ import br.com.rinos.app.api.facade.RegistrationActivationFacade;
 import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
+import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
@@ -51,6 +56,7 @@ import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
 import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessCapabilityEnum;
+import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityProvider;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityResolver;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationProvider;
@@ -60,6 +66,8 @@ import br.eng.rodrigogml.rfw.platform.authentication.google.RFWGoogleIdentityPro
 import br.eng.rodrigogml.rfw.platform.authentication.service.RFWAccessCapabilityService;
 import br.eng.rodrigogml.rfw.platform.authentication.turnstile.RFWTurnstileVerificationService;
 import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWActivationConsentChallengeVO;
+import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWVerifiedExternalIdentityVO;
 import br.eng.rodrigogml.rfw.platform.executioncontext.config.RFWExecutionContextAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.i18n.config.RFWI18nAutoConfiguration;
@@ -449,6 +457,77 @@ class RFWPlatformIntegrationTest {
               .singleElement()
               .satisfies(google -> assertThat(google.getElement().getTag())
                   .isEqualTo("rfw-google-sign-in"));
+        });
+  }
+
+  /**
+   * Comprova que a continuação tipada pelo adapter real apresenta o e-mail verificado sem permitir edição.
+   */
+  @Test
+  void externalRegistration_shouldRenderVerifiedEmailReadOnly_whenGoogleRequiresContinuation() {
+    GoogleIdentityResolutionFacade resolutionFacade = mock(GoogleIdentityResolutionFacade.class);
+    Instant expiresAt = Instant.parse("2026-08-01T15:00:00Z");
+    when(resolutionFacade.resolve(any())).thenReturn(CompletableFuture.completedFuture(
+        GoogleIdentityResolutionResultVO.continuation(
+            "opaque-google-continuation",
+            "google",
+            "verified@example.com",
+            expiresAt)));
+    RFWExternalIdentityResolverAdapter resolver = new RFWExternalIdentityResolverAdapter(
+        resolutionFacade);
+    RFWExternalRegistrationProviderAdapter completionProvider =
+        new RFWExternalRegistrationProviderAdapter(mock(ExternalRegistrationFacade.class));
+
+    contextRunner
+        .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
+        .withBean(RFWExternalRegistrationProviderAdapter.class, () -> completionProvider)
+        .withPropertyValues(
+            "rfw.platform.authentication.google.enabled=true",
+            "rfw.platform.authentication.google.client-id=test-client")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          assertThat(context.getBean(RFWAccessCapabilityService.class)
+              .getAvailableCapabilities())
+              .contains(
+                  RFWAccessCapabilityEnum.EXTERNAL_IDENTITY,
+                  RFWAccessCapabilityEnum.EXTERNAL_REGISTRATION);
+
+          RFWAuthenticationOutcomeVO outcome = context
+              .getBean(RFWExternalIdentityResolver.class)
+              .resolve(new RFWVerifiedExternalIdentityVO(
+                  "google",
+                  "google-subject",
+                  "verified@example.com",
+                  true,
+                  Map.of("iss", "https://accounts.google.com")))
+              .toCompletableFuture()
+              .join();
+
+          assertThat(outcome.status())
+              .isEqualTo(RFWAccessStatusEnum.EXTERNAL_REGISTRATION_REQUIRED);
+          assertThat(outcome.externalRegistration().expiresAt()).isEqualTo(expiresAt);
+
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
+              legalReference("21", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinSession session = new TestVaadinSession(mock(VaadinService.class));
+          VaadinSession.setCurrent(session);
+          RFWAccessComponent component = hostFactory.create("indisponível");
+
+          component.openExternalRegistration(outcome.externalRegistration());
+
+          assertThat(component.getCurrentStep())
+              .isEqualTo(RFWAccessStepEnum.EXTERNAL_REGISTRATION);
+          assertThat(descendants(component, EmailField.class))
+              .singleElement()
+              .satisfies(email -> {
+                assertThat(email.getValue()).isEqualTo("verified@example.com");
+                assertThat(email.isReadOnly()).isTrue();
+              });
         });
   }
 
