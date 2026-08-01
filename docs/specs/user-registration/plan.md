@@ -77,7 +77,7 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`4a91e16a28072de54c39757f3a3d14604784045a`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
+`e24e9a3ac73cb9f0df06a043ef314b0246012abd`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
 gate, consolida o antigo Kernel no artefato único e preserva a configuração pública do endpoint de
 verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
 atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
@@ -87,6 +87,10 @@ showroom do RFW antes da atualização do ponteiro no Rinos. A migração para 2
 hospedeira as dependências das capacidades consumidas e substituiu a exceção genérica legada de e-mail pela hierarquia
 tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
+
+A revisão também sincroniza o showroom obrigatório com as coordenadas, dependências fornecidas pela hospedeira e o
+procedimento de migração da RFW 2.0. Não houve mudança da API de runtime consumida por esta feature em relação à
+baseline anterior.
 
 Para `INT-WEB-REG-002`, essa baseline também define no renderer padrão o foco inicial da ativação, mantém
 `autocomplete="one-time-code"` sem restringir a prova opaca a números, apresenta a expiração pelo locale de formato

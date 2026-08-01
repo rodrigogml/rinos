@@ -28,11 +28,14 @@ commit `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`, que constituiu a baseline fun
 Essa baseline foi posteriormente endurecida na revisão
 `a7be938c795e1cf3443c7dc9611797ce56a7a729`, sem alterar os contratos avaliados neste documento.
 A baseline executável atual foi migrada para a revisão
-`4a91e16a28072de54c39757f3a3d14604784045a`, artefato `br.eng.rodrigogml.rfw:rfw:2.0.0`. A consolidação do Kernel,
+`e24e9a3ac73cb9f0df06a043ef314b0246012abd`, artefato `br.eng.rodrigogml.rfw:rfw:2.0.0`. A consolidação do Kernel,
 a nova hierarquia de exceções e as dependências de hospedeira explícitas exigiram adaptações técnicas no Rinos, mas
 não reabriram as lacunas funcionais deste catálogo. Essa revisão também passou a aplicar foco inicial específico na
 ativação, apresentar destino mascarado e expiração no locale e fuso da sessão e incluir `retryAfter` localizado e
 pluralizado no feedback acessível.
+
+O commit fixado também atualiza o showroom para documentar corretamente as coordenadas, dependências `provided` e a
+migração da RFW 2.0, sem alterar a API de runtime já aprovada para o cadastro.
 
 | Lacuna original | Situação no commit analisado |
 |-----------------|------------------------------|

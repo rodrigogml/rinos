@@ -1,8 +1,10 @@
 package br.com.rinos.app.ui.module.identity.view;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -30,7 +32,9 @@ import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationRequestDTO;
 import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAuthenticationMethodEnum;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessChallengeVO;
 import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
 
 /**
@@ -140,7 +144,7 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
           return CompletableFuture.completedFuture(
               RFWAuthenticationOutcomeVO.activationRequired(
                   "registration.email-sent",
-                  null));
+                  activationChallenge()));
         }
 
         @Override
@@ -153,9 +157,20 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
         @Override
         public CompletionStage<RFWAuthenticationOutcomeVO> resendActivation(String identifier) {
           return CompletableFuture.completedFuture(
-              RFWAuthenticationOutcomeVO.completed("registration.activation-resent"));
+              RFWAuthenticationOutcomeVO.activationRequired(
+                  "registration.activation-resent",
+                  activationChallenge()));
         }
       };
+    }
+
+    private static RFWAccessChallengeVO activationChallenge() {
+      return new RFWAccessChallengeVO(
+          "activation-flow",
+          RFWAuthenticationMethodEnum.EMAIL_CODE,
+          "p***@example.com",
+          Instant.parse("2026-08-01T15:00:00Z"),
+          Set.of(RFWAuthenticationMethodEnum.EMAIL_CODE));
     }
   }
 }

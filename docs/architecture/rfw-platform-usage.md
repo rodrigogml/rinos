@@ -10,9 +10,13 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`4a91e16a28072de54c39757f3a3d14604784045a` da RFW Platform, publicada como
+`e24e9a3ac73cb9f0df06a043ef314b0246012abd` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
+
+Essa revisão preserva o runtime aprovado na baseline anterior e sincroniza o showroom com as coordenadas, as
+dependências `provided` e o procedimento de migração da RFW 2.0. O ponteiro não deve retroceder para uma revisão em
+que a documentação obrigatória do showroom descreva o contrato 1.x, mesmo quando o artefato principal compile.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
 RFW conforme o processo descrito neste documento.

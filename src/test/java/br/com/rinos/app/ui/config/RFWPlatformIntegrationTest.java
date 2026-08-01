@@ -25,11 +25,13 @@ import org.springframework.context.annotation.Configuration;
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
@@ -52,6 +54,7 @@ import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentit
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityResolver;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationProvider;
 import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationRequirementProvider;
+import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
 import br.eng.rodrigogml.rfw.platform.authentication.google.RFWGoogleIdentityProvider;
 import br.eng.rodrigogml.rfw.platform.authentication.service.RFWAccessCapabilityService;
 import br.eng.rodrigogml.rfw.platform.authentication.turnstile.RFWTurnstileVerificationService;
@@ -65,6 +68,8 @@ import br.eng.rodrigogml.rfw.platform.i18n.vaadin.config.RFWVaadinI18nAutoConfig
 import br.eng.rodrigogml.rfw.platform.session.vaadin.config.RFWVaadinSessionAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponent;
 import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponentFactory;
+import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessEntryRequestVO;
+import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessStepEnum;
 import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessPropertiesConfig;
 import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessUIAutoConfiguration;
 import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
@@ -264,6 +269,61 @@ class RFWPlatformIntegrationTest {
               });
           assertThat(component.getElement().getText())
               .doesNotContain("person@example.com", "opaque-activation-proof");
+        });
+  }
+
+  /**
+   * Exercita a entrada manual e o deep link de ativação sobre o componente público real.
+   */
+  @Test
+  void activation_shouldRenderManualAndDeepLinkEntries_whenRegistrationIsAvailable() {
+    RFWRegistrationProvider registrationProvider = mock(RFWRegistrationProvider.class);
+
+    contextRunner
+        .withBean(RFWRegistrationProvider.class, () -> registrationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
+              legalReference("21", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinSession session = new TestVaadinSession(mock(VaadinService.class));
+          VaadinSession.setCurrent(session);
+          RFWAccessComponent component = hostFactory.create("indisponível");
+
+          component.open(new RFWAccessEntryRequestVO(
+              RFWAccessStepEnum.ACTIVATION,
+              null,
+              "opaque-resume-proof"));
+
+          assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.ACTIVATION);
+          assertThat(descendants(component, TextField.class))
+              .extracting(TextField::getLabel, TextField::getValue)
+              .containsExactly(
+                  org.assertj.core.groups.Tuple.tuple("E-mail ou usuário", ""),
+                  org.assertj.core.groups.Tuple.tuple(
+                      "Código de ativação",
+                      "opaque-resume-proof"));
+          assertThat(descendants(component, TextField.class).get(1).getElement()
+              .getAttribute("autocomplete")).isEqualTo("one-time-code");
+          assertThat(descendants(component, Button.class))
+              .extracting(Button::getText)
+              .contains(
+                  "Ativar conta",
+                  "Reenviar código de ativação",
+                  "Voltar para entrar");
+          assertThat(component.getElement().getText())
+              .doesNotContain("opaque-resume-proof");
+
+          component.open(new RFWAccessEntryRequestVO(
+              RFWAccessStepEnum.ACTIVATION,
+              null,
+              null));
+
+          assertThat(descendants(component, TextField.class).get(1).getValue()).isEmpty();
         });
   }
 

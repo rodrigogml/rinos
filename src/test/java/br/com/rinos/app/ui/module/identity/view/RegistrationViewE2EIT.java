@@ -35,7 +35,7 @@ import com.microsoft.playwright.options.AriaRole;
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
     properties = "vaadin.launch-browser=false")
 @EnabledIfSystemProperty(named = "rinos.ui.e2e.enabled", matches = "true")
-@DisplayName("Jornada E2E do cadastro local")
+@DisplayName("Jornadas E2E do cadastro local e da retomada")
 class RegistrationViewE2EIT {
 
   private static Playwright playwright;
@@ -147,6 +147,100 @@ class RegistrationViewE2EIT {
           new Page.GetByRoleOptions().setName("Criar conta").setExact(true))).isVisible();
       page.screenshot(new Page.ScreenshotOptions()
           .setPath(evidenceDirectory.resolve("registration-ready-phone.png"))
+          .setFullPage(true));
+    }
+  }
+
+  /**
+   * Retoma pelo deep link, remove a prova da URL e conclui a ativação em desktop.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void activation_shouldResumeFromDeepLinkAndComplete_onDesktop() throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port
+          + "/login?step=activation&proof=opaque-resume-proof");
+
+      assertThat(page.locator("[data-rfw-access-step='activation']")).isVisible();
+      Locator proof = page.getByRole(AriaRole.TEXTBOX,
+          new Page.GetByRoleOptions()
+              .setName("Código de ativação")
+              .setExact(true));
+      assertThat(proof).hasValue("opaque-resume-proof");
+      assertThat(proof).hasAttribute("autocomplete", "one-time-code");
+      Locator activate = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Ativar conta").setExact(true));
+      assertThat(activate).isFocused();
+      org.assertj.core.api.Assertions.assertThat(page.url())
+          .isEqualTo("http://127.0.0.1:" + port + "/login");
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("activation-deep-link-desktop.png"))
+          .setFullPage(true));
+
+      activate.click();
+
+      assertThat(page.getByText(
+          "Seu cadastro foi ativado com sucesso.",
+          new Page.GetByTextOptions().setExact(true))).isVisible();
+      org.assertj.core.api.Assertions.assertThat(page.content())
+          .doesNotContain("opaque-resume-proof");
+      org.assertj.core.api.Assertions.assertThat(page.url())
+          .doesNotContain("proof=");
+    }
+  }
+
+  /**
+   * Retoma manualmente, confirma o foco e solicita reenvio sem sair da ativação em telefone.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void activation_shouldResumeManuallyAndResend_onPhone() throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions()
+            .setViewportSize(390, 844)
+            .setDeviceScaleFactor(1))) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port + "/login?step=activation");
+
+      assertThat(page.locator("[data-rfw-access-step='activation']")).isVisible();
+      Locator proof = page.getByRole(AriaRole.TEXTBOX,
+          new Page.GetByRoleOptions()
+              .setName("Código de ativação")
+              .setExact(true));
+      assertThat(proof).isFocused();
+      assertThat(proof).hasAttribute("autocomplete", "one-time-code");
+      page.getByLabel("E-mail ou usuário").fill("pessoa@example.com");
+      proof.fill("manual-resume-proof");
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("activation-manual-phone.png"))
+          .setFullPage(true));
+
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions()
+              .setName("Reenviar código de ativação")
+              .setExact(true))
+          .click();
+
+      assertThat(page.locator("[data-rfw-access-step='activation']")).isVisible();
+      assertThat(page.getByText(
+          "Se houver um cadastro pendente",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertThat(page.getByText(
+          "p***@example.com",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertThat(page.locator("[data-rfw-activation-expiration]"))
+          .containsText("01/08/2026");
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("activation-resend-phone.png"))
           .setFullPage(true));
     }
   }
