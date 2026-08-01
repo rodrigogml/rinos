@@ -424,7 +424,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
 
 Ref: [Interface §INT-WEB-REG-004](./interface-spec.md), [Spec §FR-REG-025–030](./spec.md)
 
-- [ ] 6.4.1 Compor `REGISTRATION_CANCELLATION_REQUEST` a partir da ativação
+- [x] 6.4.1 Compor `REGISTRATION_CANCELLATION_REQUEST` a partir da ativação
+  - Evidência: [composição e transição segura a partir da ativação](./evidence/6.4.1/README.md).
 - [ ] 6.4.2 Explicar consequência antes da ação e manter resposta pública neutra
 - [ ] 6.4.3 Integrar Turnstile da operação, limite e provider real
 - [ ] 6.4.4 Preservar identificador somente em rejeição recuperável e descartar token

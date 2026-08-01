@@ -358,6 +358,62 @@ class RFWPlatformIntegrationTest {
   }
 
   /**
+   * Comprova a composição do cancelamento a partir da ativação sem transportar a prova efêmera.
+   */
+  @Test
+  void activation_shouldOpenCancellationRequestWithCurrentIdentifier_whenCapabilityIsAvailable() {
+    RFWRegistrationProvider registrationProvider = mock(RFWRegistrationProvider.class);
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(
+            mock(RegistrationCancellationFacade.class));
+
+    contextRunner
+        .withBean(RFWRegistrationProvider.class, () -> registrationProvider)
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
+              legalReference("21", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinSession session = new TestVaadinSession(mock(VaadinService.class));
+          VaadinSession.setCurrent(session);
+          RFWAccessComponent component = hostFactory.create("indisponível");
+          component.open(new RFWAccessEntryRequestVO(
+              RFWAccessStepEnum.ACTIVATION,
+              "previous@example.com",
+              "opaque-activation-proof"));
+
+          TextField identifier = descendants(component, TextField.class).getFirst();
+          identifier.setValue("current@example.com");
+          descendants(component, Button.class).stream()
+              .filter(button -> "Cancelar cadastro pendente".equals(button.getText()))
+              .findFirst()
+              .orElseThrow()
+              .click();
+
+          assertThat(component.getCurrentStep())
+              .isEqualTo(RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST);
+          assertThat(component.getEntryRequest()).isEqualTo(new RFWAccessEntryRequestVO(
+              RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+              "current@example.com",
+              null));
+          assertThat(descendants(component, TextField.class))
+              .extracting(TextField::getLabel, TextField::getValue)
+              .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                  "E-mail ou usuário",
+                  "current@example.com"));
+          assertThat(component.getElement().getText())
+              .doesNotContain("opaque-activation-proof");
+        });
+  }
+
+  /**
    * Comprova que todos os estados públicos desta etapa possuem texto localizado na hospedeira.
    */
   @Test
