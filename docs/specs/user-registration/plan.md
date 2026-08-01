@@ -91,6 +91,10 @@ hospedeira as dependências das capacidades consumidas e substituiu a exceção 
 tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
+O ponteiro corrente do submódulo está em `197df2c1d31a3fa3ff404ac6cfd2bec168723b20`, revisão descendente da baseline
+aprovada. O delta posterior acrescenta o componente público `RFWPicker` e não modifica o contrato de autenticação ou
+cadastro desta feature.
+
 A revisão também sincroniza o showroom obrigatório com as coordenadas, dependências fornecidas pela hospedeira e o
 procedimento de migração da RFW 2.0. Em relação à baseline anterior, ela remove o namespace legado
 `br.eng.rodrigogml.rfw.platform.*`, adota propriedades `rfw.*`, move recursos públicos para `/rfw/` e substitui a

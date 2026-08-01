@@ -35,7 +35,7 @@ import com.microsoft.playwright.options.AriaRole;
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
     properties = "vaadin.launch-browser=false")
 @EnabledIfSystemProperty(named = "rinos.ui.e2e.enabled", matches = "true")
-@DisplayName("Jornadas E2E do cadastro local e da retomada")
+@DisplayName("Jornadas E2E do cadastro local, retomada e Google")
 class RegistrationViewE2EIT {
 
   private static Playwright playwright;
@@ -321,8 +321,78 @@ class RegistrationViewE2EIT {
     }
   }
 
+  /**
+   * Percorre a integração Google simulada desde o login até o Painel de Usuário.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void googleRegistration_shouldAuthenticateAndReachUserDashboard_onDesktop()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = googleBrowserContext(1440, 1000)) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port + "/login");
+      assertRfwStylesLoaded(page);
+
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Entrar com Google").setExact(true))
+          .click();
+
+      assertExternalRegistrationReady(page);
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("google-continuation-desktop.png"))
+          .setFullPage(true));
+
+      acceptRequiredDocuments(page);
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Concluir cadastro").setExact(true))
+          .click();
+
+      page.waitForURL("**/user");
+      org.assertj.core.api.Assertions.assertThat(page.url())
+          .isEqualTo("http://127.0.0.1:" + port + "/user");
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("google-user-dashboard-desktop.png"))
+          .setFullPage(true));
+    }
+  }
+
+  /**
+   * Confirma que a jornada Google nominal permanece operável e sem overflow em telefone.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void googleRegistration_shouldReflowAndComplete_onPhone() throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = googleBrowserContext(390, 844)) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port + "/login");
+      assertRfwStylesLoaded(page);
+
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Entrar com Google").setExact(true))
+          .click();
+
+      assertExternalRegistrationReady(page);
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("google-continuation-phone.png"))
+          .setFullPage(true));
+
+      acceptRequiredDocuments(page);
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Concluir cadastro").setExact(true))
+          .click();
+      page.waitForURL("**/user");
+    }
+  }
+
   private void openRegistration(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/login");
+    assertRfwStylesLoaded(page);
     page.getByRole(AriaRole.BUTTON,
         new Page.GetByRoleOptions().setName("Criar conta").setExact(true)).click();
     assertThat(page.locator("[data-rfw-access-step='registration']")).isVisible();
@@ -330,7 +400,58 @@ class RegistrationViewE2EIT {
 
   private void openExternalRegistration(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/test/external-registration");
+    assertRfwStylesLoaded(page);
     assertThat(page.locator("[data-rfw-access-step='external_registration']")).isVisible();
+  }
+
+  private BrowserContext googleBrowserContext(int width, int height) {
+    BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions()
+            .setViewportSize(width, height)
+            .setDeviceScaleFactor(1));
+    context.addInitScript("""
+        window.google = {
+          accounts: {
+            id: {
+              initialize: configuration => {
+                window.__rinosGoogleCallback = configuration.callback;
+              },
+              renderButton: element => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = 'Entrar com Google';
+                button.addEventListener('click', () => {
+                  window.__rinosGoogleCallback({ credential: 'test-google-credential' });
+                });
+                element.replaceChildren(button);
+              }
+            }
+          }
+        };
+        """);
+    return context;
+  }
+
+  private void assertExternalRegistrationReady(Page page) {
+    assertThat(page.locator("[data-rfw-access-step='external_registration']")).isVisible();
+    Locator email = page.getByLabel("E-mail");
+    assertThat(email).hasValue("verified@example.com");
+    assertThat(email).hasAttribute("readonly", "");
+    assertThat(page.locator("input[type='password']")).hasCount(0);
+    org.assertj.core.api.Assertions.assertThat(page.content())
+        .doesNotContain("test-google-credential", "test-google-subject");
+  }
+
+  private void acceptRequiredDocuments(Page page) {
+    page.getByLabel("Aceito os Termos de Uso").check();
+    page.getByLabel("Li e estou ciente da Política de Privacidade").check();
+  }
+
+  private void assertRfwStylesLoaded(Page page) {
+    String textColor = (String) page.evaluate(
+        "() => getComputedStyle(document.documentElement)"
+            + ".getPropertyValue('--rfw-theme-text-color').trim()");
+    org.assertj.core.api.Assertions.assertThat(textColor).isNotBlank();
   }
 
   private void assertNoHorizontalOverflow(Page page) {

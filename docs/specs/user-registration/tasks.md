@@ -417,7 +417,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
   - Evidência: [estados adversos da resolução e conclusão Google](./evidence/6.3.5/README.md).
 - [x] 6.3.6 Cobrir teclado, leitor de tela, telefone, desktop, localização e feedback
   - Evidência: [foco, semântica, feedback e reflow da continuação Google](./evidence/6.3.6/README.md).
-- [ ] 6.3.7 Criar testes de componente, integração Google simulada, E2E e inspeção visual
+- [x] 6.3.7 Criar testes de componente, integração Google simulada, E2E e inspeção visual
+  - Evidência: [jornada Google simulada, sessão, E2E e inspeção visual](./evidence/6.3.7/README.md).
 
 ### 6.4 Implementar INT-WEB-REG-004 - Solicitação de cancelamento `[A]`
 

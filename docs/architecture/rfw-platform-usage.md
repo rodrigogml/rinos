@@ -97,6 +97,11 @@ funcionais, mas perdem tokens, temas e estilos estruturais, produzindo uma inter
 contrato visual da plataforma. Por isso, cada entrypoint Vaadin executável deve declarar o mesmo recurso público. O
 Rinos não deve copiar as folhas internas nem substituir esse import por CSS paralelo.
 
+Como as telas de acesso são anônimas, a cadeia Spring Security da hospedeira também deve liberar os recursos estáticos
+`/rfw/**` e `/images/**`. Permitir apenas a rota `/login` entrega o HTML, mas redireciona as folhas e imagens para o
+próprio login, deixando a jornada funcional sem o contrato visual. O gate E2E deve verificar um token CSS do RFW
+computado no navegador, e não apenas a presença do elemento `link` no documento.
+
 Os padrões globais de idioma, tema e acesso pertencem exclusivamente ao `application.properties` explícito e são
 documentados no `application.properties.model`. A configuração inicial declara:
 

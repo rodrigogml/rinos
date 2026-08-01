@@ -37,7 +37,12 @@ public class SecurityConfig {
       RFWAccessSecurityConfigurer rfwAccess) throws Exception {
     rfwAccess.configure(http);
     http.authorizeHttpRequests(authorize -> authorize
-        .requestMatchers("/login", "/legal-document/**").permitAll());
+        .requestMatchers(
+            "/login",
+            "/legal-document/**",
+            "/rfw/**",
+            "/images/**")
+        .permitAll());
     http.with(VaadinSecurityConfigurer.vaadin(), vaadin ->
         vaadin.loginView(LoginView.class));
     return http.build();

@@ -8,42 +8,55 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
-import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
-import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
+import com.vaadin.flow.spring.annotation.EnableVaadin;
 
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
+import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
+import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
+import br.com.rinos.app.config.SecurityConfig;
+import br.com.rinos.app.ui.config.RFWExternalIdentityResolverAdapter;
+import br.com.rinos.app.ui.config.RFWExternalRegistrationProviderAdapter;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalIdentityRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
-import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessChallengeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 
 /**
- * Inicializa somente a superfície Vaadin do cadastro com contratos determinísticos em memória.
+ * Inicializa a superfície Vaadin do cadastro com segurança real e fronteiras externas simuladas.
  *
- * <p>O harness comprova a integração da view com os componentes públicos do RFW sem simular
- * persistência. O roundtrip com MySQL pertence ao gate integrado da fase 7.</p>
+ * <p>O harness comprova a integração da view com os componentes públicos do RFW, os adapters
+ * do Rinos e a sessão Spring Security. Somente persistência, SDK e validação criptográfica
+ * remota do Google são substituídos por contratos determinísticos. O roundtrip com MySQL
+ * pertence ao gate integrado da fase 7.</p>
  *
  * @author Rodrigo Leitão
  * @since 2026-07-29
@@ -52,16 +65,16 @@ import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 @EnableAutoConfiguration(exclude = {
     DataSourceAutoConfiguration.class,
     HibernateJpaAutoConfiguration.class,
-    SecurityAutoConfiguration.class,
-    UserDetailsServiceAutoConfiguration.class,
-    SecurityFilterAutoConfiguration.class,
-    ServletWebSecurityAutoConfiguration.class,
-    com.vaadin.flow.spring.SpringSecurityAutoConfiguration.class
+    UserDetailsServiceAutoConfiguration.class
 })
 @Import({
     RinosAccessComponentFactory.class,
+    RFWExternalIdentityResolverAdapter.class,
+    RFWExternalRegistrationProviderAdapter.class,
+    SecurityConfig.class,
     RegistrationUiTestApplication.FixtureConfig.class
 })
+@EnableVaadin("br.com.rinos.app.ui")
 @StyleSheet("context://rfw/styles.css")
 public class RegistrationUiTestApplication implements AppShellConfigurator {
 
@@ -89,6 +102,24 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
    */
   @TestConfiguration(proxyBeanMethods = false)
   static class FixtureConfig {
+
+    /**
+     * Fornece a configuração pública do Google sem contornar a origem exclusiva de properties da aplicação.
+     *
+     * @return configuração tipada restrita ao contexto de teste
+     */
+    @Bean
+    @Primary
+    RFWAuthenticationPropertiesConfig testAuthenticationProperties() {
+      return new RFWAuthenticationPropertiesConfig(
+          new RFWAuthenticationPropertiesConfig.GoogleConfig(
+              false,
+              "test-google-client",
+              "https://accounts.google.com"),
+          null,
+          null,
+          null);
+    }
 
     /**
      * Impede que o harness sem persistência execute a migração global configurada para a aplicação real.
@@ -167,20 +198,58 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
     }
 
     /**
-     * Rejeita a fotografia jurídica simulando uma mudança concorrente para exercitar feedback e foco.
+     * Simula somente a validação externa da credencial e preserva o resolvedor real do Rinos.
      *
-     * @return provider determinístico da continuação externa
+     * @param resolver adapter real que converte a identidade validada em decisão de cadastro
+     * @return provider Google determinístico do harness
      */
     @Bean
-    RFWExternalRegistrationProvider externalRegistrationProvider() {
+    RFWExternalIdentityProvider googleIdentityProvider(
+        RFWExternalIdentityResolver resolver) {
+      return new SimulatedGoogleIdentityProvider(resolver);
+    }
+
+    /**
+     * Emite a continuação opaca depois que o provider simulado comprova a identidade externa.
+     *
+     * @return facade determinística consumida pelo adapter real da interface
+     */
+    @Bean
+    GoogleIdentityResolutionFacade googleIdentityResolutionFacade() {
       return request -> CompletableFuture.completedFuture(
-          RFWAuthenticationOutcomeVO.rejected(new RFWAccessErrorVO(
-              "registration.validation-rejected",
-              List.of(),
-              Map.of(
+          GoogleIdentityResolutionResultVO.continuation(
+              "test-google-success",
+              request.providerId(),
+              request.email(),
+              Instant.parse("2099-08-02T15:00:00Z")));
+    }
+
+    /**
+     * Conclui nominalmente a continuação Google e preserva o cenário de rejeição da rota direta.
+     *
+     * @return facade determinística consumida pelo adapter real da interface
+     */
+    @Bean
+    ExternalRegistrationFacade externalRegistrationFacade() {
+      return request -> {
+        if ("test-only-external-registration".equals(request.registrationReference())) {
+          return CompletableFuture.completedFuture(
+              ExternalRegistrationCompletionResultVO.validationRejected(Map.of(
                   "acceptedLegalDocumentIds",
-                  "registration.error.legal-documents"),
-              null)));
+                  "registration.error.legal-documents")));
+        }
+        if (!"test-google-success".equals(request.registrationReference())
+            || !request.acceptedLegalDocumentIds().containsAll(
+                List.of("terms-v1", "privacy-v1"))) {
+          return CompletableFuture.completedFuture(
+              ExternalRegistrationCompletionResultVO.validationRejected(Map.of(
+                  "acceptedLegalDocumentIds",
+                  "registration.error.legal-documents")));
+        }
+        return CompletableFuture.completedFuture(
+            ExternalRegistrationCompletionResultVO.authenticated(
+                new RinosUserPrincipalVO(41L, "verified@example.com")));
+      };
     }
 
     private static RFWAccessChallengeVO activationChallenge() {
@@ -190,6 +259,67 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
           "p***@example.com",
           Instant.parse("2026-08-01T15:00:00Z"),
           Set.of(RFWAuthenticationMethodEnum.EMAIL_CODE));
+    }
+  }
+
+  /**
+   * Substitui apenas a verificação criptográfica remota do Google no harness visual.
+   *
+   * <p>A identidade mínima produzida segue pelo resolvedor e pelos adapters reais do Rinos.</p>
+   */
+  private static final class SimulatedGoogleIdentityProvider
+      implements RFWExternalIdentityProvider {
+
+    private static final String PROVIDER_ID = "google";
+    private static final String CREDENTIAL = "test-google-credential";
+
+    private final RFWExternalIdentityResolver resolver;
+
+    private SimulatedGoogleIdentityProvider(RFWExternalIdentityResolver resolver) {
+      this.resolver = resolver;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getProviderId() {
+      return PROVIDER_ID;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletionStage<Optional<RFWVerifiedExternalIdentityVO>> verify(
+        RFWExternalIdentityRequestDTO request) {
+      if (request == null
+          || !PROVIDER_ID.equals(request.providerId())
+          || !CREDENTIAL.equals(request.credential())
+          || request.nonce() == null
+          || request.nonce().isBlank()) {
+        return CompletableFuture.completedFuture(Optional.empty());
+      }
+      return CompletableFuture.completedFuture(Optional.of(
+          new RFWVerifiedExternalIdentityVO(
+              PROVIDER_ID,
+              "test-google-subject",
+              "verified@example.com",
+              true,
+              Map.of("iss", "https://accounts.google.com"))));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletionStage<RFWAuthenticationOutcomeVO> authenticate(
+        RFWExternalIdentityRequestDTO request) {
+      return verify(request).thenCompose(identity -> identity
+          .map(resolver::resolve)
+          .orElseGet(() -> CompletableFuture.completedFuture(
+              RFWAuthenticationOutcomeVO.rejected(RFWAccessErrorVO.of(
+                  "ui.access.error.externalIdentityRejected")))));
     }
   }
 }
