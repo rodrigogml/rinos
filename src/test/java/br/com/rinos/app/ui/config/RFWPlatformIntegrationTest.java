@@ -45,11 +45,13 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.function.DeploymentConfiguration;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
 import br.com.rinos.app.RinosApplication;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
@@ -62,6 +64,7 @@ import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
+import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
 import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
@@ -410,6 +413,78 @@ class RFWPlatformIntegrationTest {
                   "current@example.com"));
           assertThat(component.getElement().getText())
               .doesNotContain("opaque-activation-proof");
+        });
+  }
+
+  /**
+   * Comprova a consequência anterior à solicitação e a resposta condicional após um resultado neutro.
+   */
+  @Test
+  void cancellationRequest_shouldExplainConsequencesAndKeepConfirmationResponseNeutral() {
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.requestCancellation(any())).thenReturn(
+        CompletableFuture.completedFuture(new RegistrationCancellationRequestResultVO(
+            RegistrationCancellationRequestStatusEnum.REQUEST_ACCEPTED,
+            "neutral-reference",
+            Instant.parse("2026-08-01T18:00:00Z"),
+            Map.of())));
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+                "person@example.com",
+                null));
+
+            assertThat(descendants(component, Paragraph.class))
+                .extracting(Paragraph::getText)
+                .contains("Solicitar as instruções não cancela o cadastro. Se o cancelamento "
+                    + "for confirmado, o cadastro pendente será excluído, seus links e códigos "
+                    + "de ativação deixarão de funcionar e o e-mail poderá ser usado em um novo "
+                    + "cadastro. O cancelamento confirmado não pode ser desfeito.");
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION);
+            assertThat(component.getCurrentChallenge().maskedDestination()).isNull();
+            assertThat(descendants(component, Paragraph.class))
+                .extracting(Paragraph::getText)
+                .contains("Se houver um cadastro pendente elegível, as instruções de confirmação "
+                    + "serão enviadas ao e-mail informado. O cadastro somente será cancelado "
+                    + "quando um código válido for informado e a ação Confirmar cancelamento "
+                    + "for executada.");
+          } finally {
+            session.unlock();
+          }
         });
   }
 

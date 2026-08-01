@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`bb6328a99a38116d45d4fee417568e8ba911e322` da RFW Platform, publicada como
+`7d47fe735d181acde035c6aa22c8e1dd6c0c7c17` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -21,6 +21,11 @@ externo, direciona o foco ao primeiro aceite obrigatório tanto na entrada quant
 principal como fallback quando nenhum documento é obrigatório. O ponteiro não deve retroceder
 para uma revisão que reintroduza `rfw.platform.*`, `/rfw-platform/` ou uma auto-configuração agregadora legada, mesmo
 quando o artefato principal compile.
+
+Na solicitação de cancelamento de cadastro pendente, essa revisão também torna explícito, antes da ação, que solicitar
+instruções ainda não cancela o cadastro. A confirmação subsequente usa redação condicional e neutra, sem revelar se a
+pendência existe ou se houve envio. As aplicações hospedeiras que sobrescreverem essas chaves i18n devem preservar essa
+separação e não interpolar identificador, destino ou estado interno.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
 RFW conforme o processo descrito neste documento.
