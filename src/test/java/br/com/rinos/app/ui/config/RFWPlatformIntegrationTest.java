@@ -37,6 +37,7 @@ import com.vaadin.flow.server.VaadinSession;
 
 import br.com.rinos.app.RinosApplication;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
@@ -72,6 +73,7 @@ import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessEntryRequestVO;
 import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessStepEnum;
 import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessPropertiesConfig;
 import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessUIAutoConfiguration;
+import br.eng.rodrigogml.rfw.platform.ui.access.google.RFWGoogleSignInComponent;
 import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
 import br.eng.rodrigogml.rfw.platform.ui.theme.config.UIThemePropertiesConfig;
 
@@ -403,13 +405,14 @@ class RFWPlatformIntegrationTest {
   }
 
   /**
-   * Comprova que o Google somente é anunciado quando a hospedeira fornece um resolvedor real.
+   * Comprova a cadeia completa que inicia o Google no login quando o adapter real da hospedeira existe.
    */
   @Test
-  void context_shouldWireGoogleProvider_whenIntegrationAndHostResolverArePresent() {
-    RFWExternalIdentityResolver resolver = mock(RFWExternalIdentityResolver.class);
+  void login_shouldRenderGoogleStart_whenIntegrationAndHostResolverArePresent() {
+    RFWExternalIdentityResolverAdapter resolver = new RFWExternalIdentityResolverAdapter(
+        mock(GoogleIdentityResolutionFacade.class));
     contextRunner
-        .withBean(RFWExternalIdentityResolver.class, () -> resolver)
+        .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
         .withPropertyValues(
             "rfw.platform.authentication.google.enabled=true",
             "rfw.platform.authentication.google.client-id=test-client",
@@ -418,6 +421,9 @@ class RFWPlatformIntegrationTest {
             "rfw.platform.authentication.google.clock-skew=45s")
         .run(context -> {
           assertThat(context).hasNotFailed();
+          assertThat(context).hasSingleBean(RFWExternalIdentityResolver.class);
+          assertThat(context.getBean(RFWExternalIdentityResolver.class))
+              .isSameAs(resolver);
           assertThat(context).hasSingleBean(RFWGoogleIdentityProvider.class);
           assertThat(context).hasSingleBean(RFWExternalIdentityProvider.class);
           assertThat(context.getBean(RFWExternalIdentityProvider.class))
@@ -425,6 +431,24 @@ class RFWPlatformIntegrationTest {
           assertThat(context.getBean(RFWAccessCapabilityService.class)
               .getAvailableCapabilities())
               .contains(RFWAccessCapabilityEnum.EXTERNAL_IDENTITY);
+
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
+              legalReference("21", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinSession session = new TestVaadinSession(mock(VaadinService.class));
+          VaadinSession.setCurrent(session);
+
+          RFWAccessComponent component = hostFactory.create("indisponível");
+
+          assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
+          assertThat(descendants(component, RFWGoogleSignInComponent.class))
+              .singleElement()
+              .satisfies(google -> assertThat(google.getElement().getTag())
+                  .isEqualTo("rfw-google-sign-in"));
         });
   }
 

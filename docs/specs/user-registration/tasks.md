@@ -405,7 +405,8 @@ Ref: [Interface §INT-WEB-REG-002](./interface-spec.md), [Spec §FR-REG-012–02
 
 Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–052](./spec.md)
 
-- [ ] 6.3.1 Integrar o início Google na etapa de login do componente RFW
+- [x] 6.3.1 Integrar o início Google na etapa de login do componente RFW
+  - Evidência: [adapter real, capability e componente Google no login](./evidence/6.3.1/README.md).
 - [ ] 6.3.2 Compor `EXTERNAL_REGISTRATION` com e-mail verificado somente leitura
 - [ ] 6.3.3 Exibir documentos legais sem senha ou dados adicionais do perfil Google
 - [ ] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
