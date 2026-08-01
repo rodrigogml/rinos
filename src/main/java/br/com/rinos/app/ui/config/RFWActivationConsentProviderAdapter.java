@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.api.dto.ActivationConsentRequestDTO;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationConsentRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWActivationConsentProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationConsentRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWActivationConsentProvider;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 /**
  * Adapta a continuação legal do RFW à fachada pública de ativação.

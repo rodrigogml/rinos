@@ -19,8 +19,8 @@ import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWExternalRegistrationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
 
 @DisplayName("Adapter RFW da conclusão externa")
 class RFWExternalRegistrationProviderAdapterTest {

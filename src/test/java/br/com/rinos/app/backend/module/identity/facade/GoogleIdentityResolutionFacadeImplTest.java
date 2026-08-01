@@ -22,8 +22,8 @@ import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.backend.module.identity.enums.GoogleIdentityDomainStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.GoogleIdentityResolutionService;
 import br.com.rinos.app.backend.module.identity.vo.GoogleIdentityDomainResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig.GoogleConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.GoogleConfig;
 
 @DisplayName("Fachada de resolução da identidade Google")
 class GoogleIdentityResolutionFacadeImplTest {

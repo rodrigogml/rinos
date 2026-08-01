@@ -30,12 +30,12 @@ import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAuthenticationMethodEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessChallengeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 /**
  * Inicializa somente a superfície Vaadin do cadastro com contratos determinísticos em memória.
@@ -60,7 +60,7 @@ import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcome
     RinosAccessComponentFactory.class,
     RegistrationUiTestApplication.FixtureConfig.class
 })
-@StyleSheet("context://rfw-platform/styles.css")
+@StyleSheet("context://rfw/styles.css")
 public class RegistrationUiTestApplication implements AppShellConfigurator {
 
   /**
@@ -73,12 +73,12 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
     application.setDefaultProperties(Map.of(
         "spring.main.banner-mode", "off",
         "vaadin.launch-browser", "false",
-        "rfw.platform.i18n.enabled", "true",
-        "rfw.platform.i18n.default-language-locale", "pt-BR",
-        "rfw.platform.i18n.default-format-locale", "pt-BR",
-        "rfw.platform.i18n.application-basenames", "messages",
-        "rfw.platform.ui.access.language-switcher-enabled", "false",
-        "rfw.platform.ui.access.remember-me-enabled", "false"));
+        "rfw.i18n.enabled", "true",
+        "rfw.i18n.default-language-locale", "pt-BR",
+        "rfw.i18n.default-format-locale", "pt-BR",
+        "rfw.i18n.application-basenames", "messages",
+        "rfw.ui.access.language-switcher-enabled", "false",
+        "rfw.ui.access.remember-me-enabled", "false"));
     application.run();
   }
 

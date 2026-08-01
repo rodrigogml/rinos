@@ -25,8 +25,8 @@ import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchRequ
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
 import br.eng.rodrigogml.rfw.exception.RFWInfrastructureException;
 import br.eng.rodrigogml.rfw.exception.RFWIntegrationException;
-import br.eng.rodrigogml.rfw.platform.mail.EmailDispatchService;
-import br.eng.rodrigogml.rfw.platform.mail.EmailMessage;
+import br.eng.rodrigogml.rfw.mail.EmailDispatchService;
+import br.eng.rodrigogml.rfw.mail.EmailMessage;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;

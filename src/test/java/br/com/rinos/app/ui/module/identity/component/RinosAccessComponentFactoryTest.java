@@ -23,12 +23,12 @@ import com.vaadin.flow.component.html.Span;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessCapabilityEnum;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponent;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponentFactory;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessSlotEnum;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessStepEnum;
-import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessComponentConfig;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessCapabilityEnum;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessSlotEnum;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessStepEnum;
+import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessComponentConfig;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Composição do acesso Rinos sobre o RFW")

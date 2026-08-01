@@ -10,13 +10,15 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`e24e9a3ac73cb9f0df06a043ef314b0246012abd` da RFW Platform, publicada como
+`6f953eee2310a0c9fd312cdecf0a2f560f07df36` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
-Essa revisão preserva o runtime aprovado na baseline anterior e sincroniza o showroom com as coordenadas, as
-dependências `provided` e o procedimento de migração da RFW 2.0. O ponteiro não deve retroceder para uma revisão em
-que a documentação obrigatória do showroom descreva o contrato 1.x, mesmo quando o artefato principal compile.
+Essa revisão consolida o namespace público em `br.eng.rodrigogml.rfw.*`, o prefixo de configuração em `rfw.*`, os
+recursos web sob `/rfw/` e separa as auto-configurações por capacidade. Ela também mantém o showroom sincronizado com
+as coordenadas, as dependências `provided` e o procedimento de migração da RFW 2.0. O ponteiro não deve retroceder
+para uma revisão que reintroduza `rfw.platform.*`, `/rfw-platform/` ou uma auto-configuração agregadora legada, mesmo
+quando o artefato principal compile.
 
 Ao atualizar essa baseline, registre a nova revisão na documentação da feature somente depois de validar e publicar o
 RFW conforme o processo descrito neste documento.
@@ -70,6 +72,11 @@ aplicação hospedeira não deve manter dependência, instalação ou import de 
 falhas fica em `br.eng.rodrigogml.rfw.exception` e distingue validação, configuração, infraestrutura e integração por
 tipos e códigos estáveis.
 
+Imports públicos usam `br.eng.rodrigogml.rfw.*`; configurações usam `rfw.*`; recursos estáticos usam `/rfw/`. Não
+introduza novamente o segmento `platform` nessas três fronteiras. A RFW registra `RFWAutoConfiguration` como núcleo
+mínimo e auto-configurações independentes para autenticação, banco, e-mail, i18n, execução, sessão e UI. O Rinos deixa
+a descoberta a cargo do artefato e só referencia auto-configurações específicas em testes de contexto isolado.
+
 As integrações declaradas como `provided` pelo POM do RFW pertencem ao classpath da hospedeira. O Rinos declara
 explicitamente apenas o conjunto exigido pelas capacidades que utiliza, incluindo Vaadin, persistência, validação,
 e-mail, Spring Security, Google/WebAuthn, contexto Micrometer e renderização Markdown/HTML. Ao ativar outra capacidade,
@@ -78,7 +85,7 @@ compare primeiro seu contrato e o POM da revisão fixada; não dependa de uma tr
 O App Shell da hospedeira deve carregar explicitamente a folha agregada pública do RFW:
 
 ```java
-@StyleSheet("context://rfw-platform/styles.css")
+@StyleSheet("context://rfw/styles.css")
 public class RinosApplication implements AppShellConfigurator {
 }
 ```

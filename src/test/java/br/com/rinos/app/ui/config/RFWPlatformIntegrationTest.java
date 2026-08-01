@@ -52,39 +52,41 @@ import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
+import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessCapabilityEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityResolver;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationRequirementProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.google.RFWGoogleIdentityProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.service.RFWAccessCapabilityService;
-import br.eng.rodrigogml.rfw.platform.authentication.turnstile.RFWTurnstileVerificationService;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWActivationConsentChallengeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWVerifiedExternalIdentityVO;
-import br.eng.rodrigogml.rfw.platform.executioncontext.config.RFWExecutionContextAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.i18n.config.RFWI18nAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.i18n.config.RFWI18nPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.i18n.service.RFWTranslationService;
-import br.eng.rodrigogml.rfw.platform.i18n.vaadin.config.RFWVaadinI18nAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.session.vaadin.config.RFWVaadinSessionAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponent;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponentFactory;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessEntryRequestVO;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessStepEnum;
-import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.ui.access.config.RFWAccessUIAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.ui.access.google.RFWGoogleSignInComponent;
-import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
-import br.eng.rodrigogml.rfw.platform.ui.theme.config.UIThemePropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessCapabilityEnum;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.google.config.RFWGoogleAuthenticationAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationRequirementProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.google.RFWGoogleIdentityProvider;
+import br.eng.rodrigogml.rfw.authentication.service.RFWAccessCapabilityService;
+import br.eng.rodrigogml.rfw.authentication.turnstile.RFWTurnstileVerificationService;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWActivationConsentChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
+import br.eng.rodrigogml.rfw.executioncontext.config.RFWExecutionContextAutoConfiguration;
+import br.eng.rodrigogml.rfw.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
+import br.eng.rodrigogml.rfw.i18n.config.RFWI18nAutoConfiguration;
+import br.eng.rodrigogml.rfw.i18n.config.RFWI18nPropertiesConfig;
+import br.eng.rodrigogml.rfw.i18n.service.RFWTranslationService;
+import br.eng.rodrigogml.rfw.i18n.vaadin.config.RFWVaadinI18nAutoConfiguration;
+import br.eng.rodrigogml.rfw.session.vaadin.config.RFWVaadinSessionAutoConfiguration;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessEntryRequestVO;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessStepEnum;
+import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessPropertiesConfig;
+import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessUIAutoConfiguration;
+import br.eng.rodrigogml.rfw.ui.access.google.RFWGoogleSignInComponent;
+import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
+import br.eng.rodrigogml.rfw.ui.theme.config.RFWThemeAutoConfiguration;
+import br.eng.rodrigogml.rfw.ui.theme.config.UIThemePropertiesConfig;
 
 @DisplayName("Integração pública com a RFW Platform")
 class RFWPlatformIntegrationTest {
@@ -97,20 +99,22 @@ class RFWPlatformIntegrationTest {
           RFWVaadinSessionAutoConfiguration.class,
           RFWVaadinI18nAutoConfiguration.class,
           RFWVaadinExecutionContextAutoConfiguration.class,
-          RFWPlatformAutoConfiguration.class,
+          RFWAutoConfiguration.class,
           RFWAuthenticationAutoConfiguration.class,
+          RFWGoogleAuthenticationAutoConfiguration.class,
+          RFWThemeAutoConfiguration.class,
           RFWAccessUIAutoConfiguration.class))
       .withPropertyValues(
-          "rfw.platform.i18n.supported-language-locales=pt-BR",
-          "rfw.platform.i18n.default-language-locale=pt-BR",
-          "rfw.platform.i18n.default-format-locale=pt-BR",
-          "rfw.platform.i18n.default-zone-id=America/Sao_Paulo",
-          "rfw.platform.i18n.application-basenames=messages",
-          "rfw.platform.ui.theme.project-key=rinos",
-          "rfw.platform.ui.access.project-key=rinos",
-          "rfw.platform.ui.access.remember-me-enabled=false",
-          "rfw.platform.authentication.google.enabled=false",
-          "rfw.platform.authentication.turnstile.enabled=false");
+          "rfw.i18n.supported-language-locales=pt-BR",
+          "rfw.i18n.default-language-locale=pt-BR",
+          "rfw.i18n.default-format-locale=pt-BR",
+          "rfw.i18n.default-zone-id=America/Sao_Paulo",
+          "rfw.i18n.application-basenames=messages",
+          "rfw.ui.theme.project-key=rinos",
+          "rfw.ui.access.project-key=rinos",
+          "rfw.ui.access.remember-me-enabled=false",
+          "rfw.authentication.google.enabled=false",
+          "rfw.authentication.turnstile.enabled=false");
 
   private final ApplicationContextRunner authenticationPropertiesRunner =
       new ApplicationContextRunner()
@@ -133,7 +137,7 @@ class RFWPlatformIntegrationTest {
         .isAssignableTo(AppShellConfigurator.class);
     assertThat(stylesheets)
         .extracting(StyleSheet::value)
-        .containsExactly("context://rfw-platform/styles.css");
+        .containsExactly("context://rfw/styles.css");
   }
 
   /**
@@ -373,12 +377,12 @@ class RFWPlatformIntegrationTest {
         .withBean(RFWHumanVerificationRequirementProvider.class,
             () -> new RFWHumanVerificationRequirementProviderAdapter(facade))
         .withPropertyValues(
-            "rfw.platform.authentication.turnstile.enabled=true",
-            "rfw.platform.authentication.turnstile.site-key=test-site",
-            "rfw.platform.authentication.turnstile.secret-key=test-secret",
-            "rfw.platform.authentication.turnstile.expected-hostnames=rinos.test",
-            "rfw.platform.authentication.turnstile.site-verify-endpoint=http://127.0.0.1/siteverify",
-            "rfw.platform.authentication.turnstile.timeout=500ms")
+            "rfw.authentication.turnstile.enabled=true",
+            "rfw.authentication.turnstile.site-key=test-site",
+            "rfw.authentication.turnstile.secret-key=test-secret",
+            "rfw.authentication.turnstile.expected-hostnames=rinos.test",
+            "rfw.authentication.turnstile.site-verify-endpoint=http://127.0.0.1/siteverify",
+            "rfw.authentication.turnstile.timeout=500ms")
         .run(context -> {
           assertThat(context).hasNotFailed();
           assertThat(context).hasSingleBean(RFWHumanVerificationProvider.class);
@@ -397,10 +401,10 @@ class RFWPlatformIntegrationTest {
   void properties_shouldBindTurnstileSecrets_whenExplicitFileValuesArePresent() {
     authenticationPropertiesRunner
         .withPropertyValues(
-            "rfw.platform.authentication.turnstile.enabled=true",
-            "rfw.platform.authentication.turnstile.site-key=test-site",
-            "rfw.platform.authentication.turnstile.secret-key=test-secret",
-            "rfw.platform.authentication.turnstile.expected-hostnames=rinos.test")
+            "rfw.authentication.turnstile.enabled=true",
+            "rfw.authentication.turnstile.site-key=test-site",
+            "rfw.authentication.turnstile.secret-key=test-secret",
+            "rfw.authentication.turnstile.expected-hostnames=rinos.test")
         .run(context -> {
           assertThat(context).hasNotFailed();
           RFWAuthenticationPropertiesConfig.TurnstileConfig turnstile = context
@@ -423,11 +427,11 @@ class RFWPlatformIntegrationTest {
     contextRunner
         .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
         .withPropertyValues(
-            "rfw.platform.authentication.google.enabled=true",
-            "rfw.platform.authentication.google.client-id=test-client",
-            "rfw.platform.authentication.google.issuer=https://accounts.google.com",
-            "rfw.platform.authentication.google.timeout=750ms",
-            "rfw.platform.authentication.google.clock-skew=45s")
+            "rfw.authentication.google.enabled=true",
+            "rfw.authentication.google.client-id=test-client",
+            "rfw.authentication.google.issuer=https://accounts.google.com",
+            "rfw.authentication.google.timeout=750ms",
+            "rfw.authentication.google.clock-skew=45s")
         .run(context -> {
           assertThat(context).hasNotFailed();
           assertThat(context).hasSingleBean(RFWExternalIdentityResolver.class);
@@ -483,8 +487,8 @@ class RFWPlatformIntegrationTest {
         .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
         .withBean(RFWExternalRegistrationProviderAdapter.class, () -> completionProvider)
         .withPropertyValues(
-            "rfw.platform.authentication.google.enabled=true",
-            "rfw.platform.authentication.google.client-id=test-client")
+            "rfw.authentication.google.enabled=true",
+            "rfw.authentication.google.client-id=test-client")
         .run(context -> {
           assertThat(context).hasNotFailed();
           assertThat(context.getBean(RFWAccessCapabilityService.class)
@@ -562,10 +566,10 @@ class RFWPlatformIntegrationTest {
   void properties_shouldBindGoogleTimeoutAndClockSkew_whenExplicitValuesArePresent() {
     authenticationPropertiesRunner
         .withPropertyValues(
-            "rfw.platform.authentication.google.enabled=true",
-            "rfw.platform.authentication.google.client-id=test-client",
-            "rfw.platform.authentication.google.timeout=750ms",
-            "rfw.platform.authentication.google.clock-skew=45s")
+            "rfw.authentication.google.enabled=true",
+            "rfw.authentication.google.client-id=test-client",
+            "rfw.authentication.google.timeout=750ms",
+            "rfw.authentication.google.clock-skew=45s")
         .run(context -> {
           assertThat(context).hasNotFailed();
           RFWAuthenticationPropertiesConfig.GoogleConfig google = context

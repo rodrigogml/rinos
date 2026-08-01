@@ -32,11 +32,11 @@ import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.RegistrationResendResultVO;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
-import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
 
 @DisplayName("Adapter RFW do início do cadastro")
 class RFWRegistrationProviderAdapterTest {

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
 import br.com.rinos.app.api.vo.RemoteOriginRequestVO;
-import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
+import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**

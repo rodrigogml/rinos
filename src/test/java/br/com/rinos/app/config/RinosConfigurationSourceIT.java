@@ -64,8 +64,8 @@ class RinosConfigurationSourceIT {
   @Test
   void application_shouldFailWithSafeDiagnostic_whenGlobalDataSourceIsMissing() throws Exception {
     String properties = validProperties().replace(
-        "rfw.platform.database.update.enabled=false",
-        "rfw.platform.database.update.enabled=true");
+        "rfw.database.update.enabled=false",
+        "rfw.database.update.enabled=true");
     Files.writeString(temporaryDirectory.resolve("application.properties"),
         properties, StandardCharsets.UTF_8);
 
@@ -147,8 +147,8 @@ class RinosConfigurationSourceIT {
         rinos.maintenance.instance-id=file-instance
         spring.mail.host=localhost
         spring.mail.port=1025
-        rfw.platform.mail.default-from-address=no-reply@localhost
-        rfw.platform.database.update.enabled=false
+        rfw.mail.default-from-address=no-reply@localhost
+        rfw.database.update.enabled=false
         """;
   }
 

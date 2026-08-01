@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.mail.autoconfigure.MailProperties;
 
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
-import br.eng.rodrigogml.rfw.platform.mail.EmailTemplatePropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
+import br.eng.rodrigogml.rfw.mail.config.EmailTemplatePropertiesConfig;
 
 @DisplayName("Validação das propriedades de integrações externas")
 class ExternalIntegrationPropertiesValidatorConfigTest {

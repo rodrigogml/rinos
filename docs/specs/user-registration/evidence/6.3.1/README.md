@@ -14,7 +14,7 @@ permanecem nas tarefas 6.3.2 a 6.3.4, e os cenários visuais e de navegador perm
 
 ## Cadeia integrada
 
-Quando `rfw.platform.authentication.google.enabled=true` e o `client-id` público está preenchido, a integração segue
+Quando `rfw.authentication.google.enabled=true` e o `client-id` público está preenchido, a integração segue
 esta cadeia:
 
 ```text
@@ -37,11 +37,11 @@ possui botão, JavaScript, CSS ou formulário Google paralelo.
 O modelo versionado mantém o Google desabilitado por padrão:
 
 ```properties
-rfw.platform.authentication.google.enabled=false
-rfw.platform.authentication.google.client-id=
-rfw.platform.authentication.google.issuer=https://accounts.google.com
-rfw.platform.authentication.google.timeout=10s
-rfw.platform.authentication.google.clock-skew=60s
+rfw.authentication.google.enabled=false
+rfw.authentication.google.client-id=
+rfw.authentication.google.issuer=https://accounts.google.com
+rfw.authentication.google.timeout=10s
+rfw.authentication.google.clock-skew=60s
 ```
 
 A habilitação exige edição explícita do `application.properties` da instância. Sem a propriedade habilitada, o RFW

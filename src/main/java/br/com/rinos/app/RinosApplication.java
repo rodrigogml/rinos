@@ -13,7 +13,7 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
  * @since 2026-07-27
  */
 @SpringBootApplication
-@StyleSheet("context://rfw-platform/styles.css")
+@StyleSheet("context://rfw/styles.css")
 public class RinosApplication implements AppShellConfigurator {
 
   /**

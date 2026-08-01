@@ -7,10 +7,10 @@ import org.springframework.boot.mail.autoconfigure.MailProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig.GoogleConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
-import br.eng.rodrigogml.rfw.platform.mail.EmailTemplatePropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.GoogleConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
+import br.eng.rodrigogml.rfw.mail.config.EmailTemplatePropertiesConfig;
 
 /**
  * Valida conjuntamente configurações externas já tipadas pelo Spring Boot e pelo RFW Platform.
@@ -77,7 +77,7 @@ public class ExternalIntegrationPropertiesValidatorConfig {
       throw new IllegalStateException("spring.mail.port deve estar entre 1 e 65535.");
     }
     if (isBlank(templates.getDefaultFromAddress())) {
-      throw new IllegalStateException("rfw.platform.mail.default-from-address é obrigatório.");
+      throw new IllegalStateException("rfw.mail.default-from-address é obrigatório.");
     }
   }
 

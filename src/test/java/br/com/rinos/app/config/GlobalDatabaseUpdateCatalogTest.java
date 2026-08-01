@@ -8,10 +8,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
-import br.eng.rodrigogml.rfw.platform.database.config.DatabaseUpdatePropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.database.service.DatabaseUpdateScriptDiscoveryService;
-import br.eng.rodrigogml.rfw.platform.database.service.DatabaseUpdateScriptNameService;
-import br.eng.rodrigogml.rfw.platform.database.vo.DatabaseUpdateScriptVO;
+import br.eng.rodrigogml.rfw.database.config.DatabaseUpdatePropertiesConfig;
+import br.eng.rodrigogml.rfw.database.service.DatabaseUpdateScriptDiscoveryService;
+import br.eng.rodrigogml.rfw.database.service.DatabaseUpdateScriptNameService;
+import br.eng.rodrigogml.rfw.database.vo.DatabaseUpdateScriptVO;
 
 @DisplayName("Catálogo de updates do banco global")
 class GlobalDatabaseUpdateCatalogTest {

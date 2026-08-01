@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import br.com.rinos.app.api.enums.HumanVerificationOperationEnum;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWHumanVerificationOperationEnum;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWHumanVerificationOperationEnum;
 
 @DisplayName("Adapter RFW da política de comprovação humana")
 class RFWHumanVerificationRequirementProviderAdapterTest {

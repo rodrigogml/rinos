@@ -22,12 +22,12 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWHumanVerificationFailureEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWHumanVerificationOperationEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.turnstile.RFWTurnstileVerificationService;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWHumanVerificationRequestVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWHumanVerificationResultVO;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.TurnstileConfig;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWHumanVerificationFailureEnum;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWHumanVerificationOperationEnum;
+import br.eng.rodrigogml.rfw.authentication.turnstile.RFWTurnstileVerificationService;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWHumanVerificationRequestVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWHumanVerificationResultVO;
 
 @DisplayName("Integração local com o Siteverify do Turnstile")
 class TurnstileIntegrationIT {

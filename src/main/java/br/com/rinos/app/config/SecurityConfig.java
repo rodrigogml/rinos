@@ -10,7 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 
 import br.com.rinos.app.ui.module.identity.view.LoginView;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAccessSecurityConfigurer;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAccessSecurityConfigurer;
 
 /**
  * Integra a autorização de rotas Vaadin com os protocolos de acesso compartilhados do RFW.

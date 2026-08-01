@@ -66,10 +66,10 @@ class ConfigurationFileParityTest {
       properties.load(reader);
     }
 
-    assertThat(properties.getProperty("rfw.platform.database.update.enabled")).isEqualTo("true");
-    assertThat(properties.getProperty("rfw.platform.database.update.locations"))
+    assertThat(properties.getProperty("rfw.database.update.enabled")).isEqualTo("true");
+    assertThat(properties.getProperty("rfw.database.update.locations"))
         .isEqualTo("classpath:db/global/update/");
-    assertThat(properties.getProperty("rfw.platform.database.update.lock-timeout")).isEqualTo("30s");
+    assertThat(properties.getProperty("rfw.database.update.lock-timeout")).isEqualTo("30s");
   }
 
   /**

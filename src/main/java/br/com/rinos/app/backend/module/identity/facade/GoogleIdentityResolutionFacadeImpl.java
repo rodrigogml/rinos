@@ -17,7 +17,7 @@ import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.backend.module.identity.enums.GoogleIdentityDomainStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.GoogleIdentityResolutionService;
 import br.com.rinos.app.backend.module.identity.vo.GoogleIdentityDomainResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.config.RFWAuthenticationPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
 
 /**
  * Valida a borda mínima Google e delega a decisão persistente ao serviço transacional.

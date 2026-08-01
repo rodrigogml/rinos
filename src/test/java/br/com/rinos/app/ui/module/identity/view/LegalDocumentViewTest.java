@@ -19,8 +19,8 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
-import br.eng.rodrigogml.rfw.platform.ui.content.RFWContentFormatEnum;
-import br.eng.rodrigogml.rfw.platform.ui.content.RFWContentRenderer;
+import br.eng.rodrigogml.rfw.ui.content.RFWContentFormatEnum;
+import br.eng.rodrigogml.rfw.ui.content.RFWContentRenderer;
 
 @DisplayName("Rota pública de documento jurídico")
 class LegalDocumentViewTest {

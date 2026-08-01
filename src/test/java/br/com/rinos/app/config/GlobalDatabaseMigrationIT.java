@@ -26,10 +26,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.eng.rodrigogml.rfw.database.config.RFWDatabaseAutoConfiguration;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.autoconfig.RFWPlatformAutoConfiguration;
-import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateErrorCategoryEnum;
-import br.eng.rodrigogml.rfw.platform.shared.exception.RFWDatabaseUpdateException;
 
 /**
  * Valida o bootstrap do catálogo global contra um MySQL 9 descartável.
@@ -213,11 +213,11 @@ class GlobalDatabaseMigrationIT {
     return new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(
             RFWLoggingAutoConfiguration.class,
-            RFWPlatformAutoConfiguration.class))
+            RFWDatabaseAutoConfiguration.class))
         .withPropertyValues(
-            "rfw.platform.database.update.enabled=true",
-            "rfw.platform.database.update.locations=" + locations,
-            "rfw.platform.database.update.lock-timeout=30s")
+            "rfw.database.update.enabled=true",
+            "rfw.database.update.locations=" + locations,
+            "rfw.database.update.lock-timeout=30s")
         .withBean(DataSource.class, () -> dataSource);
   }
 

@@ -11,11 +11,11 @@ import org.springframework.stereotype.Component;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalIdentityResolver;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessErrorVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWExternalRegistrationChallengeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWVerifiedExternalIdentityVO;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWExternalRegistrationChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 
 /**
  * Reduz a identidade validada pelo RFW ao contrato público mínimo do Rinos.

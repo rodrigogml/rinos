@@ -18,9 +18,9 @@ import br.com.rinos.app.api.enums.GoogleIdentityResolutionStatusEnum;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWVerifiedExternalIdentityVO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 
 @DisplayName("Adapter da identidade externa validada pelo RFW")
 class RFWExternalIdentityResolverAdapterTest {

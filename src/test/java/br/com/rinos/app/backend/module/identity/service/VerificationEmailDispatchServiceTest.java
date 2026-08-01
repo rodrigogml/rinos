@@ -31,12 +31,12 @@ import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResu
 import br.eng.rodrigogml.rfw.exception.RFWExceptionCodeDefinitions;
 import br.eng.rodrigogml.rfw.exception.RFWInfrastructureException;
 import br.eng.rodrigogml.rfw.exception.RFWIntegrationException;
-import br.eng.rodrigogml.rfw.platform.mail.ClasspathEmailTemplateResolver;
-import br.eng.rodrigogml.rfw.platform.mail.EmailDispatchService;
-import br.eng.rodrigogml.rfw.platform.mail.EmailDispatcher;
-import br.eng.rodrigogml.rfw.platform.mail.EmailMessage;
-import br.eng.rodrigogml.rfw.platform.mail.EmailTemplatePropertiesConfig;
-import br.eng.rodrigogml.rfw.platform.mail.PositionalEmailTemplateRenderer;
+import br.eng.rodrigogml.rfw.mail.ClasspathEmailTemplateResolver;
+import br.eng.rodrigogml.rfw.mail.EmailDispatchService;
+import br.eng.rodrigogml.rfw.mail.EmailDispatcher;
+import br.eng.rodrigogml.rfw.mail.EmailMessage;
+import br.eng.rodrigogml.rfw.mail.config.EmailTemplatePropertiesConfig;
+import br.eng.rodrigogml.rfw.mail.PositionalEmailTemplateRenderer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 @DisplayName("Despacho pós-commit da comprovação")

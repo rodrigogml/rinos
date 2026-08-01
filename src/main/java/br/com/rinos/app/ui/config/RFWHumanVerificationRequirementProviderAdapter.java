@@ -4,8 +4,8 @@ import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.api.enums.HumanVerificationOperationEnum;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWHumanVerificationOperationEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWHumanVerificationRequirementProvider;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWHumanVerificationOperationEnum;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationRequirementProvider;
 
 /**
  * Adapta as operações públicas do RFW para a política de comprovação humana do Rinos.

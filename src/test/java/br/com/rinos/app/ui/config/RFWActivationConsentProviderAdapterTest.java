@@ -19,9 +19,9 @@ import br.com.rinos.app.api.dto.ActivationConsentRequestDTO;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationConsentRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationConsentRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 @DisplayName("Adapter RFW da continuação legal da ativação")
 class RFWActivationConsentProviderAdapterTest {

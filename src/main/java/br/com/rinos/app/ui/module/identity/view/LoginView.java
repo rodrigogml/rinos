@@ -13,9 +13,9 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessComponent;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessEntryRequestVO;
-import br.eng.rodrigogml.rfw.platform.ui.access.RFWAccessStepEnum;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessEntryRequestVO;
+import br.eng.rodrigogml.rfw.ui.access.RFWAccessStepEnum;
 
 /**
  * Hospeda o fluxo público de acesso sem duplicar componentes ou estados fornecidos pelo RFW.

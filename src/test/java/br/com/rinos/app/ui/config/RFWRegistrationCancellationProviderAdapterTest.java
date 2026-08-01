@@ -17,10 +17,10 @@ import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.vo.RegistrationCancellationConfirmationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationCancellationConfirmationDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationCancellationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAccessStatusEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationConfirmationDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 @DisplayName("Adapter RFW do cancelamento de cadastro")
 class RFWRegistrationCancellationProviderAdapterTest {

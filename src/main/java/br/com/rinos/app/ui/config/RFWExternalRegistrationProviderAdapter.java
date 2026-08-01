@@ -11,10 +11,10 @@ import org.springframework.stereotype.Component;
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWExternalRegistrationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWExternalRegistrationProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessErrorVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 /**
  * Adapta a conclusão externa do RFW à fachada pública do Rinos.

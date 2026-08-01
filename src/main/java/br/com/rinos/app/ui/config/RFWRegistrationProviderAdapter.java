@@ -23,15 +23,15 @@ import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.RegistrationResendResultVO;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWActivationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.dto.RFWRegistrationRequestDTO;
-import br.eng.rodrigogml.rfw.platform.authentication.enums.RFWAuthenticationMethodEnum;
-import br.eng.rodrigogml.rfw.platform.authentication.provider.RFWRegistrationProvider;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessChallengeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAccessErrorVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWActivationConsentChallengeVO;
-import br.eng.rodrigogml.rfw.platform.authentication.vo.RFWAuthenticationOutcomeVO;
-import br.eng.rodrigogml.rfw.platform.ui.access.provider.RFWRemoteAddressProvider;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWActivationConsentChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
 
 /**
  * Adapta o início do cadastro do RFW à fachada pública do Rinos.
