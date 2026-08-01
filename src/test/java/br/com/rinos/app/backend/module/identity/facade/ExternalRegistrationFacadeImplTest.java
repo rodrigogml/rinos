@@ -77,6 +77,36 @@ class ExternalRegistrationFacadeImplTest {
     verifyNoInteractions(service);
   }
 
+  /**
+   * Comprova que a troca de versão jurídica exige nova decisão sem expor a falha interna.
+   */
+  @Test
+  void complete_shouldReturnRecoverableFieldError_whenLegalDocumentChanged() {
+    ExternalRegistrationCompletionService service =
+        mock(ExternalRegistrationCompletionService.class);
+    when(service.complete(
+        "opaque-reference",
+        List.of(101L),
+        CORRELATION_ID,
+        NOW)).thenThrow(new IllegalArgumentException("document is no longer current"));
+    ExternalRegistrationFacadeImpl facade = facade(service);
+
+    ExternalRegistrationCompletionResultVO result = facade.complete(
+        new ExternalRegistrationCompletionRequestDTO(
+            "opaque-reference",
+            List.of("101"),
+            CORRELATION_ID))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(result.status())
+        .isEqualTo(ExternalRegistrationCompletionStatusEnum.VALIDATION_REJECTED);
+    assertThat(result.principal()).isNull();
+    assertThat(result.fieldErrors()).containsEntry(
+        "acceptedLegalDocumentIds",
+        "registration.error.legal-documents");
+  }
+
   @Test
   void complete_shouldReturnUnavailableWithoutPrincipal_whenCommitFails() {
     ExternalRegistrationCompletionService service =

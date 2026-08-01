@@ -91,8 +91,37 @@ class RFWExternalIdentityResolverAdapterTest {
         .join();
 
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.authentication()).isNull();
     assertThat(outcome.error().messageKey())
         .isEqualTo("registration.google.existing-user-reauthentication-required");
+  }
+
+  /**
+   * Comprova que um vínculo externo incompatível permanece uma rejeição pública sem sessão.
+   */
+  @Test
+  void resolve_shouldRejectWithoutAuthentication_whenStableIdentityConflicts() {
+    GoogleIdentityResolutionFacade facade = mock(GoogleIdentityResolutionFacade.class);
+    when(facade.resolve(any())).thenReturn(CompletableFuture.completedFuture(
+        GoogleIdentityResolutionResultVO.of(
+            GoogleIdentityResolutionStatusEnum.EXTERNAL_IDENTITY_CONFLICT)));
+    RFWExternalIdentityResolverAdapter adapter =
+        new RFWExternalIdentityResolverAdapter(facade);
+
+    RFWAuthenticationOutcomeVO outcome = adapter.resolve(
+        new RFWVerifiedExternalIdentityVO(
+            "google",
+            "subject-1",
+            "person@example.com",
+            true,
+            Map.of("iss", "https://accounts.google.com")))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
+    assertThat(outcome.authentication()).isNull();
+    assertThat(outcome.error().messageKey())
+        .isEqualTo("registration.google.identity-conflict");
   }
 
   @Test

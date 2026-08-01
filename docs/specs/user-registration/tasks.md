@@ -413,7 +413,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
   - Evidência: [documentos legais e minimização da continuação Google](./evidence/6.3.3/README.md).
 - [x] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
   - Evidência: [conclusão autenticada e navegação ao Painel de Usuário](./evidence/6.3.4/README.md).
-- [ ] 6.3.5 Cobrir identidade existente, conflito, expiração, indisponibilidade e documento alterado
+- [x] 6.3.5 Cobrir identidade existente, conflito, expiração, indisponibilidade e documento alterado
+  - Evidência: [estados adversos da resolução e conclusão Google](./evidence/6.3.5/README.md).
 - [ ] 6.3.6 Cobrir teclado, leitor de tela, telefone, desktop, localização e feedback
 - [ ] 6.3.7 Criar testes de componente, integração Google simulada, E2E e inspeção visual
 
