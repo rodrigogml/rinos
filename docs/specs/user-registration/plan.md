@@ -6,7 +6,10 @@
 
 Implementar a primeira identidade global do Rinos, independente de tenant, com cadastro local ou Google, consentimentos versionados, comprovação de e-mail, proteção contra automação, retomada, cancelamento e expiração. A abordagem usa facades transacionais, constraints de banco como autoridade final de unicidade, credenciais e tokens não recuperáveis, integrações externas isoladas por portas e a infraestrutura reutilizável do RFW para e-mail, verificação e atualização de banco.
 
-Este plano não inclui autenticação de sessão, recuperação de acesso, conteúdo do Painel de Usuário, associação a contas ou permissões. O redirecionamento final aponta para a rota reservada do painel, cuja implementação completa pertence a `user-dashboard`.
+Este plano não inclui autenticação geral de sessões, recuperação de acesso, conteúdo do Painel de Usuário, associação
+a contas ou permissões. O cadastro publica somente a autenticação resultante de sua ativação pelo serviço de sessão
+do RFW e redireciona para a rota global autenticada reservada `/user`. A classe de entrada permanece sem conteúdo,
+dados ou operações até ser composta pela feature `user-dashboard`.
 
 ## Technical Context
 

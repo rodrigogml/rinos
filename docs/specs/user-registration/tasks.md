@@ -411,7 +411,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
   - Evidência: [continuação tipada e e-mail verificado imutável](./evidence/6.3.2/README.md).
 - [x] 6.3.3 Exibir documentos legais sem senha ou dados adicionais do perfil Google
   - Evidência: [documentos legais e minimização da continuação Google](./evidence/6.3.3/README.md).
-- [ ] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
+- [x] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
+  - Evidência: [conclusão autenticada e navegação ao Painel de Usuário](./evidence/6.3.4/README.md).
 - [ ] 6.3.5 Cobrir identidade existente, conflito, expiração, indisponibilidade e documento alterado
 - [ ] 6.3.6 Cobrir teclado, leitor de tela, telefone, desktop, localização e feedback
 - [ ] 6.3.7 Criar testes de componente, integração Google simulada, E2E e inspeção visual
@@ -475,8 +476,9 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
   - Evidência: [análise de dependências e verificações estáticas](./evidence/7.2.5/README.md).
 - [!] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
   - Evidência parcial: [isolamento inicial e dependências para validar o Painel](./evidence/7.2.6/README.md).
-  - A ausência de tenant, conta e concessão automática está comprovada. O gate de acesso real permanece bloqueado até
-    `user-authentication` materializar a sessão e `user-dashboard` fornecer a rota e as operações do próprio usuário.
+  - A ausência de tenant, conta e concessão automática está comprovada. A conclusão Google já materializa a sessão e
+    alcança `/user`; o gate de acesso real permanece bloqueado até `user-authentication` cobrir a autenticação geral e
+    `user-dashboard` fornecer os dados e as operações do próprio usuário.
 - [x] 7.2.7 Registrar e corrigir achados bloqueantes antes do release
   - Evidência: [triagem e correção dos achados bloqueantes](./evidence/7.2.7/README.md).
 

@@ -117,7 +117,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 **Change Type**: NEW
 **Purpose**: Concluir com aceites legais o cadastro iniciado por uma identidade Google já validada, sem senha local nem nova confirmação de e-mail.
 **Actors and Permissions**: Pessoa não autenticada que concluiu o protocolo Google; acesso limitado à referência opaca de continuação emitida para aquela tentativa.
-**Entry and Navigation**: O Google é iniciado na etapa de login do `RFWAccessComponent`. Resultado `EXTERNAL_REGISTRATION_REQUIRED` abre automaticamente `EXTERNAL_REGISTRATION` na mesma rota. Voltar descarta a continuação visual e retorna ao login. Conclusão autentica e navega ao Painel de Usuário.
+**Entry and Navigation**: O Google é iniciado na etapa de login do `RFWAccessComponent`. Resultado `EXTERNAL_REGISTRATION_REQUIRED` abre automaticamente `EXTERNAL_REGISTRATION` na mesma rota. Voltar descarta a continuação visual e retorna ao login. Conclusão publica a autenticação e navega para a rota global autenticada `/user`, reservada ao Painel de Usuário; seu conteúdo e suas operações pertencem a `user-dashboard`.
 **Content and Data**: Provedor Google identificado; e-mail verificado visível e somente leitura; documentos legais vigentes; ação Concluir cadastro; Voltar para entrar. Não mostrar senha, confirmação de e-mail, perfil Google adicional ou permissões a outros serviços.
 **Actions and Behavior**: Aceitar documentos obrigatórios; permitir decisões opcionais separadas; enviar somente referência opaca e IDs aceitos; revalidar expiração, uso único, emissor e subject no backend; ao reutilizar pendência invalidar senha e provas anteriores antes de ativar; usuário ativo com mesmo e-mail não é vinculado e segue ao fluxo futuro de reautenticação.
 **Validation and Feedback**: E-mail não pode ser editado; aceites inválidos focam o primeiro documento; referência expirada, usada, identidade conflitante ou Google inválido não cria usuário; indisponibilidade oferece tentar Google novamente ou usar cadastro local; nunca revelar outro usuário relacionado ao e-mail ou à identidade externa.
@@ -139,7 +139,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 | empty | N/A — ausência da challenge é erro de integração, não estado vazio válido | N/A | remote-error |
 | ready | E-mail somente leitura, aceites editáveis e ação principal disponível | Concluir, abrir documento, voltar | processing ou validation-error |
 | processing | Controles bloqueados; referência e aceites submetidos; nenhuma credencial externa mantida na UI | Aguardar | success, validation-error ou remote-error |
-| success | Identidade ativa pelo Google e autenticação publicada | Continuar ao Painel de Usuário | Painel de Usuário |
+| success | Identidade ativa pelo Google e autenticação publicada | Continuar ao Painel de Usuário | `/user` |
 | validation-error | Aceites ausentes ou versões inválidas destacados; identidade não ativada | Corrigir e reenviar | ready ou processing |
 | remote-error | Google ou continuação indisponível, expirada ou conflitante; mensagem segura | Tentar Google novamente, usar cadastro local, voltar | login ou INT-WEB-REG-001 |
 | offline | Retorno não confirmado permanece sem efeito; referência deve ser revalidada após reconexão | Reconectar ou reiniciar Google | ready, login ou remote-error |
@@ -224,8 +224,8 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 
 Existe uma única superfície humana. A rota pública `/login` hospeda uma instância do `RFWAccessComponent` e troca
 etapas sem criar páginas paralelas. Deep links transportam somente intenção e prova opaca. Após autenticação concluída,
-o callback seguro do RFW navega ao Painel de Usuário. O botão Voltar do navegador não pode reenviar operações nem
-restaurar senha, token ou prova já consumida.
+o callback seguro do RFW navega para `/user`, rota global autenticada reservada ao Painel de Usuário. O botão Voltar
+do navegador não pode reenviar operações nem restaurar senha, token ou prova já consumida.
 
 Fluxo principal:
 

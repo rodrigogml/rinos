@@ -2,6 +2,8 @@ package br.com.rinos.app.ui.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,10 +22,17 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.Component;
@@ -49,10 +58,14 @@ import br.com.rinos.app.api.facade.RegistrationActivationFacade;
 import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
+import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
+import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
 import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
@@ -66,6 +79,7 @@ import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationRequire
 import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
 import br.eng.rodrigogml.rfw.authentication.google.RFWGoogleIdentityProvider;
 import br.eng.rodrigogml.rfw.authentication.service.RFWAccessCapabilityService;
+import br.eng.rodrigogml.rfw.authentication.service.RFWAuthenticationSessionService;
 import br.eng.rodrigogml.rfw.authentication.turnstile.RFWTurnstileVerificationService;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWActivationConsentChallengeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
@@ -124,6 +138,7 @@ class RFWPlatformIntegrationTest {
   void clearCurrentUi() {
     UI.setCurrent(null);
     VaadinSession.setCurrent(null);
+    RequestContextHolder.resetRequestAttributes();
   }
 
   /**
@@ -480,12 +495,19 @@ class RFWPlatformIntegrationTest {
             expiresAt)));
     RFWExternalIdentityResolverAdapter resolver = new RFWExternalIdentityResolverAdapter(
         resolutionFacade);
+    ExternalRegistrationFacade completionFacade = mock(ExternalRegistrationFacade.class);
+    RinosUserPrincipalVO principal = new RinosUserPrincipalVO(41L, "verified@example.com");
+    when(completionFacade.complete(any())).thenReturn(CompletableFuture.completedFuture(
+        ExternalRegistrationCompletionResultVO.authenticated(principal)));
     RFWExternalRegistrationProviderAdapter completionProvider =
-        new RFWExternalRegistrationProviderAdapter(mock(ExternalRegistrationFacade.class));
+        new RFWExternalRegistrationProviderAdapter(completionFacade);
+    RFWAuthenticationSessionService authenticationSessionService =
+        mock(RFWAuthenticationSessionService.class);
 
     contextRunner
         .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
         .withBean(RFWExternalRegistrationProviderAdapter.class, () -> completionProvider)
+        .withBean(RFWAuthenticationSessionService.class, () -> authenticationSessionService)
         .withPropertyValues(
             "rfw.authentication.google.enabled=true",
             "rfw.authentication.google.client-id=test-client")
@@ -556,6 +578,26 @@ class RFWPlatformIntegrationTest {
                   "Google Profile Name",
                   "https://profiles.example/avatar.png",
                   "opaque-google-continuation");
+
+          UI ui = mock(UI.class);
+          UI.setCurrent(ui);
+          RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+              new MockHttpServletRequest(),
+              new MockHttpServletResponse()));
+
+          component.submitExternalRegistration(new RFWExternalRegistrationRequestDTO(
+              "opaque-google-continuation",
+              List.of("21", "22")));
+
+          ArgumentCaptor<Authentication> authenticationCaptor =
+              ArgumentCaptor.forClass(Authentication.class);
+          InOrder authenticationOrder = inOrder(authenticationSessionService, ui);
+          authenticationOrder.verify(authenticationSessionService).completeAuthentication(
+              authenticationCaptor.capture(),
+              eq(false));
+          assertThat(authenticationCaptor.getValue().isAuthenticated()).isTrue();
+          assertThat(authenticationCaptor.getValue().getPrincipal()).isEqualTo(principal);
+          authenticationOrder.verify(ui).navigate(UserDashboardEntryView.class);
         });
   }
 

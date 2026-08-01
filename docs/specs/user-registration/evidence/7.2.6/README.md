@@ -7,10 +7,12 @@ não criam tenant, conta, plano, associação, grupo, papel, chave ou permissão
 comprovou que a autenticação produzida pela conclusão Google usa um principal mínimo
 e nenhuma autoridade implícita.
 
-O gate completo ainda não pode ser declarado concluído. A autenticação de sessões
-pertence a `user-authentication`, e o conteúdo e as operações do Painel pertencem a
-`user-dashboard`; essas features ainda não oferecem uma rota autenticada sobre a qual
-seja possível testar o acesso do próprio usuário e a negação de dados alheios.
+O gate completo ainda não pode ser declarado concluído. Desde 1 de agosto de 2026, a
+conclusão Google publica sua autenticação pelo RFW e alcança a rota protegida `/user`.
+Entretanto, a autenticação geral pertence a `user-authentication`, enquanto o conteúdo
+e as operações do Painel pertencem a `user-dashboard`; ainda não existem dados ou
+operações reais sobre os quais testar o acesso do próprio usuário e a negação de dados
+alheios.
 
 ## Fronteiras comprovadas
 
@@ -54,10 +56,10 @@ entity, credencial, vínculo externo, tenant ou concessões. O adapter da conclu
 Google cria um `UsernamePasswordAuthenticationToken` autenticado com lista vazia de
 autoridades.
 
-As únicas rotas atuais são `/login` e `/legal-document/**`, ambas públicas por
-necessidade do cadastro. A configuração de segurança mantém qualquer rota futura
-protegida por autenticação por padrão, mas a autorização específica de conta deverá
-ser acrescentada pelas features que introduzirem tais superfícies.
+As rotas públicas atuais são `/login` e `/legal-document/**`, necessárias ao cadastro.
+A rota `/user` exige autenticação, mas permanece intencionalmente sem conteúdo, dados
+ou operações até `user-dashboard`. A autorização específica de conta deverá ser
+acrescentada pelas features que introduzirem tais superfícies.
 
 ## Validação executada
 
@@ -86,8 +88,8 @@ para todas as condições abaixo:
 
 1. `user-authentication` criar e restaurar a sessão usando a identidade global sem
    papel, grupo, chave ou permissão implícita;
-2. `user-dashboard` oferecer a rota autenticada e consultar somente configurações da
-   identidade representada pela própria sessão;
+2. `user-dashboard` compor a rota autenticada `/user` e consultar somente
+   configurações da identidade representada pela própria sessão;
 3. acessos anônimos, de outro usuário e a qualquer tenant ou conta não concedida
    forem rejeitados em testes de integração;
 4. cadastro local e Google concluírem a navegação até o Painel sem criar registros de
@@ -95,7 +97,7 @@ para todas as condições abaixo:
 5. os cenários 1 e 17 do `quickstart.md` forem executados de ponta a ponta.
 
 > [!IMPORTANT]
-> Criar uma rota fictícia ou uma autoridade temporária apenas para fechar este gate
-> antecipadamente ampliaria o escopo de `user-registration` e produziria uma falsa
-> garantia de autorização. O bloqueio deve permanecer visível até que as superfícies
-> reais existam.
+> A reserva protegida de `/user` comprova somente o destino seguro da conclusão do
+> cadastro e não fecha este gate. Criar dados, operações ou autoridades temporárias
+> apenas para antecipar a validação produziria uma falsa garantia de autorização. O
+> bloqueio deve permanecer visível até que as superfícies reais existam.

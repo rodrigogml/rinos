@@ -7,11 +7,13 @@ import java.util.Objects;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Span;
 
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessCapabilityEnum;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
@@ -64,6 +66,7 @@ public class RinosAccessComponentFactory {
   public RFWAccessComponent create(String unavailableMessage) {
     Objects.requireNonNull(unavailableMessage, "unavailableMessage must not be null");
     RFWAccessComponentConfig.Builder config = RFWAccessComponentConfig.builder()
+        .onAuthenticated(ignored -> UI.getCurrent().navigate(UserDashboardEntryView.class))
         .fieldInstruction(
             RFWAccessStepEnum.REGISTRATION,
             "password",
