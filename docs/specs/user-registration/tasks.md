@@ -409,7 +409,8 @@ Ref: [Interface §INT-WEB-REG-003](./interface-spec.md), [Spec §FR-REG-043–05
   - Evidência: [adapter real, capability e componente Google no login](./evidence/6.3.1/README.md).
 - [x] 6.3.2 Compor `EXTERNAL_REGISTRATION` com e-mail verificado somente leitura
   - Evidência: [continuação tipada e e-mail verificado imutável](./evidence/6.3.2/README.md).
-- [ ] 6.3.3 Exibir documentos legais sem senha ou dados adicionais do perfil Google
+- [x] 6.3.3 Exibir documentos legais sem senha ou dados adicionais do perfil Google
+  - Evidência: [documentos legais e minimização da continuação Google](./evidence/6.3.3/README.md).
 - [ ] 6.3.4 Integrar continuação real, retorno autenticado e navegação ao Painel de Usuário
 - [ ] 6.3.5 Cobrir identidade existente, conflito, expiração, indisponibilidade e documento alterado
 - [ ] 6.3.6 Cobrir teclado, leitor de tela, telefone, desktop, localização e feedback

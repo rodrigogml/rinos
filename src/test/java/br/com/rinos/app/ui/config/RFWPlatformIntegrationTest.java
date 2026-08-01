@@ -34,6 +34,7 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
@@ -461,10 +462,10 @@ class RFWPlatformIntegrationTest {
   }
 
   /**
-   * Comprova que a continuação tipada pelo adapter real apresenta o e-mail verificado sem permitir edição.
+   * Comprova que a continuação tipada apresenta apenas e-mail verificado e documentos legais.
    */
   @Test
-  void externalRegistration_shouldRenderVerifiedEmailReadOnly_whenGoogleRequiresContinuation() {
+  void externalRegistration_shouldRenderMinimizedLegalContinuation_whenGoogleRequiresConsent() {
     GoogleIdentityResolutionFacade resolutionFacade = mock(GoogleIdentityResolutionFacade.class);
     Instant expiresAt = Instant.parse("2026-08-01T15:00:00Z");
     when(resolutionFacade.resolve(any())).thenReturn(CompletableFuture.completedFuture(
@@ -499,7 +500,10 @@ class RFWPlatformIntegrationTest {
                   "google-subject",
                   "verified@example.com",
                   true,
-                  Map.of("iss", "https://accounts.google.com")))
+                  Map.of(
+                      "iss", "https://accounts.google.com",
+                      "name", "Google Profile Name",
+                      "picture", "https://profiles.example/avatar.png")))
               .toCompletableFuture()
               .join();
 
@@ -510,7 +514,8 @@ class RFWPlatformIntegrationTest {
           LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
           when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
               legalReference("21", LegalDocumentTypeEnum.TERMS_OF_USE, true),
-              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+              legalReference("22", LegalDocumentTypeEnum.PRIVACY_POLICY, true),
+              legalReference("23", LegalDocumentTypeEnum.MARKETING, false)));
           RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
               context.getBean(RFWAccessComponentFactory.class),
               legalDocumentFacade);
@@ -528,6 +533,25 @@ class RFWPlatformIntegrationTest {
                 assertThat(email.getValue()).isEqualTo("verified@example.com");
                 assertThat(email.isReadOnly()).isTrue();
               });
+          assertThat(descendants(component, Checkbox.class))
+              .extracting(checkbox -> checkbox.getElement()
+                  .getAttribute("data-rfw-legal-document-id"))
+              .containsExactly("21", "22", "23");
+          assertThat(descendants(component, Anchor.class))
+              .extracting(Anchor::getHref)
+              .containsExactly(
+                  "/legal-document/21",
+                  "/legal-document/22",
+                  "/legal-document/23");
+          assertThat(descendants(component, PasswordField.class)).isEmpty();
+          assertThat(descendants(component, TextField.class)).isEmpty();
+          assertThat(component.getElement().getText())
+              .doesNotContain(
+                  "google-subject",
+                  "https://accounts.google.com",
+                  "Google Profile Name",
+                  "https://profiles.example/avatar.png",
+                  "opaque-google-continuation");
         });
   }
 
