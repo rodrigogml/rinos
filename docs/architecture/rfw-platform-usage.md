@@ -10,13 +10,15 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`6f953eee2310a0c9fd312cdecf0a2f560f07df36` da RFW Platform, publicada como
+`bb6328a99a38116d45d4fee417568e8ba911e322` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
 Essa revisão consolida o namespace público em `br.eng.rodrigogml.rfw.*`, o prefixo de configuração em `rfw.*`, os
 recursos web sob `/rfw/` e separa as auto-configurações por capacidade. Ela também mantém o showroom sincronizado com
-as coordenadas, as dependências `provided` e o procedimento de migração da RFW 2.0. O ponteiro não deve retroceder
+as coordenadas, as dependências `provided` e o procedimento de migração da RFW 2.0. Na continuação de cadastro
+externo, direciona o foco ao primeiro aceite obrigatório tanto na entrada quanto na validação local, usando a ação
+principal como fallback quando nenhum documento é obrigatório. O ponteiro não deve retroceder
 para uma revisão que reintroduza `rfw.platform.*`, `/rfw-platform/` ou uma auto-configuração agregadora legada, mesmo
 quando o artefato principal compile.
 

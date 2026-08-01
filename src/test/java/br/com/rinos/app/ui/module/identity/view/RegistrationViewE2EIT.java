@@ -245,11 +245,92 @@ class RegistrationViewE2EIT {
     }
   }
 
+  /**
+   * Exercita por teclado o foco inicial e a rejeição anunciada da continuação Google.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void externalRegistration_shouldExposeKeyboardFocusAndAnnouncedFeedback_onDesktop()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      openExternalRegistration(page);
+
+      Locator email = page.getByLabel("E-mail");
+      Locator terms = page.getByLabel("Aceito os Termos de Uso");
+      Locator privacy = page.getByLabel("Li e estou ciente da Política de Privacidade");
+      Locator submit = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Concluir cadastro").setExact(true));
+
+      assertThat(email).hasValue("verified@example.com");
+      assertThat(email).hasAttribute("readonly", "");
+      assertThat(terms).isFocused();
+      terms.press("Space");
+      privacy.press("Space");
+      assertThat(terms).isChecked();
+      assertThat(privacy).isChecked();
+      submit.press("Enter");
+
+      Locator feedback = page.getByRole(AriaRole.ALERT);
+      assertThat(feedback).containsText("Revise os campos indicados.");
+      assertThat(terms).hasAttribute("invalid", "");
+      assertThat(privacy).hasAttribute("invalid", "");
+      assertThat(terms).isFocused();
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("external-registration-feedback-desktop.png"))
+          .setFullPage(true));
+    }
+  }
+
+  /**
+   * Confirma reflow e textos localizados da continuação Google no viewport de telefone.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void externalRegistration_shouldReflowLocalizedContent_onPhone() throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions()
+            .setViewportSize(390, 844)
+            .setDeviceScaleFactor(1))) {
+      Page page = context.newPage();
+      openExternalRegistration(page);
+
+      assertThat(page.getByRole(AriaRole.HEADING,
+          new Page.GetByRoleOptions().setName("Conclua sua conta").setExact(true)))
+          .isVisible();
+      assertThat(page.getByText(
+          "Seu e-mail foi verificado pelo provedor externo",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertThat(page.getByLabel("E-mail")).isVisible();
+      assertThat(page.getByRole(AriaRole.LINK,
+          new Page.GetByRoleOptions().setName("Aceito os Termos de Uso").setExact(true)))
+          .isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Concluir cadastro").setExact(true)))
+          .isVisible();
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("external-registration-ready-phone.png"))
+          .setFullPage(true));
+    }
+  }
+
   private void openRegistration(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/login");
     page.getByRole(AriaRole.BUTTON,
         new Page.GetByRoleOptions().setName("Criar conta").setExact(true)).click();
     assertThat(page.locator("[data-rfw-access-step='registration']")).isVisible();
+  }
+
+  private void openExternalRegistration(Page page) {
+    page.navigate("http://127.0.0.1:" + port + "/test/external-registration");
+    assertThat(page.locator("[data-rfw-access-step='external_registration']")).isVisible();
   }
 
   private void assertNoHorizontalOverflow(Page page) {

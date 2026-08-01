@@ -33,8 +33,10 @@ import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory
 import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalRegistrationProvider;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessChallengeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 
 /**
@@ -162,6 +164,23 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
                   activationChallenge()));
         }
       };
+    }
+
+    /**
+     * Rejeita a fotografia jurídica simulando uma mudança concorrente para exercitar feedback e foco.
+     *
+     * @return provider determinístico da continuação externa
+     */
+    @Bean
+    RFWExternalRegistrationProvider externalRegistrationProvider() {
+      return request -> CompletableFuture.completedFuture(
+          RFWAuthenticationOutcomeVO.rejected(new RFWAccessErrorVO(
+              "registration.validation-rejected",
+              List.of(),
+              Map.of(
+                  "acceptedLegalDocumentIds",
+                  "registration.error.legal-documents"),
+              null)));
     }
 
     private static RFWAccessChallengeVO activationChallenge() {

@@ -80,7 +80,7 @@ issuer tipado, Turnstile condicional, cancelamento, erros por campo, continuaç�
 encaminhamento direto à recuperação e preservação seletiva de e-mail e aceites.
 
 O Rinos fixa para a implementação desta feature a revisão aprovada
-`6f953eee2310a0c9fd312cdecf0a2f560f07df36`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
+`bb6328a99a38116d45d4fee417568e8ba911e322`, publicada como `br.eng.rodrigogml.rfw:rfw:2.0.0`, que incorpora esse
 gate, consolida o antigo Kernel no artefato único e preserva a configuração pública do endpoint de
 verificação do Turnstile, a origem validada pela hospedeira, resultados públicos distintos da verificação humana e a
 atualização explícita de catálogos em `DataSource` distintos, validação obrigatória de `exp` e `iat` no Google e
@@ -101,6 +101,10 @@ Para `INT-WEB-REG-002`, essa baseline também define no renderer padrão o foco 
 `autocomplete="one-time-code"` sem restringir a prova opaca a números, apresenta a expiração pelo locale de formato
 e fuso da sessão, e acrescenta ao alerta o `retryAfter` arredondado para cima com singular ou plural localizado. O
 Rinos fornece o `Instant` real emitido pelo domínio; o RFW permanece responsável pela apresentação.
+
+Para `INT-WEB-REG-003`, a baseline direciona o foco inicial ao primeiro aceite obrigatório e usa a ação principal
+quando não houver documento obrigatório. Uma tentativa de conclusão incompleta marca os aceites ausentes e devolve o
+foco ao primeiro deles; rejeições remotas continuam submetidas à precedência geral do primeiro campo inválido.
 
 Na implementação de `INT-WEB-REG-001`, os estados `initial` e `ready` pertencem ao renderer
 `REGISTRATION`; `processing` usa o bloqueio e `aria-busy` do `RFWAccessComponent`; sucesso,
