@@ -10,9 +10,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import javax.sql.DataSource;
@@ -33,9 +36,11 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,20 +49,25 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.function.DeploymentConfiguration;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
+import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
+import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
+import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.backend.module.identity.entity.LegalDocumentVersionEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.PwnedPasswordStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.RegistrationMethodEnum;
@@ -65,8 +75,14 @@ import br.com.rinos.app.backend.module.identity.enums.RegistrationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationPurposeEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationStatusEnum;
+import br.com.rinos.app.backend.module.identity.facade.ExternalRegistrationFacadeImpl;
+import br.com.rinos.app.backend.module.identity.facade.GoogleIdentityResolutionFacadeImpl;
 import br.com.rinos.app.backend.module.identity.facade.LegalDocumentFacadeImpl;
+import br.com.rinos.app.backend.module.identity.facade.RegistrationActivationFacadeImpl;
+import br.com.rinos.app.backend.module.identity.facade.RegistrationCancellationFacadeImpl;
+import br.com.rinos.app.backend.module.identity.facade.RegistrationResendFacadeImpl;
 import br.com.rinos.app.backend.module.identity.facade.RegistrationStartFacadeImpl;
+import br.com.rinos.app.backend.module.identity.repository.ExternalIdentityRepository;
 import br.com.rinos.app.backend.module.identity.repository.IdentityEventRepository;
 import br.com.rinos.app.backend.module.identity.repository.LegalConsentRepository;
 import br.com.rinos.app.backend.module.identity.repository.LegalDocumentVersionRepository;
@@ -77,6 +93,10 @@ import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.repository.VerificationRepository;
 import br.com.rinos.app.backend.module.identity.service.CommonPasswordService;
 import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
+import br.com.rinos.app.backend.module.identity.service.EmailPrivacyService;
+import br.com.rinos.app.backend.module.identity.service.ExternalRegistrationCompletionService;
+import br.com.rinos.app.backend.module.identity.service.ExternalIdentityService;
+import br.com.rinos.app.backend.module.identity.service.GoogleIdentityResolutionService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.IdentityService;
 import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
@@ -89,7 +109,12 @@ import br.com.rinos.app.backend.module.identity.service.PasswordPreparationServi
 import br.com.rinos.app.backend.module.identity.service.PublicApplicationUriService;
 import br.com.rinos.app.backend.module.identity.service.PwnedPasswordsService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationCreationService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationActivationService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationCancellationService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationObservabilityService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationResendService;
+import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.VerificationEmailDispatchService;
 import br.com.rinos.app.backend.module.identity.service.VerificationService;
 import br.com.rinos.app.backend.module.identity.service.VerificationTokenService;
@@ -102,9 +127,19 @@ import br.com.rinos.app.config.VerificationPropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationConsentRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationConfirmationDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
 import br.eng.rodrigogml.rfw.authentication.google.config.RFWGoogleAuthenticationAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
+import br.eng.rodrigogml.rfw.authentication.service.RFWAuthenticationSessionService;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
 import br.eng.rodrigogml.rfw.executioncontext.config.RFWExecutionContextAutoConfiguration;
 import br.eng.rodrigogml.rfw.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
@@ -121,6 +156,8 @@ import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessEntryRequestVO;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessStepEnum;
+import br.eng.rodrigogml.rfw.ui.access.RFWLegalDocumentVO;
+import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessComponentConfig;
 import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessUIAutoConfiguration;
 import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
 import br.eng.rodrigogml.rfw.ui.theme.config.RFWThemeAutoConfiguration;
@@ -300,6 +337,484 @@ class RegistrationRoundtripIT {
     });
   }
 
+  /**
+   * Produz validação, indisponibilidade externa, e-mail existente e limitação usando a facade real.
+   */
+  @Test
+  void registrationStates_shouldBeRenderedFromRealFacadeDecisions() {
+    contextRunner().run(context -> {
+      assertThat(context).hasNotFailed();
+      List<LegalDocumentReferenceVO> documents = seedLegalDocuments(context, "states");
+      List<String> acceptedIds = documents.stream()
+          .map(LegalDocumentReferenceVO::reference)
+          .toList();
+
+      withAttachedComponent(context, component -> {
+        component.open(new RFWAccessEntryRequestVO(
+            RFWAccessStepEnum.REGISTRATION,
+            null,
+            null));
+        assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.REGISTRATION);
+
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "invalid@example.com",
+            "fraca",
+            acceptedIds,
+            null));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        assertThat(context.getBean(UserRepository.class).count()).isZero();
+
+        PwnedPasswordsService compromisedBoundary =
+            context.getBean(PwnedPasswordsService.class);
+        when(compromisedBoundary.check(any(char[].class)))
+            .thenReturn(PwnedPasswordStatusEnum.UNAVAILABLE);
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "hibp-unavailable@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        assertThat(context.getBean(UserRepository.class).count()).isZero();
+        when(compromisedBoundary.check(any(char[].class)))
+            .thenReturn(PwnedPasswordStatusEnum.SAFE);
+
+        TransactionTemplate transaction = transaction(context);
+        transaction.executeWithoutResult(status -> context.getBean(UserRepository.class)
+            .saveAndFlush(new UserEntity(
+                "existing@example.com",
+                "existing@example.com",
+                UserStatusEnum.ACTIVE)));
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "existing@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+
+        OriginLimitService origins = context.getBean(OriginLimitService.class);
+        OriginAddressService addresses = new OriginAddressService();
+        for (int attempt = 0; attempt < 20; attempt++) {
+          origins.reserveNewRegistration(
+              addresses.normalize("203.0.113.10"),
+              br.com.rinos.app.backend.module.identity.enums.OriginOperationEnum
+                  .USER_REGISTRATION);
+        }
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "rate-limited@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.RATE_LIMITED);
+        assertThat(context.getBean(UserRepository.class)
+            .findByNormalizedEmail("rate-limited@example.com")).isEmpty();
+      });
+    });
+  }
+
+  /**
+   * Usa provas realmente persistidas para rejeição, reenvio e ativação idempotente na UI.
+   */
+  @Test
+  void activationStates_shouldUsePersistedProofsAndLifecycle() {
+    contextRunner().run(context -> {
+      assertThat(context).hasNotFailed();
+      List<String> acceptedIds = seedLegalDocuments(context, "activation").stream()
+          .map(LegalDocumentReferenceVO::reference)
+          .toList();
+      CapturingEmailDispatchService email =
+          context.getBean(CapturingEmailDispatchService.class);
+
+      withAttachedComponent(context, component -> {
+        component.open(new RFWAccessEntryRequestVO(
+            RFWAccessStepEnum.REGISTRATION,
+            null,
+            null));
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "activation-states@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+        String originalProof = email.lastManualCode();
+        assertThat(originalProof).isNotBlank().isNotEqualTo("null");
+
+        component.submitActivation(new RFWActivationRequestDTO(
+            "activation-states@example.com",
+            "invalid-proof"));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
+            .isEqualTo(UserStatusEnum.PENDING_VERIFICATION);
+
+        component.resendActivation("activation-states@example.com");
+        String reissuedProof = email.lastManualCode();
+        assertThat(reissuedProof).isNotBlank().isNotEqualTo(originalProof);
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.ACTIVATION_REQUIRED);
+        assertThat(context.getBean(VerificationRepository.class).findAll())
+            .extracting(verification -> verification.getStatus())
+            .containsExactlyInAnyOrder(
+                VerificationStatusEnum.INVALIDATED,
+                VerificationStatusEnum.OPEN);
+
+        component.submitActivation(new RFWActivationRequestDTO(
+            "activation-states@example.com",
+            reissuedProof));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.COMPLETED);
+        assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.RESULT);
+      });
+
+      assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
+          .isEqualTo(UserStatusEnum.ACTIVE);
+      assertThat(context.getBean(RegistrationRepository.class).findAll().getFirst().getStatus())
+          .isEqualTo(RegistrationStatusEnum.ACTIVE);
+      assertThat(context.getBean(VerificationRepository.class).findAll())
+          .extracting(verification -> verification.getStatus())
+          .containsOnly(VerificationStatusEnum.USED, VerificationStatusEnum.INVALIDATED);
+    });
+  }
+
+  /**
+   * Produz a continuação legal a partir de versões substituídas depois da criação da pendência.
+   */
+  @Test
+  void activationPartialStale_shouldRenderAndCompleteWithCurrentDocuments() {
+    contextRunner().run(context -> {
+      assertThat(context).hasNotFailed();
+      List<String> acceptedIds = seedLegalDocuments(context, "old").stream()
+          .map(LegalDocumentReferenceVO::reference)
+          .toList();
+      CapturingEmailDispatchService email =
+          context.getBean(CapturingEmailDispatchService.class);
+
+      withAttachedComponent(context, component -> {
+        component.open(new RFWAccessEntryRequestVO(
+            RFWAccessStepEnum.REGISTRATION,
+            null,
+            null));
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "legal-stale@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+        String proof = email.lastManualCode();
+
+        Instant changedAt = Instant.now().minusMillis(1);
+        new JdbcTemplate(dataSource).update(
+            "UPDATE identity_legalDocumentVersion SET retiredAt = ? WHERE retiredAt IS NULL",
+            java.sql.Timestamp.from(changedAt));
+        LegalDocumentIntegrityService integrity =
+            context.getBean(LegalDocumentIntegrityService.class);
+        TransactionTemplate transaction = transaction(context);
+        transaction.executeWithoutResult(status -> {
+          LegalDocumentVersionRepository repository =
+              context.getBean(LegalDocumentVersionRepository.class);
+          repository.save(new LegalDocumentVersionEntity(
+              LegalDocumentTypeEnum.TERMS_OF_USE,
+              "terms-current",
+              true,
+              "Termos atuais",
+              integrity.hash("Termos atuais"),
+              changedAt,
+              null));
+          repository.save(new LegalDocumentVersionEntity(
+              LegalDocumentTypeEnum.PRIVACY_POLICY,
+              "privacy-current",
+              true,
+              "Privacidade atual",
+              integrity.hash("Privacidade atual"),
+              changedAt,
+              null));
+        });
+
+        component.submitActivation(new RFWActivationRequestDTO(
+            "legal-stale@example.com",
+            proof));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.ACTIVATION_CONSENT_REQUIRED);
+        assertThat(component.getCurrentStep())
+            .isEqualTo(RFWAccessStepEnum.ACTIVATION_CONSENT);
+        assertThat(component.getCurrentActivationConsent().legalDocumentIds())
+            .hasSize(2)
+            .doesNotContainAnyElementsOf(acceptedIds);
+        assertThat(component.getLegalDocuments())
+            .extracting(RFWLegalDocumentVO::id)
+            .containsExactlyInAnyOrderElementsOf(
+                component.getCurrentActivationConsent().legalDocumentIds());
+
+        component.submitActivationConsent(new RFWActivationConsentRequestDTO(
+            component.getCurrentActivationConsent().activationReference(),
+            component.getCurrentActivationConsent().legalDocumentIds().stream().toList()));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.COMPLETED);
+      });
+
+      assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
+          .isEqualTo(UserStatusEnum.ACTIVE);
+      assertThat(context.getBean(LegalConsentRepository.class).count()).isEqualTo(4);
+    });
+  }
+
+  /**
+   * Converte uma identidade Google já validada em continuação visual e ativação persistida.
+   *
+   * <p>A validação criptográfica do provedor permanece fora do teste. Da identidade mínima
+   * validada em diante, adapter, facade, serviços, prova, aceites e MySQL são reais.
+   */
+  @Test
+  void googleStates_shouldRenderAndCompleteFromPersistedContinuation() {
+    contextRunner().run(context -> {
+      assertThat(context).hasNotFailed();
+      List<String> acceptedIds = seedLegalDocuments(context, "google-states").stream()
+          .map(LegalDocumentReferenceVO::reference)
+          .toList();
+
+      RFWAuthenticationOutcomeVO resolution = context
+          .getBean(RFWExternalIdentityResolver.class)
+          .resolve(new RFWVerifiedExternalIdentityVO(
+              "google",
+              "google-roundtrip-subject",
+              "google-roundtrip@example.com",
+              true,
+              Map.of("iss", "https://accounts.google.com")))
+          .toCompletableFuture()
+          .join();
+
+      assertThat(resolution.status())
+          .isEqualTo(RFWAccessStatusEnum.EXTERNAL_REGISTRATION_REQUIRED);
+      assertThat(context.getBean(UserRepository.class).findAll())
+          .singleElement()
+          .satisfies(user -> assertThat(user.getStatus())
+              .isEqualTo(UserStatusEnum.PENDING_VERIFICATION));
+
+      withAttachedExternalRegistrationComponent(context, component -> {
+        component.openExternalRegistration(resolution.externalRegistration());
+        assertThat(component.getCurrentStep())
+            .isEqualTo(RFWAccessStepEnum.EXTERNAL_REGISTRATION);
+
+        component.submitExternalRegistration(new RFWExternalRegistrationRequestDTO(
+            resolution.externalRegistration().registrationReference(),
+            List.of()));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
+            .isEqualTo(UserStatusEnum.PENDING_VERIFICATION);
+
+        Instant changedAt = Instant.now().minusMillis(1);
+        new JdbcTemplate(dataSource).update(
+            "UPDATE identity_legalDocumentVersion SET retiredAt = ? WHERE retiredAt IS NULL",
+            java.sql.Timestamp.from(changedAt));
+        LegalDocumentIntegrityService integrity =
+            context.getBean(LegalDocumentIntegrityService.class);
+        transaction(context).executeWithoutResult(status -> {
+          LegalDocumentVersionRepository repository =
+              context.getBean(LegalDocumentVersionRepository.class);
+          repository.save(new LegalDocumentVersionEntity(
+              LegalDocumentTypeEnum.TERMS_OF_USE,
+              "terms-google-current",
+              true,
+              "Termos Google atuais",
+              integrity.hash("Termos Google atuais"),
+              changedAt,
+              null));
+          repository.save(new LegalDocumentVersionEntity(
+              LegalDocumentTypeEnum.PRIVACY_POLICY,
+              "privacy-google-current",
+              true,
+              "Privacidade Google atual",
+              integrity.hash("Privacidade Google atual"),
+              changedAt,
+              null));
+        });
+
+        component.submitExternalRegistration(new RFWExternalRegistrationRequestDTO(
+            resolution.externalRegistration().registrationReference(),
+            acceptedIds));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        List<String> currentIds = component.getLegalDocuments().stream()
+            .map(RFWLegalDocumentVO::id)
+            .toList();
+        assertThat(currentIds).hasSize(2).doesNotContainAnyElementsOf(acceptedIds);
+
+        component.submitExternalRegistration(new RFWExternalRegistrationRequestDTO(
+            resolution.externalRegistration().registrationReference(),
+            currentIds));
+        assertThat(component.getCurrentOutcome()).isNull();
+      });
+
+      assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
+          .isEqualTo(UserStatusEnum.ACTIVE);
+      assertThat(context.getBean(RegistrationRepository.class).findAll().getFirst().getStatus())
+          .isEqualTo(RegistrationStatusEnum.ACTIVE);
+      assertThat(context.getBean(ExternalIdentityRepository.class).findAll())
+          .singleElement()
+          .satisfies(identity -> assertThat(identity.getStatus())
+              .isEqualTo(ExternalIdentityStatusEnum.ACTIVE));
+      assertThat(context.getBean(LocalCredentialRepository.class).count()).isZero();
+      assertThat(context.getBean(LegalConsentRepository.class).count()).isEqualTo(2);
+      assertThat(context.getBean(VerificationRepository.class).findAll())
+          .singleElement()
+          .satisfies(verification -> {
+            assertThat(verification.getPurpose())
+                .isEqualTo(VerificationPurposeEnum.EXTERNAL_REGISTRATION);
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatusEnum.USED);
+          });
+    });
+  }
+
+  /**
+   * Produz solicitação neutra, rejeição e remoção final usando a prova real enviada pós-commit.
+   */
+  @Test
+  void cancellationStates_shouldUsePersistedProofAndRemovePendingRoot() {
+    contextRunner().run(context -> {
+      assertThat(context).hasNotFailed();
+      List<String> acceptedIds = seedLegalDocuments(context, "cancellation").stream()
+          .map(LegalDocumentReferenceVO::reference)
+          .toList();
+      CapturingEmailDispatchService email =
+          context.getBean(CapturingEmailDispatchService.class);
+
+      withAttachedComponent(context, component -> {
+        component.open(new RFWAccessEntryRequestVO(
+            RFWAccessStepEnum.REGISTRATION,
+            null,
+            null));
+        component.submitRegistration(new RFWRegistrationRequestDTO(
+            "cancel-states@example.com",
+            "R0undtrip!Safe",
+            acceptedIds,
+            null));
+
+        component.open(new RFWAccessEntryRequestVO(
+            RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+            "cancel-states@example.com",
+            null));
+        component.requestRegistrationCancellation(
+            new RFWRegistrationCancellationRequestDTO(
+                "cancel-states@example.com",
+                null));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REGISTRATION_CANCELLATION_REQUIRED);
+        assertThat(component.getCurrentStep())
+            .isEqualTo(RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION);
+        String cancellationProof = UriComponentsBuilder
+            .fromUriString(email.lastConfirmationUrl())
+            .build()
+            .getQueryParams()
+            .getFirst("token");
+        assertThat(cancellationProof).isNotBlank();
+
+        component.confirmRegistrationCancellation(
+            new RFWRegistrationCancellationConfirmationDTO(
+                "cancel-states@example.com",
+                "invalid-proof"));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.REJECTED);
+        assertThat(context.getBean(UserRepository.class).count()).isOne();
+
+        component.confirmRegistrationCancellation(
+            new RFWRegistrationCancellationConfirmationDTO(
+                "cancel-states@example.com",
+                cancellationProof));
+        assertThat(component.getCurrentOutcome().status())
+            .isEqualTo(RFWAccessStatusEnum.COMPLETED);
+        assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.RESULT);
+      });
+
+      assertThat(context.getBean(UserRepository.class).count()).isZero();
+      assertThat(context.getBean(RegistrationRepository.class).count()).isZero();
+      assertThat(context.getBean(IdentityEventRepository.class).findAll())
+          .singleElement()
+          .extracting(event -> event.getEventType())
+          .isEqualTo(IdentityEventTypeEnum.REGISTRATION_CANCELLED);
+    });
+  }
+
+  private static TransactionTemplate transaction(ApplicationContext context) {
+    return new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+  }
+
+  private static List<LegalDocumentReferenceVO> seedLegalDocuments(
+      ApplicationContext context,
+      String suffix) {
+    LegalDocumentVersionRepository documentRepository =
+        context.getBean(LegalDocumentVersionRepository.class);
+    LegalDocumentIntegrityService integrityService =
+        context.getBean(LegalDocumentIntegrityService.class);
+    transaction(context).executeWithoutResult(status -> {
+      documentRepository.save(legalDocument(
+          LegalDocumentTypeEnum.TERMS_OF_USE,
+          "terms-" + suffix,
+          "Termos " + suffix,
+          integrityService));
+      documentRepository.save(legalDocument(
+          LegalDocumentTypeEnum.PRIVACY_POLICY,
+          "privacy-" + suffix,
+          "Privacidade " + suffix,
+          integrityService));
+    });
+    return context.getBean(LegalDocumentFacade.class).findCurrentDocuments();
+  }
+
+  private static void withAttachedComponent(
+      ApplicationContext context,
+      Consumer<RFWAccessComponent> assertion) {
+    RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+        context.getBean(RFWAccessComponentFactory.class),
+        context.getBean(LegalDocumentFacade.class));
+    withAttachedComponent(
+        () -> hostFactory.create("indisponível"),
+        assertion);
+  }
+
+  private static void withAttachedExternalRegistrationComponent(
+      ApplicationContext context,
+      Consumer<RFWAccessComponent> assertion) {
+    RFWAccessComponentConfig config = RFWAccessComponentConfig.builder()
+        .legalDocumentsProvider(() -> context.getBean(LegalDocumentFacade.class)
+            .findCurrentDocuments().stream()
+            .map(document -> new RFWLegalDocumentVO(
+                document.reference(),
+                "legal." + document.documentType().name(),
+                "/legal-document/" + document.reference(),
+                document.required()))
+            .toList())
+        .build();
+    withAttachedComponent(
+        () -> context.getBean(RFWAccessComponentFactory.class).create(config),
+        assertion);
+  }
+
+  private static void withAttachedComponent(
+      Supplier<RFWAccessComponent> componentSupplier,
+      Consumer<RFWAccessComponent> assertion) {
+    VaadinService vaadinService = mock(VaadinService.class);
+    when(vaadinService.getDeploymentConfiguration())
+        .thenReturn(mock(DeploymentConfiguration.class));
+    TestVaadinSession session = new TestVaadinSession(vaadinService);
+    VaadinSession.setCurrent(session);
+    session.lock();
+    try {
+      UI ui = new UI();
+      ui.getInternals().setSession(session);
+      UI.setCurrent(ui);
+      RFWAccessComponent component = componentSupplier.get();
+      ui.add(component);
+      RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+          new MockHttpServletRequest(),
+          new MockHttpServletResponse()));
+      assertion.accept(component);
+    } finally {
+      session.unlock();
+    }
+  }
+
   private ApplicationContextRunner contextRunner() {
     return new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(
@@ -331,7 +846,9 @@ class RegistrationRoundtripIT {
             "rfw.ui.theme.project-key=rinos",
             "rfw.ui.access.project-key=rinos",
             "rfw.ui.access.remember-me-enabled=false",
-            "rfw.authentication.google.enabled=false",
+            "rfw.authentication.google.enabled=true",
+            "rfw.authentication.google.client-id=roundtrip-client",
+            "rfw.authentication.google.issuer=https://accounts.google.com",
             "rfw.authentication.turnstile.enabled=false")
         .withBean(DataSource.class, () -> dataSource);
   }
@@ -356,6 +873,11 @@ class RegistrationRoundtripIT {
   @EntityScan(basePackageClasses = UserEntity.class)
   @EnableJpaRepositories(basePackageClasses = UserRepository.class)
   static class RoundtripConfig {
+
+    @Bean
+    RFWAuthenticationSessionService authenticationSessionService() {
+      return mock(RFWAuthenticationSessionService.class);
+    }
 
     @Bean
     EmailNormalizationService emailNormalizationService() {
@@ -435,6 +957,63 @@ class RegistrationRoundtripIT {
     }
 
     @Bean
+    ExternalIdentityService externalIdentityService(ExternalIdentityRepository identities) {
+      return new ExternalIdentityService(identities);
+    }
+
+    @Bean
+    GoogleIdentityResolutionService googleIdentityResolutionService(
+        IdentityService identities,
+        EmailNormalizationService normalization,
+        ExternalIdentityService externalIdentities,
+        RegistrationRepository registrations,
+        VerificationService verifications,
+        IdentityAuditService audit,
+        RegistrationPropertiesConfig properties) {
+      return new GoogleIdentityResolutionService(
+          identities,
+          normalization,
+          externalIdentities,
+          registrations,
+          verifications,
+          audit,
+          properties);
+    }
+
+    @Bean
+    ExternalRegistrationCompletionService externalRegistrationCompletionService(
+        VerificationService verifications,
+        LegalConsentService consents,
+        LocalCredentialService credentials,
+        ExternalIdentityService externalIdentities,
+        IdentityAuditService audit) {
+      return new ExternalRegistrationCompletionService(
+          verifications,
+          consents,
+          credentials,
+          externalIdentities,
+          new UserLifecycleService(),
+          new RegistrationLifecycleService(),
+          audit);
+    }
+
+    @Bean
+    RegistrationActivationService registrationActivationService(
+        VerificationService verifications,
+        LegalConsentService consents,
+        ExternalIdentityService externalIdentities,
+        IdentityAuditService audit) {
+      return new RegistrationActivationService(
+          verifications,
+          consents,
+          new UserLifecycleService(),
+          new RegistrationLifecycleService(),
+          externalIdentities,
+          audit,
+          new EmailPrivacyService());
+    }
+
+    @Bean
     OriginLimitService originLimitService(OriginWindowRepository origins) {
       return new OriginLimitService(
           origins,
@@ -503,6 +1082,50 @@ class RegistrationRoundtripIT {
     }
 
     @Bean
+    RegistrationResendService registrationResendService(
+        RegistrationRepository registrations,
+        IdentityEventRepository events,
+        VerificationService verifications,
+        IdentityAuditService audit,
+        PublicApplicationUriService uriService,
+        VerificationEmailDispatchService dispatch,
+        RegistrationPropertiesConfig properties) {
+      return new RegistrationResendService(
+          registrations,
+          events,
+          verifications,
+          audit,
+          uriService,
+          dispatch,
+          properties);
+    }
+
+    @Bean
+    RegistrationCancellationService registrationCancellationService(
+        RegistrationRepository registrations,
+        IdentityEventRepository events,
+        UserRepository users,
+        VerificationService verifications,
+        EmailNormalizationService normalization,
+        IdentityAuditService audit,
+        PublicApplicationUriService uriService,
+        VerificationEmailDispatchService dispatch,
+        RegistrationPropertiesConfig properties) {
+      return new RegistrationCancellationService(
+          registrations,
+          events,
+          users,
+          verifications,
+          normalization,
+          new RegistrationLifecycleService(),
+          new UserLifecycleService(),
+          audit,
+          uriService,
+          dispatch,
+          properties);
+    }
+
+    @Bean
     RegistrationObservabilityService registrationObservabilityService(
         MeterRegistry meterRegistry) {
       return new RegistrationObservabilityService(meterRegistry);
@@ -527,13 +1150,43 @@ class RegistrationRoundtripIT {
     }
 
     @Bean
-    RegistrationResendFacade registrationResendFacade() {
-      return mock(RegistrationResendFacade.class);
+    RegistrationResendFacade registrationResendFacade(
+        IdentityService identities,
+        RegistrationResendService resend,
+        RegistrationObservabilityService observability) {
+      return new RegistrationResendFacadeImpl(identities, resend, observability);
     }
 
     @Bean
-    RegistrationActivationFacade registrationActivationFacade() {
-      return mock(RegistrationActivationFacade.class);
+    RegistrationActivationFacade registrationActivationFacade(
+        RegistrationActivationService activation,
+        RegistrationObservabilityService observability) {
+      return new RegistrationActivationFacadeImpl(activation, observability);
+    }
+
+    @Bean
+    RegistrationCancellationFacade registrationCancellationFacade(
+        IdentityService identities,
+        RegistrationCancellationService cancellation,
+        RegistrationObservabilityService observability) {
+      return new RegistrationCancellationFacadeImpl(
+          identities,
+          cancellation,
+          new VerificationPropertiesConfig(Duration.ofHours(24)),
+          observability);
+    }
+
+    @Bean
+    GoogleIdentityResolutionFacade googleIdentityResolutionFacade(
+        GoogleIdentityResolutionService resolution,
+        RFWAuthenticationPropertiesConfig authenticationProperties) {
+      return new GoogleIdentityResolutionFacadeImpl(resolution, authenticationProperties);
+    }
+
+    @Bean
+    ExternalRegistrationFacade externalRegistrationFacade(
+        ExternalRegistrationCompletionService completion) {
+      return new ExternalRegistrationFacadeImpl(completion);
     }
 
     @Bean
@@ -553,12 +1206,38 @@ class RegistrationRoundtripIT {
           activation,
           remoteAddressProvider);
     }
+
+    @Bean
+    RFWActivationConsentProviderAdapter activationConsentProvider(
+        RegistrationActivationFacade activation) {
+      return new RFWActivationConsentProviderAdapter(activation);
+    }
+
+    @Bean
+    RFWRegistrationCancellationProviderAdapter registrationCancellationProvider(
+        RegistrationCancellationFacade cancellation) {
+      return new RFWRegistrationCancellationProviderAdapter(cancellation);
+    }
+
+    @Bean
+    RFWExternalIdentityResolverAdapter externalIdentityResolver(
+        GoogleIdentityResolutionFacade resolution) {
+      return new RFWExternalIdentityResolverAdapter(resolution);
+    }
+
+    @Bean
+    RFWExternalRegistrationProviderAdapter externalRegistrationProvider(
+        ExternalRegistrationFacade completion) {
+      return new RFWExternalRegistrationProviderAdapter(completion);
+    }
   }
 
   /** Simula somente o transporte SMTP e preserva a mensagem final para a asserção. */
   static final class CapturingEmailDispatchService extends EmailDispatchService {
 
     private final AtomicReference<EmailMessage> lastMessage = new AtomicReference<>();
+    private final AtomicReference<String> lastConfirmationUrl = new AtomicReference<>();
+    private final AtomicReference<String> lastManualCode = new AtomicReference<>();
 
     CapturingEmailDispatchService() {
       super(
@@ -577,6 +1256,8 @@ class RegistrationRoundtripIT {
         List<String> bccAddresses,
         String replyToAddress,
         Object... params) {
+      lastConfirmationUrl.set(params.length > 0 ? String.valueOf(params[0]) : null);
+      lastManualCode.set(params.length > 2 ? String.valueOf(params[2]) : null);
       return EmailMessage.builder()
           .subject(templateName)
           .body(String.valueOf(params[0]), false)
@@ -590,6 +1271,14 @@ class RegistrationRoundtripIT {
 
     EmailMessage lastMessage() {
       return lastMessage.get();
+    }
+
+    String lastConfirmationUrl() {
+      return lastConfirmationUrl.get();
+    }
+
+    String lastManualCode() {
+      return lastManualCode.get();
     }
   }
 

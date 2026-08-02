@@ -87,17 +87,20 @@ public class RinosAccessComponentFactory {
   }
 
   private boolean configureLegalDocuments(RFWAccessComponentConfig.Builder config) {
+    List<RFWLegalDocumentVO> documents = findCurrentLegalDocuments();
+    config.legalDocumentsProvider(this::findCurrentLegalDocuments);
+    return hasRequiredBaseline(documents);
+  }
+
+  private List<RFWLegalDocumentVO> findCurrentLegalDocuments() {
     try {
-      List<RFWLegalDocumentVO> documents = legalDocumentFacade.findCurrentDocuments().stream()
+      return legalDocumentFacade.findCurrentDocuments().stream()
           .sorted(Comparator.comparingInt(
               document -> presentationOrder(document.documentType())))
           .map(RinosAccessComponentFactory::toRfwDocument)
           .toList();
-      config.legalDocuments(documents);
-      return hasRequiredBaseline(documents);
     } catch (RuntimeException unavailableCatalog) {
-      config.legalDocuments(List.of());
-      return false;
+      return List.of();
     }
   }
 

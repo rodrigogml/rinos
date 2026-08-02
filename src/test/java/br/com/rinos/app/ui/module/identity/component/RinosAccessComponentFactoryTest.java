@@ -95,6 +95,29 @@ class RinosAccessComponentFactoryTest {
   }
 
   /**
+   * Reconsulta o catálogo para que uma versão publicada durante a sessão substitua a anterior.
+   */
+  @Test
+  void create_shouldRefreshLegalDocuments_whenCatalogChangesAfterComposition() {
+    when(legalDocumentFacade.findCurrentDocuments()).thenReturn(
+        List.of(
+            reference("terms-v1", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+            reference("privacy-v1", LegalDocumentTypeEnum.PRIVACY_POLICY, true)),
+        List.of(
+            reference("terms-v2", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+            reference("privacy-v2", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
+
+    factory.create("indisponível");
+
+    ArgumentCaptor<RFWAccessComponentConfig> configCaptor =
+        ArgumentCaptor.forClass(RFWAccessComponentConfig.class);
+    verify(rfwFactory).create(configCaptor.capture());
+    assertThat(configCaptor.getValue().getLegalDocuments())
+        .extracting(document -> document.id())
+        .containsExactly("terms-v2", "privacy-v2");
+  }
+
+  /**
    * A falta de qualquer documento-base obrigatório fecha somente a capacidade de cadastro.
    */
   @Test

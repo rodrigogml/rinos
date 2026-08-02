@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A feature `user-registration` usa a revisão
-`7d47fe735d181acde035c6aa22c8e1dd6c0c7c17` da RFW Platform, publicada como
+`7dbf0471c4ee003bee471841c8b4e832bfa6954b` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -21,6 +21,11 @@ externo, direciona o foco ao primeiro aceite obrigatório tanto na entrada quant
 principal como fallback quando nenhum documento é obrigatório. O ponteiro não deve retroceder
 para uma revisão que reintroduza `rfw.platform.*`, `/rfw-platform/` ou uma auto-configuração agregadora legada, mesmo
 quando o artefato principal compile.
+
+O catálogo legal do acesso usa `RFWAccessComponentConfig.legalDocumentsProvider(...)`, e não uma fotografia fixa.
+O RFW reconsulta esse provider ao renderizar etapas legais, permitindo que uma versão publicada durante a sessão
+substitua a anterior antes do aceite. O Rinos fornece somente os VOs públicos vigentes pela facade e fecha a
+capacidade de cadastro quando o catálogo não puder ser consultado.
 
 Na solicitação de cancelamento de cadastro pendente, essa revisão também torna explícito, antes da ação, que solicitar
 instruções ainda não cancela o cadastro. A confirmação subsequente usa redação condicional e neutra, sem revelar se a
