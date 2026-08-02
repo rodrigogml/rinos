@@ -228,7 +228,7 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
         public CompletionStage<RFWAuthenticationOutcomeVO> confirmCancellation(
             RFWRegistrationCancellationConfirmationDTO request) {
           return CompletableFuture.completedFuture(
-              RFWAuthenticationOutcomeVO.completed("registration.cancellation-completed"));
+              RFWAuthenticationOutcomeVO.completed("registration.cancellation.completed"));
         }
       };
     }

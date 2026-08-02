@@ -455,7 +455,8 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
   - Evidência: [próximas jornadas condicionadas ao resultado terminal](./evidence/6.5.5/README.md).
 - [x] 6.5.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
   - Evidência: [contrato acessível, adaptativo e localizado](./evidence/6.5.6/README.md).
-- [ ] 6.5.7 Criar testes de componente, E2E destrutivo e inspeção visual registrada
+- [x] 6.5.7 Criar testes de componente, E2E destrutivo e inspeção visual registrada
+  - Evidência: [componente, E2E, MySQL destrutivo e inspeção visual](./evidence/6.5.7/README.md).
 
 ---
 

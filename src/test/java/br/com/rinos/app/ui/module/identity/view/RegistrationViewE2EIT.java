@@ -337,6 +337,106 @@ class RegistrationViewE2EIT {
   }
 
   /**
+   * Confirma pelo deep link a operação destrutiva simulada e registra entrada e resultado em desktop.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void cancellationConfirmation_shouldConsumeDeepLinkAndReachTerminalResult_onDesktop()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port
+          + "/cancel-registration?token=opaque-cancel-proof");
+      assertRfwStylesLoaded(page);
+
+      Locator proof = page.getByRole(AriaRole.TEXTBOX,
+          new Page.GetByRoleOptions().setName("Código de cancelamento").setExact(true));
+      Locator submit = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Confirmar cancelamento").setExact(true));
+      assertThat(page.locator(
+          "[data-rfw-access-step='registration_cancellation_confirmation']"))
+          .isVisible();
+      assertThat(page.getByText(
+          "Um código válido confirma a exclusão definitiva",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertThat(proof).hasValue("opaque-cancel-proof");
+      assertThat(proof).hasAttribute("autocomplete", "one-time-code");
+      assertThat(proof).isFocused();
+      org.assertj.core.api.Assertions.assertThat(page.url())
+          .isEqualTo("http://127.0.0.1:" + port + "/cancel-registration");
+      page.getByLabel("E-mail ou usuário").fill("pessoa@example.com");
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-confirmation-ready-desktop.png"))
+          .setFullPage(true));
+
+      submit.click();
+
+      assertThat(page.locator("[data-rfw-access-step='result']")).isVisible();
+      assertThat(page.getByText(
+          "O cadastro pendente foi cancelado e o e-mail está liberado para um novo cadastro.",
+          new Page.GetByTextOptions().setExact(true))).isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Criar conta").setExact(true))).isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Voltar para entrar").setExact(true))).isVisible();
+      org.assertj.core.api.Assertions.assertThat(page.content())
+          .doesNotContain("opaque-cancel-proof");
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-confirmation-result-desktop.png"))
+          .setFullPage(true));
+    }
+  }
+
+  /**
+   * Confirma reflow e acionamento touch da confirmação destrutiva em telefone.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void cancellationConfirmation_shouldSupportTouchAndTerminalActions_onPhone()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions()
+            .setViewportSize(390, 844)
+            .setDeviceScaleFactor(1)
+            .setHasTouch(true))) {
+      Page page = context.newPage();
+      page.navigate("http://127.0.0.1:" + port + "/cancel-registration");
+      assertRfwStylesLoaded(page);
+
+      page.getByLabel("E-mail ou usuário").fill("pessoa@example.com");
+      page.getByLabel("Código de cancelamento").fill("manual-cancel-proof");
+      Locator submit = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Confirmar cancelamento").setExact(true));
+      assertNoHorizontalOverflow(page);
+      BoundingBox target = submit.boundingBox();
+      org.assertj.core.api.Assertions.assertThat(target).isNotNull();
+      org.assertj.core.api.Assertions.assertThat(target.width).isGreaterThanOrEqualTo(24);
+      org.assertj.core.api.Assertions.assertThat(target.height).isGreaterThanOrEqualTo(24);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-confirmation-ready-phone.png"))
+          .setFullPage(true));
+
+      page.touchscreen().tap(target.x + target.width / 2, target.y + target.height / 2);
+
+      assertThat(page.locator("[data-rfw-access-step='result']")).isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Criar conta").setExact(true))).isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Voltar para entrar").setExact(true))).isVisible();
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-confirmation-result-phone.png"))
+          .setFullPage(true));
+    }
+  }
+
+  /**
    * Exercita por teclado o foco inicial e a rejeição anunciada da continuação Google.
    *
    * @throws Exception quando a pasta de evidências temporárias não puder ser criada
