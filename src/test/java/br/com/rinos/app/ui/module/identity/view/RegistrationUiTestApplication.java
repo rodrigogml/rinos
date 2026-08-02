@@ -41,10 +41,13 @@ import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesCo
 import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalIdentityRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationConfirmationDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationCancellationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityProvider;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationCancellationProvider;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessChallengeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
@@ -198,6 +201,39 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
     }
 
     /**
+     * Expõe o fluxo de cancelamento com rejeição por campo e continuação determinísticas.
+     *
+     * @return provider controlado para a jornada acessível em navegador
+     */
+    @Bean
+    RFWRegistrationCancellationProvider registrationCancellationProvider() {
+      return new RFWRegistrationCancellationProvider() {
+        @Override
+        public CompletionStage<RFWAuthenticationOutcomeVO> requestCancellation(
+            RFWRegistrationCancellationRequestDTO request) {
+          if (request.identifier() == null || request.identifier().isBlank()) {
+            return CompletableFuture.completedFuture(RFWAuthenticationOutcomeVO.rejected(
+                new RFWAccessErrorVO(
+                    "registration.validation-rejected",
+                    List.of(),
+                    Map.of("identifier", "registration.error.email-invalid"),
+                    null)));
+          }
+          return CompletableFuture.completedFuture(
+              RFWAuthenticationOutcomeVO.registrationCancellationRequired(
+                  cancellationChallenge()));
+        }
+
+        @Override
+        public CompletionStage<RFWAuthenticationOutcomeVO> confirmCancellation(
+            RFWRegistrationCancellationConfirmationDTO request) {
+          return CompletableFuture.completedFuture(
+              RFWAuthenticationOutcomeVO.completed("registration.cancellation-completed"));
+        }
+      };
+    }
+
+    /**
      * Simula somente a validação externa da credencial e preserva o resolvedor real do Rinos.
      *
      * @param resolver adapter real que converte a identidade validada em decisão de cadastro
@@ -257,6 +293,15 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
           "activation-flow",
           RFWAuthenticationMethodEnum.EMAIL_CODE,
           "p***@example.com",
+          Instant.parse("2026-08-01T15:00:00Z"),
+          Set.of(RFWAuthenticationMethodEnum.EMAIL_CODE));
+    }
+
+    private static RFWAccessChallengeVO cancellationChallenge() {
+      return new RFWAccessChallengeVO(
+          "cancellation-flow",
+          RFWAuthenticationMethodEnum.EMAIL_CODE,
+          null,
           Instant.parse("2026-08-01T15:00:00Z"),
           Set.of(RFWAuthenticationMethodEnum.EMAIL_CODE));
     }

@@ -434,7 +434,8 @@ Ref: [Interface §INT-WEB-REG-004](./interface-spec.md), [Spec §FR-REG-025–03
   - Evidência: [estado transitório mínimo e token Turnstile de uso único](./evidence/6.4.4/README.md).
 - [x] 6.4.5 Cobrir estados, indisponibilidade, offline e limitação neutra
   - Evidência: [matriz de estados e falhas recuperáveis](./evidence/6.4.5/README.md).
-- [ ] 6.4.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
+- [x] 6.4.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
+  - Evidência: [teclado, semântica acessível, touch, reflow e pt-BR](./evidence/6.4.6/README.md).
 - [ ] 6.4.7 Criar testes de componente, E2E e inspeção visual registrada
 
 ### 6.5 Implementar INT-WEB-REG-005 - Confirmação de cancelamento `[A]`

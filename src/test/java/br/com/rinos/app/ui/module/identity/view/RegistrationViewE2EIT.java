@@ -20,6 +20,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.BoundingBox;
 
 /**
  * Percorre a interface real do cadastro em navegador Chromium e registra evidências visuais.
@@ -246,6 +247,96 @@ class RegistrationViewE2EIT {
   }
 
   /**
+   * Percorre por teclado a solicitação de cancelamento e comprova foco e feedback anunciável.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void cancellationRequest_shouldRemainKeyboardAccessibleAndAnnounced_onDesktop()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      openCancellationRequest(page, "pessoa@example.com");
+
+      Locator identifier = page.getByLabel("E-mail ou usuário");
+      Locator submit = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Solicitar cancelamento").setExact(true));
+      assertThat(page.getByRole(AriaRole.HEADING,
+          new Page.GetByRoleOptions().setName("Cancelar cadastro pendente").setExact(true)))
+          .isVisible();
+      assertThat(page.getByText(
+          "Solicitar as instruções não cancela o cadastro",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertThat(identifier).hasAttribute("required", "");
+      assertThat(identifier).isFocused();
+
+      identifier.fill("");
+      identifier.press("Tab");
+      assertThat(submit).isFocused();
+      submit.press("Enter");
+
+      Locator feedback = page.getByRole(AriaRole.ALERT);
+      assertThat(feedback).containsText("Revise os campos indicados.");
+      assertThat(identifier).hasAttribute("invalid", "");
+      assertThat(identifier).isFocused();
+      assertNoHorizontalOverflow(page);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-request-feedback-desktop.png"))
+          .setFullPage(true));
+
+      identifier.fill("pessoa@example.com");
+      identifier.press("Tab");
+      submit.press("Enter");
+      assertThat(page.locator(
+          "[data-rfw-access-step='registration_cancellation_confirmation']"))
+          .isVisible();
+    }
+  }
+
+  /**
+   * Confirma reflow, alvo de toque e conteúdo localizado da solicitação em telefone.
+   *
+   * @throws Exception quando a pasta de evidências temporárias não puder ser criada
+   */
+  @Test
+  void cancellationRequest_shouldSupportTouchAndLocalizedReflow_onPhone()
+      throws Exception {
+    Path evidenceDirectory = Files.createDirectories(Path.of("target", "ui-evidence"));
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions()
+            .setViewportSize(390, 844)
+            .setDeviceScaleFactor(1)
+            .setHasTouch(true))) {
+      Page page = context.newPage();
+      openCancellationRequest(page, "pessoa@example.com");
+
+      Locator submit = page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Solicitar cancelamento").setExact(true));
+      assertThat(page.getByRole(AriaRole.HEADING,
+          new Page.GetByRoleOptions().setName("Cancelar cadastro pendente").setExact(true)))
+          .isVisible();
+      assertThat(page.getByText(
+          "O cancelamento confirmado não pode ser desfeito.",
+          new Page.GetByTextOptions().setExact(false))).isVisible();
+      assertNoHorizontalOverflow(page);
+      BoundingBox target = submit.boundingBox();
+      org.assertj.core.api.Assertions.assertThat(target).isNotNull();
+      org.assertj.core.api.Assertions.assertThat(target.width).isGreaterThanOrEqualTo(24);
+      org.assertj.core.api.Assertions.assertThat(target.height).isGreaterThanOrEqualTo(24);
+      page.screenshot(new Page.ScreenshotOptions()
+          .setPath(evidenceDirectory.resolve("cancellation-request-ready-phone.png"))
+          .setFullPage(true));
+
+      page.touchscreen().tap(target.x + target.width / 2, target.y + target.height / 2);
+      assertThat(page.locator(
+          "[data-rfw-access-step='registration_cancellation_confirmation']"))
+          .isVisible();
+    }
+  }
+
+  /**
    * Exercita por teclado o foco inicial e a rejeição anunciada da continuação Google.
    *
    * @throws Exception quando a pasta de evidências temporárias não puder ser criada
@@ -402,6 +493,17 @@ class RegistrationViewE2EIT {
     page.navigate("http://127.0.0.1:" + port + "/test/external-registration");
     assertRfwStylesLoaded(page);
     assertThat(page.locator("[data-rfw-access-step='external_registration']")).isVisible();
+  }
+
+  private void openCancellationRequest(Page page, String identifier) {
+    page.navigate("http://127.0.0.1:" + port + "/login?step=activation");
+    assertRfwStylesLoaded(page);
+    page.getByLabel("E-mail ou usuário").fill(identifier);
+    page.getByRole(AriaRole.BUTTON,
+        new Page.GetByRoleOptions().setName("Cancelar cadastro pendente").setExact(true))
+        .click();
+    assertThat(page.locator("[data-rfw-access-step='registration_cancellation_request']"))
+        .isVisible();
   }
 
   private BrowserContext googleBrowserContext(int width, int height) {
