@@ -2,7 +2,7 @@
 
 **RFW commit analyzed**: `f7c404e761d3d95d1eac570b92bd2dc9c4b6e3a9`
 **Date**: 2026-07-26
-**Status**: todas as nove lacunas resolvidas
+**Status**: todas as doze lacunas e medidas de endurecimento resolvidas
 
 ## Resultado
 
@@ -276,6 +276,66 @@ repetir dados que não são segredos, inclusive quando apenas o desafio anti-aut
 
 Mudança comportamental compatível. Não altera DTOs públicos, mas exige testes de ciclo de vida, serialização segura,
 teclado/foco e laboratório que demonstre rejeição com preservação seletiva.
+
+## GAP-RFW-REG-010: Origem validada pela aplicação hospedeira
+
+**Severity**: SECURITY HARDENING
+**Requirements**: `FR-REG-039`
+
+### Estado anterior
+
+O contrato Turnstile não permitia que a aplicação hospedeira entregasse explicitamente o endereço remoto já
+resolvido por sua política de proxies confiáveis.
+
+### Resolução implementada
+
+- Publicar `RFWRemoteAddressProvider` para a origem validada pela hospedeira.
+- Preservar fallback compatível para conexão direta.
+- Documentar e testar que cabeçalhos não confiáveis não substituem a decisão da aplicação.
+
+### Compatibilidade
+
+Mudança aditiva; aplicações sem provider continuam usando a conexão direta documentada.
+
+## GAP-RFW-REG-011: Classificação pública das falhas do Turnstile
+
+**Severity**: SECURITY HARDENING
+**Requirements**: `FR-REG-034`, `FR-REG-042`
+
+### Estado anterior
+
+Falhas de prova, contexto, disponibilidade e configuração não possuíam categorias públicas suficientemente
+distintas para a hospedeira aplicar mensagens e decisões seguras sem interpretar detalhes do provedor.
+
+### Resolução implementada
+
+- Publicar categorias fechadas para prova inválida, hostname/action divergentes, indisponibilidade e configuração.
+- Manter `error-codes`, segredo e resposta integral fora do contrato público.
+- Atualizar testes, traduções, documentação e showroom.
+
+### Compatibilidade
+
+Mudança aditiva sobre o resultado de verificação humana, preservando o fallback anterior.
+
+## GAP-RFW-REG-012: Validade temporal e timeouts do Google OIDC
+
+**Severity**: SECURITY HARDENING
+**Requirements**: `FR-REG-043`, `FR-REG-051`, `FR-REG-052`
+
+### Estado anterior
+
+A integração precisava tornar obrigatória a validação de `exp` e `iat`, limitar a tolerância de relógio e garantir
+timeouts explícitos tanto no discovery OIDC quanto na obtenção de JWKS.
+
+### Resolução implementada
+
+- Exigir `exp` e `iat` válidos com clock skew configurado e limitado.
+- Aplicar timeout comum e explícito ao discovery e ao JWKS.
+- Cobrir claims ausentes, tempos inválidos, timeout e indisponibilidade com resultados fechados.
+
+### Compatibilidade
+
+Endurecimento compatível para tokens válidos; entradas incompletas ou fora da janela passam a falhar fechado.
 
 ## Alterações que não são necessárias
 

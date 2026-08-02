@@ -551,7 +551,7 @@ Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implement
 - [ ] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
 - [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy
 - [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95
-- [ ] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate crítico estiver aberto
+- [ ] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate declarado bloqueante estiver aberto, incluindo documentos jurídicos 6.0.3–6.0.5, recuperação de senha e validações humanas ou operacionais de release
 
 ---
 
@@ -589,7 +589,7 @@ flowchart TD
 | 3.1–3.5 | 1.1–1.3 | Fases 4 e 5 |
 | 4.1–4.6 | Fases 2 e 3, incluindo 1.5 | Interface local e validação |
 | 5.1–5.3 | Fases 2 e 3 | Interface Google e validação |
-| 6.1–6.5 | Fases 4 e 5 conforme interação | Fase 7 |
+| 6.0–6.5 | Fases 4 e 5 conforme interação; 6.0.3–6.0.5 são gates jurídicos de release | Fase 7 e produção |
 | 7.1–7.4 | Fases 4–6 | Readiness final |
 | 7.5 | Fase 7 e recuperação mínima de `user-authentication` | Produção |
 
@@ -607,14 +607,14 @@ flowchart TD
 
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
-| 1 - Fundação da Aplicação | 5 | 33 | 3 C, 2 A |
+| 1 - Fundação da Aplicação | 5 | 34 | 3 C, 2 A |
 | 2 - Domínio Global e Persistência | 5 | 34 | 5 C |
-| 3 - Segurança e Integrações Externas | 5 | 36 | 4 C, 1 A |
+| 3 - Segurança e Integrações Externas | 5 | 37 | 4 C, 1 A |
 | 4 - Ciclo Local do Cadastro | 6 | 43 | 4 C, 1 A, 1 M |
 | 5 - Cadastro por Google | 3 | 22 | 3 C |
-| 6 - Interface Web RFW | 5 | 37 | 5 A |
+| 6 - Interface Web RFW | 6 | 42 | 6 A |
 | 7 - Qualidade e Liberação | 5 | 37 | 4 C, 1 A |
-| **Total** | **34** | **243** | **23 C, 10 A, 1 M** |
+| **Total** | **35** | **249** | **23 C, 11 A, 1 M** |
 
 ## Escopo Coberto
 

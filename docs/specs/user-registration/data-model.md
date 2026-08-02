@@ -331,7 +331,7 @@ Registro append-only dos eventos exigidos para identidade e cadastro, sem creden
 5. Um e-mail normalizado pertence a no máximo um usuário vigente.
 6. Cadastro expirado ou cancelado não pode consumir comprovação.
 7. Nova comprovação invalida todas as comprovações abertas de mesmo propósito no cadastro.
-8. Ativação Google que reutiliza pendência invalida e remove credencial local e comprovações antes de criar o vínculo.
+8. Ativação Google que reutiliza pendência invalida e remove credencial local e comprovações antes de ativar o vínculo externo previamente criado como candidato `PENDING`.
 9. O job de limpeza nunca remove `User.ACTIVE`, mesmo que reste um `Registration` inconsistente; essa condição é erro operacional auditável.
 10. Cancelamento exige `REGISTRATION_CANCEL` válida para o mesmo e-mail, invalida as demais provas e remove a raiz
     `User` pendente na mesma transação; os `CASCADE` removem credencial, cadastro, consentimentos e vínculos externos,

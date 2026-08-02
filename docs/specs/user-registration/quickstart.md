@@ -1,6 +1,6 @@
 # Quickstart: Cadastro e Ciclo Inicial do Usuário
 
-Cenários de validação end-to-end para a futura implementação. Provedores externos devem ser representados por servidores locais controláveis nos testes de integração; o backend, MySQL, UI e facades usados no cenário permanecem reais.
+Cenários de validação end-to-end da implementação. Provedores externos devem ser representados por servidores locais controláveis nos testes de integração; o backend, MySQL, UI e facades usados no cenário permanecem reais.
 
 ## Scenario 1: Cadastro local e ativação
 
@@ -85,7 +85,7 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 
 1. Criar cadastro local pendente e preservar seu link de confirmação.
 2. Concluir cadastro Google válido com o mesmo e-mail normalizado.
-3. **Expected**: a mesma identidade é ativada, a credencial local e todas as comprovações anteriores são invalidadas/removidas antes do vínculo externo.
+3. **Expected**: a mesma identidade é ativada; uma única identidade externa candidata pode existir como `PENDING` durante a continuação, mas a credencial local e todas as comprovações anteriores são invalidadas/removidas antes de esse vínculo ser ativado.
 4. Abrir o link local antigo.
 5. **Expected**: nenhum acesso ou efeito é produzido.
 

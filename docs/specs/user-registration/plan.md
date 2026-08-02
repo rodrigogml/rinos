@@ -30,7 +30,7 @@ dados ou operações até ser composta pela feature `user-dashboard`.
 
 | Surface ID | Feature Coverage | Technology Decision | Module/Repository | Notes |
 |------------|------------------|---------------------|-------------------|-------|
-| `SURF-WEB-RINOS` | FULL | Java 25, Vaadin 25.0.2 e Spring Boot 4.0.1 | Repositório Rinos; módulo hospedeiro ainda não criado | Desktop, tablet e telefone; UI usa facades Java e i18n |
+| `SURF-WEB-RINOS` | FULL | Java 25, Vaadin 25.0.2 e Spring Boot 4.0.7 | Repositório Rinos; aplicação hospedeira em `br.com.rinos.app` | Desktop, tablet e telefone; UI usa facades Java e i18n |
 
 ## Constitution Check
 
@@ -195,10 +195,10 @@ sem PII. Essa assimetria interna não atravessa a resposta da solicitação e im
 | `FR-USR-001` a `FR-USR-015` | identidade global, credencial, vínculo externo e eventos em [data-model.md](./data-model.md) | persistência, segurança e acesso pós-ativação |
 | `FR-REG-001` a `FR-REG-011` | facade de início, normalização, constraints e política de senha | cenários 1 a 5 do [quickstart.md](./quickstart.md) |
 | `FR-REG-012` a `FR-REG-020` | `Verification`, transação de ativação e contrato SMTP | cenários 1, 6 e 13 |
-| `FR-REG-021` a `FR-REG-027` | retomada pela identidade pendente, cancelamento e job de limpeza | cenários 6, 7, 14 e 15 |
+| `FR-REG-021` a `FR-REG-027`, incluindo `FR-REG-024-INFRA-SCHED` e `FR-REG-027-LIMIT` | retomada pela identidade pendente, cancelamento, limites próprios e job de limpeza | cenários 6, 7, 14 e 15 |
 | `FR-REG-028` a `FR-REG-042` | política por origem, adapter Turnstile e proxy confiável | cenários 8 e 9 |
 | `FR-REG-043` a `FR-REG-052` | Google Identity Services pelo RFW, continuação de cadastro externo e `ExternalIdentity` | cenários 10 a 12 |
-| `SC-UR-001` a `SC-UR-015` | matriz de testes, métricas operacionais e [Interface Design](./interface-spec.md) | suíte end-to-end, eleição concorrente, calibração Argon2id e checklist de qualidade |
+| `SC-UR-001` a `SC-UR-016` | matriz de testes, métricas operacionais e [Interface Design](./interface-spec.md) | suíte end-to-end, cancelamento limitado, eleição concorrente, calibração Argon2id e checklist de qualidade |
 
 ## Project Structure
 

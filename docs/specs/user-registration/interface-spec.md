@@ -2,6 +2,7 @@
 
 **Feature**: `user-registration`
 **Created**: 2026-07-25
+**Last Updated**: 2026-08-02
 **Status**: Approved
 **Spec**: [Feature Specification](./spec.md)
 **Plan**: [Implementation Plan](./plan.md)
@@ -17,8 +18,8 @@
 
 | Surface ID | Existing Route, Command, or Component | Evidence | Current Behavior |
 |------------|---------------------------------------|----------|------------------|
-| SURF-WEB-RINOS | Aplicação hospedeira ainda não criada; rota pública desejada `/login` | [Implementation Plan](./plan.md) | Não existe interface executável no Rinos |
-| SURF-WEB-RINOS | `RFWAccessComponent` e renderer padrão | `modules/RFW.Platform/src/main/java/br/eng/rodrigogml/rfw/platform/ui/access/` | Oferece cadastro, continuação externa, ativação, cancelamento, feedback, Google, Turnstile, i18n, tema e responsividade reutilizáveis |
+| SURF-WEB-RINOS | Aplicação hospedeira com rotas públicas `/login` e `/cancel-registration` | [Implementation Plan](./plan.md) | Interface executável composta exclusivamente com o componente de acesso do RFW |
+| SURF-WEB-RINOS | `RFWAccessComponent` e renderer padrão | `modules/RFW.Platform/src/main/java/br/eng/rodrigogml/rfw/ui/access/` | Oferece cadastro, continuação externa, ativação, cancelamento, feedback, Google, Turnstile, i18n, tema e responsividade reutilizáveis |
 | SURF-WEB-RINOS | Laboratório de acesso do showroom | `modules/RFW.Platform/modules/rfw.showroom/src/main/java/br/eng/rodrigogml/rfw/showroom/view/component/access/AccessDemonstrationComponent.java` | Demonstra as etapas e configurações públicas que o Rinos deverá compor |
 
 O comportamento desejado reutiliza o componente existente, sem criar formulário paralelo. As extensões necessárias
@@ -34,7 +35,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 | INT-WEB-REG-002 | SURF-WEB-RINOS | SCREEN | NEW | Ativação e retomada do cadastro | Resultado do cadastro, link de e-mail ou entrada segura na rota `/login` |
 | INT-WEB-REG-003 | SURF-WEB-RINOS | SCREEN | NEW | Conclusão do cadastro Google | Resultado tipado do Google na rota `/login` |
 | INT-WEB-REG-004 | SURF-WEB-RINOS | SCREEN | NEW | Solicitação de cancelamento | Ação Cancelar cadastro na ativação |
-| INT-WEB-REG-005 | SURF-WEB-RINOS | SCREEN | NEW | Confirmação do cancelamento | Resultado da solicitação ou link de confirmação |
+| INT-WEB-REG-005 | SURF-WEB-RINOS | SCREEN | NEW | Confirmação do cancelamento | Resultado da solicitação ou link canônico `/cancel-registration?token=...` |
 
 ## Interaction Details
 
@@ -154,7 +155,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 **Purpose**: Permitir que a pessoa solicite uma prova para cancelar um cadastro ainda pendente sem revelar publicamente se ele existe.
 **Actors and Permissions**: Pessoa não autenticada; o controle do e-mail ainda não está comprovado nesta etapa.
 **Entry and Navigation**: Ação Cancelar cadastro em INT-WEB-REG-002 abre `REGISTRATION_CANCELLATION_REQUEST`, preenchendo o identificador quando já conhecido. Voltar retorna ao login; resposta que exige confirmação abre INT-WEB-REG-005.
-**Content and Data**: Explicação das consequências; identificador; Turnstile conforme política; ação Solicitar cancelamento; Voltar para entrar. A mensagem pública da solicitação permanece neutra.
+**Content and Data**: Explicação das consequências; identificador; Turnstile obrigatório para a operação de cancelamento; ação Solicitar cancelamento; Voltar para entrar. A mensagem pública da solicitação permanece neutra.
 **Actions and Behavior**: Validar identificador; aplicar política Turnstile sempre obrigatória da operação `REGISTRATION_CANCELLATION`; solicitar prova; não cancelar antes da confirmação; impedir repetição durante processamento; preservar identificador em rejeição recuperável e descartar token. Limitar separadamente três provas efetivamente emitidas por pendência em 15 minutos, sem consumir o contador de novos cadastros por origem.
 **Validation and Feedback**: Erro junto ao identificador; indisponibilidade com orientação; resposta neutra não confirma existência, estado, destino ou limitação; se houver pendência válida e dentro da franquia, enviar prova de uso único; Turnstile inválido é renovado. O fim interno da janela de emissão não é apresentado porque diferenciaria uma pendência existente.
 **Responsive/Adaptive Behavior**: Mesmo card; ações empilham em telefone; teclado virtual e touch não encobrem o botão; desafio mantém alternativa acessível da Cloudflare.
@@ -170,7 +171,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 
 | State | Expected Presentation | Available Actions | Transition/Exit |
 |-------|-----------------------|-------------------|-----------------|
-| initial | Explicação, identificador preenchido quando conhecido e Turnstile condicional | Editar, solicitar, voltar | ready |
+| initial | Explicação, identificador preenchido quando conhecido e Turnstile obrigatório | Editar, solicitar, voltar | ready |
 | loading | N/A — política e capabilities são resolvidas antes da renderização | N/A | N/A |
 | empty | N/A — identificador vazio é validação do formulário | N/A | N/A |
 | ready | Identificador editável e ação disponível | Solicitar cancelamento, voltar | processing ou validation-error |
@@ -189,7 +190,7 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 **Change Type**: NEW
 **Purpose**: Confirmar controle do e-mail e cancelar definitivamente o cadastro pendente, invalidando todas as provas abertas.
 **Actors and Permissions**: Pessoa não autenticada em posse da prova de cancelamento válida e de uso único.
-**Entry and Navigation**: Aberta pelo resultado tipado `REGISTRATION_CANCELLATION_REQUIRED` ou por deep link HTTPS sem ID interno. Voltar retorna ao login sem cancelar. Sucesso apresenta confirmação e oferece iniciar novo cadastro ou entrar.
+**Entry and Navigation**: Aberta pelo resultado tipado `REGISTRATION_CANCELLATION_REQUIRED` ou pelo deep link HTTPS canônico `/cancel-registration?token=...`, sem e-mail nem ID interno. Depois que a rota entrega a prova ao estado efêmero do `RFWAccessComponent`, substitui a entrada visível do histórico por `/cancel-registration`. Voltar retorna ao login sem cancelar. Sucesso apresenta confirmação e oferece iniciar novo cadastro ou entrar.
 **Content and Data**: Identificador quando necessário; código ou prova de cancelamento; consequência irreversível para a pendência; ação principal Confirmar cancelamento; Voltar para entrar.
 **Actions and Behavior**: Exigir confirmação explícita por prova; limpar prova do campo ao submeter; cancelar apenas se a pendência continuar válida; invalidar provas de ativação e cancelamento; repetição não restaura nem repete efeitos; não oferecer desfazer.
 **Validation and Feedback**: Prova ausente, inválida, expirada, usada ou de processo encerrado não cancela nada; mensagem orienta nova solicitação quando aplicável; sucesso informa que provas anteriores não funcionam mais; falha transacional mantém estado anterior integral.
@@ -222,8 +223,9 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 
 ### Navigation and Parity
 
-Existe uma única superfície humana. A rota pública `/login` hospeda uma instância do `RFWAccessComponent` e troca
-etapas sem criar páginas paralelas. Deep links transportam somente intenção e prova opaca. Após autenticação concluída,
+Existe uma única superfície humana. A rota pública `/login` hospeda o ciclo principal do `RFWAccessComponent`; a rota
+dedicada `/cancel-registration` hospeda o mesmo componente diretamente na confirmação de cancelamento, sem copiar
+renderer ou criar formulário paralelo. Deep links transportam somente intenção e prova opaca. Após autenticação concluída,
 o callback seguro do RFW navega para `/user`, rota global autenticada reservada ao Painel de Usuário. O botão Voltar
 do navegador não pode reenviar operações nem restaurar senha, token ou prova já consumida.
 
@@ -351,7 +353,7 @@ Quando houver nova versão legal:
 │ Cancelar cadastro pendente   │
 │ Consequência e confirmação   │
 │ E-mail                       │
-│ Turnstile, se obrigatório    │
+│ Turnstile obrigatório       │
 │ ( Solicitar cancelamento )   │
 │ Voltar para entrar           │
 └──────────────────────────────┘
@@ -381,5 +383,6 @@ Quando houver nova versão legal:
 - Placeholders or open decisions remaining: 0
 - Structural validator: PASS em 2026-07-25
 - Semantic gate: PASS em 2026-07-26
-- Visual validation: laboratório compilado e testes de componente aprovados; inspeção manual permanece recomendada
-  antes da implementação porque nenhum navegador controlável estava disponível nesta sessão
+- Visual validation: matriz dos cinco `INT-*` inspecionada em telefone e desktop, nos temas claro e escuro, conforme
+  [evidência da tarefa 7.3.4](./evidence/7.3.4/README.md); os gates humanos de teclado, leitor de tela e usabilidade
+  permanecem separados em `tasks.md`

@@ -1,7 +1,7 @@
 # Interaction Surface Architecture
 
 **Created**: 2026-07-25  
-**Last Updated**: 2026-07-25  
+**Last Updated**: 2026-08-02<br>
 **Status**: Approved
 **Sources**: briefing 2026-07-17, Constitution 1.1.0, plano `user-registration`
 
@@ -9,7 +9,7 @@
 
 | Surface ID | Type | Users | Platforms and Form Factors | Product Coverage | Technology, Language and Runtime | Delivery Strategy | Design System | Module/Repository | Decision Status |
 |------------|------|-------|----------------------------|------------------|----------------------------------|-------------------|---------------|-------------------|-----------------|
-| `SURF-WEB-RINOS` | WEB | Pessoas não autenticadas, usuários, participantes de contas e administradores autorizados | Navegadores modernos em desktop, tablet e telefone | MVP e evolução; única superfície humana inicial | Java 25, Vaadin 25.0.2, Spring Boot 4.0.1, JAR no servidor | Web responsiva server-side, sem aplicativo nativo | Componentes, factories, tema, tokens, slots e renderers do RFW; extensões reutilizáveis retornam à plataforma | Repositório Rinos; aplicação hospedeira ainda não criada, RFW em `modules/RFW.Platform` | Approved |
+| `SURF-WEB-RINOS` | WEB | Pessoas não autenticadas, usuários, participantes de contas e administradores autorizados | Navegadores modernos em desktop, tablet e telefone | MVP e evolução; única superfície humana inicial | Java 25, Vaadin 25.0.2, Spring Boot 4.0.7, JAR no servidor | Web responsiva server-side, sem aplicativo nativo | Componentes, factories, tema, tokens, slots e renderers do RFW; extensões reutilizáveis retornam à plataforma | Repositório Rinos; aplicação hospedeira em `br.com.rinos.app`, RFW em `modules/RFW.Platform` | Approved |
 
 ## Cross-Surface Decisions
 
