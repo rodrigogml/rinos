@@ -91,9 +91,11 @@ hospedeira as dependências das capacidades consumidas e substituiu a exceção 
 tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
-O ponteiro corrente do submódulo está em `7d47fe735d181acde035c6aa22c8e1dd6c0c7c17`, revisão descendente da baseline aprovada. Os deltas posteriores
-acrescentam o componente público `RFWPicker` e fazem a transição padrão da ativação para a solicitação de cancelamento
-preservar somente o identificador atual, sem transportar a prova; não alteram as APIs públicas consumidas pela feature.
+O ponteiro corrente do submódulo está em `7dbf0471c4ee003bee471841c8b4e832bfa6954b`, revisão descendente da baseline aprovada. Os deltas posteriores
+acrescentam o componente público `RFWPicker`, fazem a transição padrão da ativação para a solicitação de cancelamento
+preservar somente o identificador atual, sem transportar a prova, e permitem que o catálogo legal seja obtido por um
+provider reavaliado a cada renderização. A API anterior baseada em lista permanece compatível; o Rinos usa o provider
+para refletir imediatamente a versão legal corrente.
 
 A revisão também sincroniza o showroom obrigatório com as coordenadas, dependências fornecidas pela hospedeira e o
 procedimento de migração da RFW 2.0. Em relação à baseline anterior, ela remove o namespace legado
