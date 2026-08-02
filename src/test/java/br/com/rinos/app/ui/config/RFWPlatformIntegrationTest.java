@@ -55,8 +55,10 @@ import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
 import br.com.rinos.app.RinosApplication;
+import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
@@ -70,6 +72,7 @@ import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
+import br.com.rinos.app.api.vo.RegistrationCancellationConfirmationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
@@ -855,6 +858,74 @@ class RFWPlatformIntegrationTest {
             assertThat(component.getFeedbackComponent().getElement().getText())
                 .contains("A operação está temporariamente indisponível. Tente mais tarde.")
                 .doesNotContain("instruções serão enviadas");
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
+   * Comprova que a prova deixa o campo antes da conclusão assíncrona e cruza somente o adapter real.
+   */
+  @Test
+  void cancellationConfirmation_shouldClearProofBeforeHostProviderResponds() {
+    CompletableFuture<RegistrationCancellationConfirmationResultVO> pendingConfirmation =
+        new CompletableFuture<>();
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.confirmCancellation(any())).thenReturn(pendingConfirmation);
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION,
+                "person@example.com",
+                "opaque-proof"));
+            List<TextField> fields = descendants(component, TextField.class);
+            TextField proof = fields.get(1);
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Confirmar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(proof.getValue()).isEmpty();
+            assertThat(component.isBusy()).isTrue();
+            ArgumentCaptor<RegistrationCancellationConfirmationDTO> request =
+                ArgumentCaptor.forClass(RegistrationCancellationConfirmationDTO.class);
+            verify(cancellationFacade).confirmCancellation(request.capture());
+            assertThat(request.getValue().identifier()).isEqualTo("person@example.com");
+            assertThat(request.getValue().proof()).isEqualTo("opaque-proof");
+            assertThat(request.getValue().correlationId()).isNotNull();
+
+            pendingConfirmation.complete(RegistrationCancellationConfirmationResultVO.of(
+                RegistrationCancellationConfirmationStatusEnum.CANCELLED));
+            assertThat(component.isBusy()).isFalse();
+            assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.RESULT);
           } finally {
             session.unlock();
           }
