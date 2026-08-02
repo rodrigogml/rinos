@@ -23,6 +23,7 @@
   <properties>
     <java.version>25</java.version>
     <axe.playwright.version>4.11.2</axe.playwright.version>
+    <greenmail.version>2.1.11</greenmail.version>
     <jacoco.version>0.8.15</jacoco.version>
     <jackson-2-bom.version>2.21.5</jackson-2-bom.version>
     <jackson-bom.version>3.1.5</jackson-bom.version>
@@ -146,6 +147,12 @@
       <groupId>com.deque.html.axe-core</groupId>
       <artifactId>playwright</artifactId>
       <version>${axe.playwright.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.icegreen</groupId>
+      <artifactId>greenmail</artifactId>
+      <version>${greenmail.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

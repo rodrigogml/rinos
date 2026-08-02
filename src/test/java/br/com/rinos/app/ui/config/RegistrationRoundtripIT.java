@@ -6,11 +6,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
@@ -37,15 +47,20 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -56,6 +71,11 @@ import com.vaadin.flow.function.DeploymentConfiguration;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
+import com.icegreen.greenmail.util.GreenMail;
+import com.icegreen.greenmail.util.ServerSetupTest;
+
+import br.com.rinos.app.api.dto.RegistrationStartRequestDTO;
+import br.com.rinos.app.api.enums.RegistrationStartStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
@@ -64,6 +84,7 @@ import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.api.vo.RegistrationStartResultVO;
 import br.com.rinos.app.backend.module.identity.entity.LegalDocumentVersionEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
@@ -145,12 +166,17 @@ import br.eng.rodrigogml.rfw.executioncontext.config.RFWExecutionContextAutoConf
 import br.eng.rodrigogml.rfw.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
 import br.eng.rodrigogml.rfw.i18n.config.RFWI18nAutoConfiguration;
 import br.eng.rodrigogml.rfw.i18n.vaadin.config.RFWVaadinI18nAutoConfiguration;
+import br.eng.rodrigogml.rfw.logging.RFWLogger;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
+import br.eng.rodrigogml.rfw.mail.ClasspathEmailTemplateResolver;
 import br.eng.rodrigogml.rfw.mail.EmailDispatchService;
 import br.eng.rodrigogml.rfw.mail.EmailDispatcher;
 import br.eng.rodrigogml.rfw.mail.EmailMessage;
 import br.eng.rodrigogml.rfw.mail.EmailTemplateRenderer;
 import br.eng.rodrigogml.rfw.mail.EmailTemplateResolver;
+import br.eng.rodrigogml.rfw.mail.PositionalEmailTemplateRenderer;
+import br.eng.rodrigogml.rfw.mail.SmtpEmailDispatcher;
+import br.eng.rodrigogml.rfw.mail.config.EmailTemplatePropertiesConfig;
 import br.eng.rodrigogml.rfw.session.vaadin.config.RFWVaadinSessionAutoConfiguration;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
@@ -175,6 +201,12 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
  */
 @DisplayName("Roundtrip UI, facade, backend e MySQL do cadastro")
 class RegistrationRoundtripIT {
+
+  private static final int SMTP_GATE_SAMPLE_SIZE = 100;
+  private static final String SMTP_ATTEMPT_METRIC =
+      "rinos.registration.verification.smtp.attempts";
+  private static final String SMTP_DURATION_METRIC =
+      "rinos.registration.verification.smtp.duration";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -335,6 +367,107 @@ class RegistrationRoundtripIT {
           .map(type -> type.getTypeName())
           .forEach(typeName -> assertThat(typeName).doesNotContain(".entity."));
     });
+  }
+
+  /**
+   * Mede cem aceitações reais do dispatcher RFW contra um servidor SMTP local controlado.
+   *
+   * <p>Cada execução abre uma transação externa, registra o instante no primeiro callback
+   * pós-commit e aguarda a conclusão SMTP fora da função transacional. A duração registrada é um
+   * limite superior conservador entre o commit efetivo e a aceitação, pois termina apenas quando o
+   * callback transacional retorna depois do aceite.</p>
+   */
+  @Test
+  @EnabledIfSystemProperty(named = "rinos.smtp.gate.enabled", matches = "true")
+  void smtpGate_shouldMeasureOneHundredAcceptancesFromTheirCommits() {
+    GreenMail smtp = new GreenMail(ServerSetupTest.SMTP.dynamicPort());
+    smtp.start();
+    SimpleMeterRegistry smtpMetrics = new SimpleMeterRegistry();
+    try {
+      VerificationEmailDispatchService smtpDispatch = new VerificationEmailDispatchService(
+          localSmtpEmailDispatchService(smtp.getSmtp().getPort()),
+          smtpMetrics);
+      contextRunner()
+          .withUserConfiguration(SmtpGateOriginConfig.class)
+          .withBean(
+              "smtpGateVerificationEmailDispatchService",
+              VerificationEmailDispatchService.class,
+              () -> smtpDispatch,
+              definition -> definition.setPrimary(true))
+          .run(context -> {
+            assertThat(context).hasNotFailed();
+            List<String> acceptedDocumentIds = seedLegalDocuments(context, "smtp-gate").stream()
+                .map(LegalDocumentReferenceVO::reference)
+                .toList();
+            RegistrationStartFacade registration = context.getBean(
+                RegistrationStartFacade.class);
+            TransactionTemplate transaction = new TransactionTemplate(
+                context.getBean(PlatformTransactionManager.class));
+            List<SmtpGateSample> samples = new ArrayList<>(SMTP_GATE_SAMPLE_SIZE);
+
+            for (int sequence = 1; sequence <= SMTP_GATE_SAMPLE_SIZE; sequence++) {
+              UUID correlationId = UUID.randomUUID();
+              AtomicLong committedAtNanos = new AtomicLong(-1L);
+              RegistrationStartRequestDTO request = new RegistrationStartRequestDTO(
+                  "smtp-gate-%03d@example.test".formatted(sequence),
+                  "SmtpGate!42".toCharArray(),
+                  acceptedDocumentIds,
+                  "198.51.100.40",
+                  Locale.forLanguageTag("pt-BR"),
+                  correlationId);
+
+              CompletionStage<RegistrationStartResultVO> pending = transaction.execute(status -> {
+                TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                      @Override
+                      public void afterCommit() {
+                        committedAtNanos.set(System.nanoTime());
+                      }
+                    });
+                return registration.start(request);
+              });
+              assertThat(pending).isNotNull();
+              RegistrationStartResultVO result = pending.toCompletableFuture().join();
+              long commitNanos = committedAtNanos.get();
+              assertThat(commitNanos).isPositive();
+              Duration commitToAcceptanceUpperBound = Duration.ofNanos(
+                  System.nanoTime() - commitNanos);
+              assertThat(result.status()).isEqualTo(RegistrationStartStatusEnum.EMAIL_SENT);
+              samples.add(new SmtpGateSample(
+                  sequence,
+                  correlationId,
+                  commitToAcceptanceUpperBound));
+            }
+
+            assertThat(smtp.waitForIncomingEmail(5_000, SMTP_GATE_SAMPLE_SIZE)).isTrue();
+            assertThat(smtp.getReceivedMessages()).hasSize(SMTP_GATE_SAMPLE_SIZE);
+            assertThat(context.getBean(UserRepository.class).count())
+                .isEqualTo(SMTP_GATE_SAMPLE_SIZE);
+            assertThat(context.getBean(RegistrationRepository.class).count())
+                .isEqualTo(SMTP_GATE_SAMPLE_SIZE);
+            assertThat(context.getBean(OriginWindowRepository.class).findAll())
+                .singleElement()
+                .satisfies(origin -> assertThat(origin.getEventCount())
+                    .isEqualTo(SMTP_GATE_SAMPLE_SIZE));
+            assertThat(smtpMetrics.find(SMTP_ATTEMPT_METRIC)
+                .tag("result", "accepted")
+                .counter())
+                .isNotNull()
+                .satisfies(counter -> assertThat(counter.count())
+                    .isEqualTo(SMTP_GATE_SAMPLE_SIZE));
+            assertThat(smtpMetrics.find(SMTP_DURATION_METRIC)
+                .tag("result", "accepted")
+                .timer())
+                .isNotNull()
+                .satisfies(timer -> assertThat(timer.count())
+                    .isEqualTo(SMTP_GATE_SAMPLE_SIZE));
+
+            writeSmtpGateReport(samples, smtpMetrics);
+          });
+    } finally {
+      smtp.stop();
+      smtpMetrics.close();
+    }
   }
 
   /**
@@ -1230,6 +1363,126 @@ class RegistrationRoundtripIT {
         ExternalRegistrationFacade completion) {
       return new RFWExternalRegistrationProviderAdapter(completion);
     }
+  }
+
+  /** Isola os limites ampliados do gate sem alterar os defaults da aplicação ou dos demais testes. */
+  @Configuration(proxyBeanMethods = false)
+  static class SmtpGateOriginConfig {
+
+    /**
+     * Permite a amostra de cem pendências e mantém uma margem explícita antes do limite absoluto.
+     *
+     * @param origins repositório real do contador global
+     * @return serviço exclusivo do gate SMTP
+     */
+    @Bean
+    @Primary
+    OriginLimitService smtpGateOriginLimitService(OriginWindowRepository origins) {
+      return new OriginLimitService(
+          origins,
+          new OriginPropertiesConfig(100, 120, Duration.ofHours(24), Duration.ofDays(30)));
+    }
+  }
+
+  /**
+   * Monta a pipeline real de templates e SMTP do RFW contra a porta dinâmica do gate.
+   *
+   * @param port porta do servidor SMTP local
+   * @return fachada RFW pronta para renderizar e enviar mensagens reais
+   */
+  private static EmailDispatchService localSmtpEmailDispatchService(int port) {
+    JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+    mailSender.setHost("127.0.0.1");
+    mailSender.setPort(port);
+    mailSender.setProtocol("smtp");
+    mailSender.setDefaultEncoding(StandardCharsets.UTF_8.name());
+    Properties mailProperties = mailSender.getJavaMailProperties();
+    mailProperties.setProperty("mail.smtp.auth", "false");
+    mailProperties.setProperty("mail.smtp.starttls.enable", "false");
+    mailProperties.setProperty("mail.smtp.connectiontimeout", "5000");
+    mailProperties.setProperty("mail.smtp.timeout", "5000");
+    mailProperties.setProperty("mail.smtp.writetimeout", "5000");
+
+    EmailTemplatePropertiesConfig templateProperties = new EmailTemplatePropertiesConfig();
+    templateProperties.setDefaultFromAddress("no-reply@rinos.test");
+    return new EmailDispatchService(
+        new ClasspathEmailTemplateResolver(new DefaultResourceLoader(), templateProperties),
+        new PositionalEmailTemplateRenderer(),
+        new SmtpEmailDispatcher(mailSender, templateProperties, mock(RFWLogger.class)));
+  }
+
+  /**
+   * Persiste em {@code target} as amostras técnicas sanitizadas da execução.
+   *
+   * @param samples medidas individuais sem destinatários ou provas
+   * @param metrics registro que confirma as mesmas aceitações pelo serviço de produção
+   */
+  private static void writeSmtpGateReport(
+      List<SmtpGateSample> samples,
+      SimpleMeterRegistry metrics) {
+    try {
+      List<Long> orderedMilliseconds = samples.stream()
+          .map(sample -> sample.commitToAcceptanceUpperBound().toMillis())
+          .sorted(Comparator.naturalOrder())
+          .toList();
+      long median = percentile(orderedMilliseconds, 0.50d);
+      long percentile95 = percentile(orderedMilliseconds, 0.95d);
+      long maximum = orderedMilliseconds.getLast();
+      long smtpMetricCount = metrics.find(SMTP_DURATION_METRIC)
+          .tag("result", "accepted")
+          .timer()
+          .count();
+      StringBuilder json = new StringBuilder(16_384);
+      json.append("{\n")
+          .append("  \"sampleCount\": ").append(samples.size()).append(",\n")
+          .append("  \"acceptedCount\": ").append(samples.size()).append(",\n")
+          .append("  \"smtpMetricCount\": ").append(smtpMetricCount).append(",\n")
+          .append("  \"medianCommitToAcceptanceUpperBoundMillis\": ")
+          .append(median).append(",\n")
+          .append("  \"p95CommitToAcceptanceUpperBoundMillis\": ")
+          .append(percentile95).append(",\n")
+          .append("  \"maxCommitToAcceptanceUpperBoundMillis\": ")
+          .append(maximum).append(",\n")
+          .append("  \"samples\": [\n");
+      for (int index = 0; index < samples.size(); index++) {
+        SmtpGateSample sample = samples.get(index);
+        json.append("    {\"sequence\": ")
+            .append(sample.sequence())
+            .append(", \"correlationId\": \"")
+            .append(sample.correlationId())
+            .append("\", \"commitToAcceptanceUpperBoundMillis\": ")
+            .append(sample.commitToAcceptanceUpperBound().toMillis())
+            .append('}');
+        json.append(index + 1 == samples.size() ? '\n' : ",\n");
+      }
+      json.append("  ]\n}\n");
+      Path reportDirectory = Files.createDirectories(Path.of("target", "smtp-gate"));
+      Files.writeString(
+          reportDirectory.resolve("7.4.1.json"),
+          json,
+          StandardCharsets.UTF_8);
+    } catch (java.io.IOException failure) {
+      throw new IllegalStateException("Não foi possível gravar o relatório do gate SMTP.", failure);
+    }
+  }
+
+  /**
+   * Seleciona um percentil nearest-rank de uma lista previamente ordenada.
+   *
+   * @param orderedValues valores crescentes
+   * @param percentile percentil entre zero e um
+   * @return valor que ocupa o rank solicitado
+   */
+  private static long percentile(List<Long> orderedValues, double percentile) {
+    int index = (int) Math.ceil(percentile * orderedValues.size()) - 1;
+    return orderedValues.get(Math.max(0, index));
+  }
+
+  /** Amostra sanitizada do limite superior entre o commit e a aceitação SMTP. */
+  private record SmtpGateSample(
+      int sequence,
+      UUID correlationId,
+      Duration commitToAcceptanceUpperBound) {
   }
 
   /** Simula somente o transporte SMTP e preserva a mensagem final para a asserção. */
