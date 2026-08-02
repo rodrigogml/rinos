@@ -515,7 +515,8 @@ Ref: [Spec §SC-UR-001, SC-UR-003 e SC-UR-007](./spec.md), [Interface §Shared A
   - Evidência: [axe-core sobre os cinco INTs em quatro apresentações](./evidence/7.3.1/README.md).
 - [ ] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado
 - [ ] 7.3.3 Avaliar manualmente as jornadas principais com leitor de tela
-- [ ] 7.3.4 Renderizar e inspecionar cada `INT-*` em telefone e desktop, claro e escuro
+- [x] 7.3.4 Renderizar e inspecionar cada `INT-*` em telefone e desktop, claro e escuro
+  - Evidência: [matriz visual dos cinco INTs em quatro apresentações](./evidence/7.3.4/README.md).
 - [ ] 7.3.5 Executar teste sem orientação com no mínimo 10 participantes alheios ao desenvolvimento
 - [ ] 7.3.6 Confirmar pelo menos 9 sucessos no envio em três minutos e na ativação de primeira tentativa
 - [ ] 7.3.7 Registrar falhas menores como tarefas e impedir release diante de bloqueios
