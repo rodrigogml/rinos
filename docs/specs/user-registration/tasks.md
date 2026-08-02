@@ -535,7 +535,8 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
   - Evidência: [sinais e regras operacionais para quatro classes de alerta](./evidence/7.4.4/README.md).
 - [x] 7.4.5 Documentar limites entre aceite SMTP e entrega final na caixa postal
   - Evidência: [semântica do aceite SMTP e linguagem pública correspondente](./evidence/7.4.5/README.md).
-- [ ] 7.4.6 Validar inicialização por JAR atrás de proxy reverso com configuração explícita
+- [x] 7.4.6 Validar inicialização por JAR atrás de proxy reverso com configuração explícita
+  - Evidência: [build Vaadin de produção e smoke HTTP do JAR](./evidence/7.4.6/README.md).
 - [ ] 7.4.7 Produzir runbook de diagnóstico sem funcionalidades internas de backup ou restauração
 
 ### 7.5 Executar readiness e gate de dependências de release `[C]`

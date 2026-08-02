@@ -155,6 +155,11 @@ mvn clean package
 java -jar target/rinos-1.0.0.jar
 ```
 
+O lifecycle Maven executa `vaadin:build-frontend` e incorpora ao JAR o bundle otimizado de
+produção. Não remova esse plugin nem compense sua ausência empacotando o servidor de
+desenvolvimento do Vaadin: o artefato usado pelo serviço Linux deve iniciar sem ferramentas de
+frontend ou dependências de desenvolvimento.
+
 Os valores de desenvolvimento podem manter Turnstile, Google e migrações desabilitados. Quando uma integração for
 habilitada, todas as suas propriedades obrigatórias devem estar presentes no mesmo arquivo.
 
@@ -197,7 +202,9 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
    Definir `server.port=7070` para a porta interna padronizada e
    `rinos.application.public-base-url=https://app.rinos.com.br` como a origem pública canônica. Links externos são
    montados exclusivamente a partir dessa propriedade; cabeçalhos `Host` e `Forwarded` recebidos não podem alterar a
-   origem de links enviados por e-mail.
+   origem de links enviados por e-mail. Manter `server.forward-headers-strategy=none` e listar em
+   `rinos.proxy.trusted-proxies` somente os endereços ou CIDRs efetivamente usados pelo proxy; o Apache deve bloquear
+   acesso externo direto à porta interna.
 8. Verificar logs, saúde das integrações, resolução segura do IP de origem, aquisição do lease de manutenção por uma
    única sessão e ausência de configuração importada de fonte não autorizada.
    As transições do lease também incrementam o contador `rinos.maintenance.lease.events`, com a tag de cardinalidade
