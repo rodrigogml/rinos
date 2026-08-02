@@ -1,6 +1,6 @@
 # Evidência da tarefa 7.5.4
 
-**Data da validação**: 2026-08-02  
+**Data da validação**: 2026-08-02<br>
 **Escopo**: checklist de requisitos e consistência cross-artifact de `user-registration`
 
 ## Artefatos analisados
