@@ -54,6 +54,7 @@ import br.com.rinos.app.backend.module.identity.entity.VerificationEntity;
 import br.com.rinos.app.backend.module.identity.enums.LocalCredentialStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityProviderEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.GoogleIdentityDomainStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
 import br.com.rinos.app.backend.module.identity.enums.LegalConsentDecisionEnum;
@@ -75,6 +76,8 @@ import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
 import br.com.rinos.app.backend.module.identity.service.LegalDocumentIntegrityService;
 import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
+import br.com.rinos.app.backend.module.identity.service.IdentityService;
+import br.com.rinos.app.backend.module.identity.service.GoogleIdentityResolutionService;
 import br.com.rinos.app.backend.module.identity.service.PublicApplicationUriService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationCancellationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationActivationService;
@@ -89,6 +92,7 @@ import br.com.rinos.app.backend.module.identity.service.VerificationTokenService
 import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
 import br.com.rinos.app.backend.module.identity.service.OriginLimitService;
 import br.com.rinos.app.backend.module.identity.vo.OriginAddressVO;
+import br.com.rinos.app.backend.module.identity.vo.GoogleIdentityDomainResultVO;
 import br.com.rinos.app.backend.module.identity.vo.RegistrationResendTransactionVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
@@ -472,6 +476,157 @@ class IdentityRepositoryIT {
       assertThat(verificationRepository.findAll().getFirst().getStatus())
           .isEqualTo(VerificationStatusEnum.USED);
       assertThat(consentRepository.count()).isEqualTo(2);
+    });
+  }
+
+  /**
+   * Comprova que uma identidade Google nova cria uma única raiz pendente e uma continuação opaca.
+   */
+  @Test
+  void resolveGoogle_shouldPersistNewPendingIdentityAndContinuation() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      RegistrationRepository registrationRepository =
+          context.getBean(RegistrationRepository.class);
+      ExternalIdentityRepository externalRepository =
+          context.getBean(ExternalIdentityRepository.class);
+      VerificationRepository verificationRepository =
+          context.getBean(VerificationRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      Instant occurredAt = Instant.parse("2026-07-29T18:00:00Z");
+
+      GoogleIdentityDomainResultVO result = transaction.execute(status ->
+          googleResolutionService(context).resolve(
+              "https://accounts.google.com",
+              "subject-new",
+              "new-google@example.com",
+              java.util.UUID.randomUUID(),
+              occurredAt));
+
+      assertThat(result).isNotNull();
+      assertThat(result.status())
+          .isEqualTo(GoogleIdentityDomainStatusEnum.CONTINUATION_REQUIRED);
+      assertThat(result.continuationToken()).isNotBlank();
+      assertThat(userRepository.findAll())
+          .singleElement()
+          .extracting(UserEntity::getStatus)
+          .isEqualTo(UserStatusEnum.PENDING_VERIFICATION);
+      assertThat(registrationRepository.findAll())
+          .singleElement()
+          .extracting(RegistrationEntity::getMethod)
+          .isEqualTo(RegistrationMethodEnum.GOOGLE);
+      assertThat(externalRepository.findAll())
+          .singleElement()
+          .extracting(ExternalIdentityEntity::getStatus)
+          .isEqualTo(ExternalIdentityStatusEnum.PENDING);
+      assertThat(verificationRepository.findAll())
+          .singleElement()
+          .satisfies(verification -> {
+            assertThat(verification.getPurpose())
+                .isEqualTo(VerificationPurposeEnum.EXTERNAL_REGISTRATION);
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatusEnum.OPEN);
+          });
+    });
+  }
+
+  /**
+   * Comprova a reutilização Google de uma pendência local sem apagar antecipadamente sua senha.
+   */
+  @Test
+  void resolveGoogle_shouldReuseLocalPendingIdentityAndPreserveCredential() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      RegistrationRepository registrationRepository =
+          context.getBean(RegistrationRepository.class);
+      LocalCredentialRepository credentialRepository =
+          context.getBean(LocalCredentialRepository.class);
+      ExternalIdentityRepository externalRepository =
+          context.getBean(ExternalIdentityRepository.class);
+      VerificationRepository verificationRepository =
+          context.getBean(VerificationRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      Instant occurredAt = Instant.parse("2026-07-29T18:00:00Z");
+      transaction.executeWithoutResult(status -> {
+        UserEntity user = userRepository.saveAndFlush(new UserEntity(
+            "pending-google@example.com",
+            "pending-google@example.com",
+            UserStatusEnum.PENDING_VERIFICATION));
+        registrationRepository.saveAndFlush(new RegistrationEntity(
+            user,
+            RegistrationMethodEnum.LOCAL,
+            RegistrationStatusEnum.PENDING_VERIFICATION,
+            occurredAt.plus(Duration.ofDays(15))));
+        credentialRepository.saveAndFlush(new LocalCredentialEntity(
+            user,
+            "{argon2}encoded-value"));
+      });
+
+      GoogleIdentityDomainResultVO result = transaction.execute(status ->
+          googleResolutionService(context).resolve(
+              "https://accounts.google.com",
+              "subject-pending",
+              "pending-google@example.com",
+              java.util.UUID.randomUUID(),
+              occurredAt));
+
+      assertThat(result).isNotNull();
+      assertThat(result.status())
+          .isEqualTo(GoogleIdentityDomainStatusEnum.CONTINUATION_REQUIRED);
+      assertThat(userRepository.count()).isOne();
+      assertThat(registrationRepository.findAll().getFirst().getMethod())
+          .isEqualTo(RegistrationMethodEnum.LOCAL);
+      assertThat(credentialRepository.findAll())
+          .singleElement()
+          .extracting(LocalCredentialEntity::getStatus)
+          .isEqualTo(LocalCredentialStatusEnum.ACTIVE);
+      assertThat(externalRepository.findAll())
+          .singleElement()
+          .extracting(ExternalIdentityEntity::getStatus)
+          .isEqualTo(ExternalIdentityStatusEnum.PENDING);
+      assertThat(verificationRepository.findAll())
+          .singleElement()
+          .extracting(VerificationEntity::getPurpose)
+          .isEqualTo(VerificationPurposeEnum.EXTERNAL_REGISTRATION);
+    });
+  }
+
+  /**
+   * Comprova que e-mail já ativo exige reautenticação e não cria vínculo Google implicitamente.
+   */
+  @Test
+  void resolveGoogle_shouldRequireReauthenticationWithoutLinkingActiveUser() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      ExternalIdentityRepository externalRepository =
+          context.getBean(ExternalIdentityRepository.class);
+      VerificationRepository verificationRepository =
+          context.getBean(VerificationRepository.class);
+      IdentityEventRepository eventRepository = context.getBean(IdentityEventRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      Instant occurredAt = Instant.parse("2026-07-29T18:00:00Z");
+      transaction.executeWithoutResult(status -> userRepository.saveAndFlush(new UserEntity(
+          "active-google@example.com",
+          "active-google@example.com",
+          UserStatusEnum.ACTIVE)));
+
+      GoogleIdentityDomainResultVO result = transaction.execute(status ->
+          googleResolutionService(context).resolve(
+              "https://accounts.google.com",
+              "subject-active",
+              "active-google@example.com",
+              java.util.UUID.randomUUID(),
+              occurredAt));
+
+      assertThat(result).isNotNull();
+      assertThat(result.status()).isEqualTo(
+          GoogleIdentityDomainStatusEnum.EXISTING_USER_REAUTHENTICATION_REQUIRED);
+      assertThat(externalRepository.count()).isZero();
+      assertThat(verificationRepository.count()).isZero();
+      assertThat(eventRepository.findAll())
+          .singleElement()
+          .extracting(IdentityEventEntity::getReason)
+          .isEqualTo(
+              GoogleIdentityDomainStatusEnum.EXISTING_USER_REAUTHENTICATION_REQUIRED.name());
     });
   }
 
@@ -1395,6 +1550,36 @@ class IdentityRepositoryIT {
 
   private static TransactionTemplate transaction(ApplicationContext context) {
     return new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+  }
+
+  private static GoogleIdentityResolutionService googleResolutionService(
+      ApplicationContext context) {
+    UserRepository userRepository = context.getBean(UserRepository.class);
+    RegistrationRepository registrationRepository =
+        context.getBean(RegistrationRepository.class);
+    ExternalIdentityRepository externalRepository =
+        context.getBean(ExternalIdentityRepository.class);
+    VerificationRepository verificationRepository =
+        context.getBean(VerificationRepository.class);
+    IdentityEventRepository eventRepository = context.getBean(IdentityEventRepository.class);
+    EmailNormalizationService normalizationService = new EmailNormalizationService();
+    return new GoogleIdentityResolutionService(
+        new IdentityService(userRepository, registrationRepository, normalizationService),
+        normalizationService,
+        new ExternalIdentityService(externalRepository),
+        registrationRepository,
+        new VerificationService(
+            verificationRepository,
+            registrationRepository,
+            new VerificationTokenService(),
+            new VerificationPropertiesConfig(Duration.ofHours(24))),
+        new IdentityAuditService(eventRepository),
+        new RegistrationPropertiesConfig(
+            Duration.ofDays(15),
+            3,
+            Duration.ofMinutes(15),
+            3,
+            Duration.ofMinutes(15)));
   }
 
   private static UserEntity user(String email) {

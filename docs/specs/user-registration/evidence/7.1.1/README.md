@@ -21,9 +21,9 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 | 7 | `RegistrationResendServiceTest`; facade e adapter de reenvio | Automatizado |
 | 8 | `TurnstileIntegrationIT`; `OriginLimitServiceTest`; limites e retenção MySQL | Automatizado |
 | 9 | `TrustedProxyServiceTest`; facade e adapter de origem | Automatizado |
-| 10 | serviços Google; conclusão MySQL; E2E Google simulado | Automatizado; execução consolidada em 7.1.3 |
-| 11 | reutilização da pendência; remoção de credencial; race MySQL | Automatizado; execução consolidada em 7.1.3 |
-| 12 | usuário ativo sem vínculo em serviço, facade e adapter | Automatizado; execução consolidada em 7.1.3 |
+| 10 | serviços Google; resolução e conclusão MySQL; E2E Google simulado | Automatizado; prova consolidada em 7.1.3 |
+| 11 | reutilização da pendência no MySQL; preservação pré-aceite e remoção transacional da credencial | Automatizado; prova consolidada em 7.1.3 |
+| 12 | usuário ativo sem vínculo em serviço, facade, adapter e MySQL | Automatizado; prova consolidada em 7.1.3 |
 | 13 | `RegistrationActivationServiceTest`; continuação de aceite e adapter RFW | Automatizado |
 | 14 | solicitação/limite/Turnstile; cancelamento concorrente MySQL; E2E desktop/telefone | Automatizado |
 | 15 | coordenação, fencing, timeout e takeover MySQL; limpezas e catálogo unitários | Automatizado |
@@ -36,10 +36,9 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 ## Próximas provas que fecham esta tarefa
 
 1. executar cadastro, reenvio, ativação, cancelamento e expiração contra MySQL 9 (7.1.2);
-2. consolidar os três caminhos Google com serviços simulados e banco real (7.1.3);
-3. criar o roundtrip UI → facade → backend → MySQL (7.1.4);
-4. exercer os estados de interface sobre resultados reais (7.1.5);
-5. implementar e executar o harness SMTP nominal de 100 operações (7.4.1).
+2. criar o roundtrip UI → facade → backend → MySQL (7.1.4);
+3. exercer os estados de interface sobre resultados reais (7.1.5);
+4. implementar e executar o harness SMTP nominal de 100 operações (7.4.1).
 
 > [!IMPORTANT]
 > A tarefa 7.1.1 permanece em andamento até essas provas existirem. A revisão jurídica, o leitor de tela humano, o
