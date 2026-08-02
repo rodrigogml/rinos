@@ -478,7 +478,8 @@ Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
   - Evidência: [estados da interface derivados do MySQL](./evidence/7.1.5/README.md).
 - [x] 7.1.6 Medir cobertura dos comportamentos críticos e registrar lacunas
   - Evidência: [cobertura quantitativa e lacunas por critério de sucesso](./evidence/7.1.6/README.md).
-- [ ] 7.1.7 Executar build e testes do Rinos e validação isolada do RFW referenciado
+- [x] 7.1.7 Executar build e testes do Rinos e validação isolada do RFW referenciado
+  - Evidência: [build limpo encadeado do RFW, showroom e Rinos](./evidence/7.1.7/README.md).
 - [ ] 7.1.8 Atualizar `tasks.md`, documentação e evidências com os resultados
 - [x] 7.1.9 Isolar os testes MySQL em schemas descartáveis com provedor externo explícito, privilégios restritos,
   validação de MySQL 9 e fallback por Testcontainers
