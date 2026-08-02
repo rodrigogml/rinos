@@ -531,7 +531,8 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
   - Evidência parcial: [SLO local, limite 20 e Siteverify externo validados; SMTP real pendente](./evidence/7.4.2/README.md).
 - [x] 7.4.3 Validar métricas de dispatch SMTP, falhas, reenvios, bloqueios, ativações, cancelamentos e limpeza
   - Evidência: [matriz executável de métricas operacionais](./evidence/7.4.3/README.md).
-- [ ] 7.4.4 Validar alertas para falhas SMTP, falha de job, integração indisponível e erro de migration
+- [x] 7.4.4 Validar alertas para falhas SMTP, falha de job, integração indisponível e erro de migration
+  - Evidência: [sinais e regras operacionais para quatro classes de alerta](./evidence/7.4.4/README.md).
 - [ ] 7.4.5 Documentar limites entre aceite SMTP e entrega final na caixa postal
 - [ ] 7.4.6 Validar inicialização por JAR atrás de proxy reverso com configuração explícita
 - [ ] 7.4.7 Produzir runbook de diagnóstico sem funcionalidades internas de backup ou restauração

@@ -150,12 +150,19 @@ class RegistrationObservabilityServiceTest {
         null,
         Instant.EPOCH,
         Instant.EPOCH);
+    service.recordOperation(
+        RegistrationOperationEnum.START,
+        "UNAVAILABLE",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
     service.recordLifecycle(RegistrationLifecycleEventEnum.EXPIRED, 2);
 
     assertOperation(registry, "resend", "email_sent");
     assertOperation(registry, "start", "rate_limited");
     assertOperation(registry, "activate", "activated");
     assertOperation(registry, "cancellation_confirm", "cancelled");
+    assertOperation(registry, "start", "unavailable");
     assertLifecycle(registry, "blocked", 1);
     assertLifecycle(registry, "activated", 1);
     assertLifecycle(registry, "cancelled", 1);

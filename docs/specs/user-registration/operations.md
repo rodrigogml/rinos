@@ -60,6 +60,9 @@ real. Como ponto inicial:
 4. Alertar por log quando qualquer tarefa do catálogo de limpeza falhar; ausência de expirações,
    isoladamente, não é falha porque pode não haver pendências vencidas.
 5. Alertar sobre perda de lease ou ausência de renovação por mais de dois intervalos de heartbeat.
+6. Alertar imediatamente quando o processo encerrar com código diferente de zero durante a migration; a
+   categoria segura do RFW identifica configuração, lock, validação, execução ou consistência sem
+   exigir que o monitoramento capture credenciais ou comandos SQL.
 
 Dashboards devem exibir taxa e percentis de duração por operação, resultados SMTP, eventos do
 ciclo e eventos do lease de manutenção. Não devem incluir filtros por identidade, endereço de
@@ -71,6 +74,8 @@ origem ou correlation ID como dimensão de métrica.
   bounce, atraso e spam dependem de eventos do provedor e não são inferidos pelo Rinos.
 - A aplicação produz métricas e logs sanitizados; armazenamento, exporter, retenção, dashboards e
   alertas são responsabilidades da infraestrutura.
+- A validação local comprova a emissão dos sinais e as regras recomendadas. O roteamento efetivo para
+  pessoas, escalas ou canais deve ser testado no monitoramento escolhido antes da liberação do ambiente.
 - A aplicação executa retenção e expiração somente sob lease válido. Backup, restauração e
   recuperação de infraestrutura permanecem externos.
 - Métricas são evidência operacional agregada, não fonte de verdade funcional nem trilha de

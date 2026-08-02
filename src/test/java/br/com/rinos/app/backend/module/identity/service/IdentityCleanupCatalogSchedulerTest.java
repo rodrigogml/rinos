@@ -1,5 +1,6 @@
 package br.com.rinos.app.backend.module.identity.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -10,12 +11,16 @@ import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 @DisplayName("Catálogo diário das limpezas de identidade")
+@ExtendWith(OutputCaptureExtension.class)
 class IdentityCleanupCatalogSchedulerTest {
 
   @Test
-  void cleanup_shouldContinueIndependentTasks_afterPartialFailure() {
+  void cleanup_shouldContinueIndependentTasks_afterPartialFailure(CapturedOutput output) {
     RegistrationExpiryCleanupService registrationCleanup =
         mock(RegistrationExpiryCleanupService.class);
     OriginWindowCleanupService originCleanup = mock(OriginWindowCleanupService.class);
@@ -36,5 +41,11 @@ class IdentityCleanupCatalogSchedulerTest {
     verify(registrationCleanup).cleanup(now);
     verify(originCleanup).cleanup(now);
     verify(tombstoneCleanup).cleanup(now);
+    assertThat(output.getOut())
+        .contains(
+            "Tarefa do catálogo de limpeza falhou",
+            "task=registration-expiry",
+            "failureType=IllegalStateException")
+        .doesNotContain("first task failed");
   }
 }
