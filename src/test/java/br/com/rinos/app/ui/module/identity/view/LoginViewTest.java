@@ -70,7 +70,7 @@ class LoginViewTest {
   @Test
   void resolveEntry_shouldFallBackToSignIn_forUnknownOrRepeatedIntention() {
     RFWAccessEntryRequestVO unknown = LoginView.resolveEntry(QueryParameters.simple(Map.of(
-        "step", "password-reset",
+        "step", "unknown",
         "proof", "opaque-proof")));
     RFWAccessEntryRequestVO repeated = LoginView.resolveEntry(QueryParameters.full(Map.of(
         "step", new String[] {"activation", "activation"},
@@ -78,6 +78,17 @@ class LoginViewTest {
 
     assertThat(unknown.step()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
     assertThat(repeated.step()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
+  }
+
+  @Test
+  void resolveEntry_shouldOpenPasswordResetWithOpaqueProof() {
+    RFWAccessEntryRequestVO entry = LoginView.resolveEntry(QueryParameters.simple(Map.of(
+        "step", "password-reset",
+        "proof", "opaque-proof")));
+
+    assertThat(entry.step()).isEqualTo(RFWAccessStepEnum.PASSWORD_RESET);
+    assertThat(entry.identifier()).isNull();
+    assertThat(entry.proof()).isEqualTo("opaque-proof");
   }
 
   @Test

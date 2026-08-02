@@ -31,6 +31,7 @@ public class LoginView extends Main implements BeforeEnterObserver {
   private static final String STEP_PARAMETER = "step";
   private static final String PROOF_PARAMETER = "proof";
   private static final String ACTIVATION_STEP = "activation";
+  private static final String PASSWORD_RESET_STEP = "password-reset";
   private static final int MAXIMUM_PROOF_LENGTH = 512;
 
   private final RFWAccessComponent accessComponent;
@@ -79,7 +80,12 @@ public class LoginView extends Main implements BeforeEnterObserver {
       return RFWAccessEntryRequestVO.signIn();
     }
     String step = singleValue(parameters, STEP_PARAMETER);
-    if (!ACTIVATION_STEP.equals(step)) {
+    RFWAccessStepEnum accessStep = switch (step) {
+      case ACTIVATION_STEP -> RFWAccessStepEnum.ACTIVATION;
+      case PASSWORD_RESET_STEP -> RFWAccessStepEnum.PASSWORD_RESET;
+      default -> null;
+    };
+    if (accessStep == null) {
       return RFWAccessEntryRequestVO.signIn();
     }
     String proof = singleValue(parameters, PROOF_PARAMETER);
@@ -87,7 +93,7 @@ public class LoginView extends Main implements BeforeEnterObserver {
       return RFWAccessEntryRequestVO.signIn();
     }
     return new RFWAccessEntryRequestVO(
-        RFWAccessStepEnum.ACTIVATION,
+        accessStep,
         null,
         blankToNull(proof));
   }

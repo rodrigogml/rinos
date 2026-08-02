@@ -86,25 +86,62 @@ public class OriginLimitService {
   public OriginReservationResultVO reserveNewRegistration(
       OriginAddressVO origin,
       OriginOperationEnum operation) {
+    return reserve(
+        origin,
+        operation,
+        properties.absoluteLimit(),
+        windowMicroseconds);
+  }
+
+  /**
+   * Reserva uma operação protegida usando limite e janela específicos do caso de uso.
+   *
+   * @param origin origem binária validada
+   * @param operation operação protegida
+   * @param limit máximo de eventos na janela
+   * @param window duração positiva da janela
+   * @return reserva confirmada ou bloqueio até o fim da janela
+   */
+  @Transactional
+  public OriginReservationResultVO reserve(
+      OriginAddressVO origin,
+      OriginOperationEnum operation,
+      int limit,
+      Duration window) {
+    Objects.requireNonNull(window, "window must not be null");
+    if (window.isZero() || window.isNegative()) {
+      throw new IllegalArgumentException("window must be positive");
+    }
+    return reserve(origin, operation, limit, toMicroseconds(window));
+  }
+
+  private OriginReservationResultVO reserve(
+      OriginAddressVO origin,
+      OriginOperationEnum operation,
+      int limit,
+      long durationMicroseconds) {
     Objects.requireNonNull(origin, "origin must not be null");
     Objects.requireNonNull(operation, "operation must not be null");
+    if (limit <= 0) {
+      throw new IllegalArgumentException("limit must be positive");
+    }
     byte[] address = origin.getAddress();
     repository.createActiveIfAbsent(
         address,
         operation.name(),
         COUNTER_POLICY.name(),
-        windowMicroseconds);
+        durationMicroseconds);
     repository.closeExpired(address, operation.name(), COUNTER_POLICY.name());
     repository.createActiveIfAbsent(
         address,
         operation.name(),
         COUNTER_POLICY.name(),
-        windowMicroseconds);
+        durationMicroseconds);
     int incremented = repository.incrementBelowLimit(
         address,
         operation.name(),
         COUNTER_POLICY.name(),
-        properties.absoluteLimit());
+        limit);
     if (incremented == 1) {
       return new OriginReservationResultVO(OriginReservationStatusEnum.RESERVED, null);
     }

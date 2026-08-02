@@ -33,6 +33,7 @@ public class IdentityCleanupCatalogScheduler {
   private final Supplier<RegistrationExpiryCleanupService> registrationCleanupSupplier;
   private final Supplier<OriginWindowCleanupService> originCleanupSupplier;
   private final Supplier<IdentityTombstoneCleanupService> tombstoneCleanupSupplier;
+  private final Supplier<PasswordRecoveryCleanupService> passwordRecoveryCleanupSupplier;
   private final Clock clock;
 
   /**
@@ -46,10 +47,12 @@ public class IdentityCleanupCatalogScheduler {
   public IdentityCleanupCatalogScheduler(
       ObjectProvider<RegistrationExpiryCleanupService> registrationCleanupProvider,
       ObjectProvider<OriginWindowCleanupService> originCleanupProvider,
-      ObjectProvider<IdentityTombstoneCleanupService> tombstoneCleanupProvider) {
+      ObjectProvider<IdentityTombstoneCleanupService> tombstoneCleanupProvider,
+      ObjectProvider<PasswordRecoveryCleanupService> passwordRecoveryCleanupProvider) {
     registrationCleanupSupplier = registrationCleanupProvider::getIfAvailable;
     originCleanupSupplier = originCleanupProvider::getIfAvailable;
     tombstoneCleanupSupplier = tombstoneCleanupProvider::getIfAvailable;
+    passwordRecoveryCleanupSupplier = passwordRecoveryCleanupProvider::getIfAvailable;
     clock = Clock.systemUTC();
   }
 
@@ -78,6 +81,7 @@ public class IdentityCleanupCatalogScheduler {
     registrationCleanupSupplier = () -> registrationCleanup;
     originCleanupSupplier = () -> originCleanup;
     tombstoneCleanupSupplier = () -> tombstoneCleanup;
+    passwordRecoveryCleanupSupplier = () -> null;
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
   }
 
@@ -109,6 +113,14 @@ public class IdentityCleanupCatalogScheduler {
       execute(
           "cancellation-tombstone-retention",
           instant -> tombstoneCleanup.cleanup(instant),
+          executionTime);
+    }
+    PasswordRecoveryCleanupService passwordRecoveryCleanup =
+        passwordRecoveryCleanupSupplier.get();
+    if (passwordRecoveryCleanup != null) {
+      execute(
+          "password-recovery-retention",
+          instant -> passwordRecoveryCleanup.cleanup(instant),
           executionTime);
     }
   }

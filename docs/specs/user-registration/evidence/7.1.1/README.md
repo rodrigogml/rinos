@@ -16,7 +16,7 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 | 2 | E2E de erros/foco; `PasswordPolicyServiceTest`; validação pré-escrita da facade; estados persistidos em `RegistrationRoundtripIT` | Automatizado |
 | 3 | `PwnedPasswordsServiceIT`; `PasswordPolicyServiceTest`; falha fechada da facade | Automatizado |
 | 4 | `IdentityRepositoryIT.save_shouldChooseOneUser...`; convergência da facade | Automatizado |
-| 5 | `RegistrationStartFacadeImplTest.start_shouldReturnExistingEmail...`; adapter RFW | Automação funcional pronta; ação de recuperação depende de `user-authentication` |
+| 5 | cadastro existente na facade; `RFWPasswordRecoveryProviderAdapterTest`; preenchimento do RFW e reset em `LoginViewTest` | Automatizado; recuperação mínima entregue em 7.5.1–7.5.2 |
 | 6 | `VerificationServiceTest`; `RegistrationActivationServiceTest`; concorrência MySQL da prova | Automatizado |
 | 7 | `RegistrationResendServiceTest`; facade e adapter de reenvio | Automatizado |
 | 8 | `TurnstileIntegrationIT`; `OriginLimitServiceTest`; limites e retenção MySQL | Automatizado |
@@ -31,12 +31,8 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 | 17 | E2E teclado/touch, semântica estrutural e estados funcionais derivados do MySQL | Leitor de tela humano segue 7.3 |
 | 18 | dispatch pós-commit, falha, reenvio explícito e ausência de segredo | Automatizado; execução integrada em 7.4 |
 | 19 | ferramenta de calibração, ≥50 amostras, percentis, pisos e redação de segredos | Harness automatizado; execução no servidor em 7.5.6 |
-| 20 | métricas e despacho individual | Falta harness de 100 cadastros; 7.4.1–7.4.2 |
-
-## Próximas provas que fecham esta tarefa
-
-1. implementar e executar o harness SMTP nominal de 100 operações (7.4.1).
+| 20 | `RegistrationRoundtripIT.smtpGate_shouldMeasureOneHundredAcceptancesFromTheirCommits`; métricas e despacho individual | Automatizado; execução local 100/100 registrada em 7.4.1 |
 
 > [!IMPORTANT]
-> A tarefa 7.1.1 permanece em andamento até essas provas existirem. A revisão jurídica, o leitor de tela humano, o
-> SMTP real e a calibração no servidor continuam gates externos próprios e não são artificialmente aprovados aqui.
+> Os 20 cenários possuem automação no nível previsto. A revisão jurídica, o leitor de tela humano, o SMTP real e a
+> calibração no servidor continuam gates externos próprios e não são artificialmente aprovados por esta conclusão.

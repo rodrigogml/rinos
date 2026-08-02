@@ -66,6 +66,13 @@ rinos.registration.resend-window=15m
 rinos.registration.cancellation-request-limit=3
 rinos.registration.cancellation-request-window=15m
 rinos.verification.validity=24h
+# Recuperação de senha local: provas, limites por usuário/origem e retenção técnica.
+rinos.password-recovery.validity=1h
+rinos.password-recovery.request-limit=3
+rinos.password-recovery.request-window=15m
+rinos.password-recovery.attempt-limit=20
+rinos.password-recovery.attempt-window=15m
+rinos.password-recovery.retention=30d
 
 # Proteção por origem e proxies confiáveis
 rinos.origin.turnstile-threshold=0

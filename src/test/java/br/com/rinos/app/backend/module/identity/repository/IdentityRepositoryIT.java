@@ -49,6 +49,7 @@ import br.com.rinos.app.backend.module.identity.entity.LegalConsentEntity;
 import br.com.rinos.app.backend.module.identity.entity.LegalDocumentVersionEntity;
 import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.OriginWindowEntity;
+import br.com.rinos.app.backend.module.identity.entity.PasswordRecoveryEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.entity.VerificationEntity;
 import br.com.rinos.app.backend.module.identity.enums.LocalCredentialStatusEnum;
@@ -64,6 +65,7 @@ import br.com.rinos.app.backend.module.identity.enums.RegistrationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.OriginOperationEnum;
 import br.com.rinos.app.backend.module.identity.enums.OriginPolicyEnum;
 import br.com.rinos.app.backend.module.identity.enums.OriginReservationStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.PasswordRecoveryStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationConsumptionStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationPurposeEnum;
@@ -222,6 +224,43 @@ class IdentityRepositoryIT {
               registration(persistedUser, RegistrationMethodEnum.GOOGLE))))
           .isInstanceOf(DataIntegrityViolationException.class);
       assertThat(registrationRepository.count()).isEqualTo(1);
+    });
+  }
+
+  /**
+   * Comprova unicidade da prova e bloqueio das recuperações abertas por usuário.
+   */
+  @Test
+  void passwordRecovery_shouldPersistOnlyHashAndInvalidatePreviousProof() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      PasswordRecoveryRepository recoveryRepository =
+          context.getBean(PasswordRecoveryRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      UserEntity user = transaction.execute(status -> userRepository.saveAndFlush(
+          new UserEntity(
+              "recovery@example.test",
+              "recovery@example.test",
+              UserStatusEnum.ACTIVE)));
+      Instant now = Instant.parse("2026-08-02T12:00:00Z");
+      byte[] hash = new byte[32];
+      hash[0] = 42;
+      transaction.executeWithoutResult(status -> recoveryRepository.saveAndFlush(
+          new PasswordRecoveryEntity(user, hash, now, now.plus(Duration.ofHours(1)))));
+
+      transaction.executeWithoutResult(status -> {
+        List<PasswordRecoveryEntity> open = recoveryRepository
+            .findByUserIdAndStatusForUpdate(user.getId(), PasswordRecoveryStatusEnum.OPEN);
+        assertThat(open).hasSize(1);
+        open.getFirst().setStatus(PasswordRecoveryStatusEnum.INVALIDATED);
+        open.getFirst().setInvalidatedAt(now.plusSeconds(1));
+      });
+
+      assertThat(recoveryRepository.count()).isEqualTo(1);
+      assertThatThrownBy(() -> transaction.executeWithoutResult(status ->
+          recoveryRepository.saveAndFlush(new PasswordRecoveryEntity(
+              user, hash, now.plusSeconds(2), now.plus(Duration.ofHours(2))))))
+          .isInstanceOf(DataIntegrityViolationException.class);
     });
   }
 

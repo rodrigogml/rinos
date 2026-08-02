@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
     MaintenancePropertiesConfig.class,
     OriginPropertiesConfig.class,
     PasswordHashPropertiesConfig.class,
+    PasswordRecoveryPropertiesConfig.class,
     ProxyPropertiesConfig.class,
     PwnedPasswordsPropertiesConfig.class,
     RegistrationPropertiesConfig.class,

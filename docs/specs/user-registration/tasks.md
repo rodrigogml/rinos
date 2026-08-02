@@ -373,7 +373,8 @@ Ref: [Interface §INT-WEB-REG-001](./interface-spec.md), [Spec §FR-REG-001–01
 - [x] 6.1.3 Integrar dados reais pelo provider sem acesso da UI ao backend
 - [x] 6.1.4 Mapear estados inicial, ready, processing, success, erros, offline e conteúdo obsoleto
 - [x] 6.1.5 Preservar somente e-mail e aceites; limpar senha, confirmação e token em toda submissão
-- [ ] 6.1.6 Disponibilizar recuperação preenchida quando a capability obrigatória de release estiver presente `[release-blocker]`
+- [x] 6.1.6 Disponibilizar recuperação preenchida quando a capability obrigatória de release estiver presente `[release-blocker]`
+  - Evidência: [provider ativo e recuperação preenchida](./evidence/6.1.6/README.md).
 - [x] 6.1.7 Cobrir teclado, leitor de tela, touch, telefone, desktop e localização
   - Evidência: instrução localizada associada à senha; foco no primeiro campo inválido e nas
     validações locais; feedback atômico e assertivo; labels, estados required/invalid, reflow,
@@ -466,8 +467,8 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
 
 Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 
-- [~] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados `[release-blocker]`
-  - Evidência em andamento: [matriz cenário → automação e lacunas reais](./evidence/7.1.1/README.md).
+- [x] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados `[release-blocker]`
+  - Evidência: [matriz cenário → automação](./evidence/7.1.1/README.md).
 - [x] 7.1.2 Executar cadastro local, reenvio, ativação, cancelamento e expiração contra MySQL 9
   - Evidência: [ciclo local destrutivo no MySQL 9](./evidence/7.1.2/README.md).
 - [x] 7.1.3 Executar cadastro Google novo, pendente e usuário ativo com serviços simulados
@@ -544,8 +545,10 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
 
 Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implementation Sequencing](./plan.md), [README §Preparação para produção](../../../README.md)
 
-- [ ] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo `[release-blocker]`
-- [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente `[release-blocker]`
+- [x] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo `[release-blocker]`
+  - Evidência: [recuperação mínima e provider RFW real](./evidence/7.5.1/README.md).
+- [x] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente `[release-blocker]`
+  - Evidência: [ação preenchida e link opaco](./evidence/7.5.2/README.md).
 - [x] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
   - Evidência: [documentação, migrations, properties e RFW sincronizados](./evidence/7.5.3/README.md).
 - [x] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers

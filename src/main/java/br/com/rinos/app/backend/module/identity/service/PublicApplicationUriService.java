@@ -19,6 +19,7 @@ public class PublicApplicationUriService {
 
   private static final String LOGIN_PATH = "/login";
   private static final String ACTIVATION_STEP = "activation";
+  private static final String PASSWORD_RESET_STEP = "password-reset";
   private static final String REGISTRATION_CANCELLATION_PATH = "/cancel-registration";
 
   private final URI publicBaseUrl;
@@ -61,6 +62,25 @@ public class PublicApplicationUriService {
    */
   public URI registrationCancellationUri(String token) {
     return verificationUri(REGISTRATION_CANCELLATION_PATH, token);
+  }
+
+  /**
+   * Cria a URL absoluta que abre diretamente a redefinição de senha no RFW.
+   *
+   * @param token prova opaca de uso único
+   * @return URL absoluta e codificada
+   */
+  public URI passwordResetUri(String token) {
+    if (token == null || token.isBlank()) {
+      throw new IllegalArgumentException("token must not be blank");
+    }
+    return UriComponentsBuilder.fromUri(publicBaseUrl)
+        .path(LOGIN_PATH)
+        .queryParam("step", PASSWORD_RESET_STEP)
+        .queryParam("proof", token)
+        .build()
+        .encode()
+        .toUri();
   }
 
   private URI verificationUri(String path, String token) {

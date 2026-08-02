@@ -47,8 +47,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260729_002_update.sql",
       "classpath:db/global/update/20260729_003_update.sql",
       "classpath:db/global/update/20260729_004_update.sql",
-      "classpath:db/global/update/20260729_005_update.sql");
-  private static final String TARGET_VERSION = "20260729005";
+      "classpath:db/global/update/20260729_005_update.sql",
+      "classpath:db/global/update/20260802_001_update.sql");
+  private static final String TARGET_VERSION = "20260802001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -111,6 +112,7 @@ class GlobalDatabaseMigrationIT {
     assertThat(tableExists("identity_user")).isTrue();
     assertThat(tableExists("identity_registration")).isTrue();
     assertThat(tableExists("identity_localCredential")).isTrue();
+    assertThat(tableExists("identity_passwordRecovery")).isTrue();
     assertThat(tableExists("identity_verification")).isTrue();
     assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
     assertThat(tableExists("identity_legalConsent")).isTrue();
@@ -156,6 +158,7 @@ class GlobalDatabaseMigrationIT {
     assertThat(tableExists("identity_user")).isTrue();
     assertThat(tableExists("identity_registration")).isTrue();
     assertThat(tableExists("identity_localCredential")).isTrue();
+    assertThat(tableExists("identity_passwordRecovery")).isTrue();
     assertThat(tableExists("identity_verification")).isTrue();
     assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
     assertThat(tableExists("identity_legalConsent")).isTrue();
@@ -180,7 +183,7 @@ class GlobalDatabaseMigrationIT {
       throws SQLException {
     initializeDatabase();
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260729_006_update.sql";
+        + ",classpath:db/global/failure/20260802_002_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();

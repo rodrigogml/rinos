@@ -9,7 +9,8 @@ package br.com.rinos.app.backend.module.identity.enums;
 public enum VerificationEmailTemplateEnum {
 
   REGISTRATION_CONFIRMATION("registration-verification"),
-  REGISTRATION_CANCELLATION("registration-cancellation");
+  REGISTRATION_CANCELLATION("registration-cancellation"),
+  PASSWORD_RECOVERY("password-recovery");
 
   private final String templateName;
 
