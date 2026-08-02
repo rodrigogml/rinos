@@ -879,12 +879,17 @@ class RFWPlatformIntegrationTest {
 
     contextRunner
         .withBean(
+            RFWRegistrationProvider.class,
+            () -> mock(RFWRegistrationProvider.class))
+        .withBean(
             RFWRegistrationCancellationProviderAdapter.class,
             () -> cancellationProvider)
         .run(context -> {
           assertThat(context).hasNotFailed();
           LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
-          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of(
+              legalReference("terms-v1", LegalDocumentTypeEnum.TERMS_OF_USE, true),
+              legalReference("privacy-v1", LegalDocumentTypeEnum.PRIVACY_POLICY, true)));
           RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
               context.getBean(RFWAccessComponentFactory.class),
               legalDocumentFacade);
@@ -921,11 +926,18 @@ class RFWPlatformIntegrationTest {
             assertThat(request.getValue().identifier()).isEqualTo("person@example.com");
             assertThat(request.getValue().proof()).isEqualTo("opaque-proof");
             assertThat(request.getValue().correlationId()).isNotNull();
+            assertThat(descendants(component, Button.class))
+                .noneMatch(button -> "Criar conta".equals(button.getText()));
 
             pendingConfirmation.complete(RegistrationCancellationConfirmationResultVO.of(
                 RegistrationCancellationConfirmationStatusEnum.CANCELLED));
             assertThat(component.isBusy()).isFalse();
             assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.RESULT);
+            assertThat(component.getResultOriginStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION);
+            assertThat(descendants(component, Button.class))
+                .extracting(Button::getText)
+                .containsExactly("Criar conta", "Voltar para entrar");
           } finally {
             session.unlock();
           }
