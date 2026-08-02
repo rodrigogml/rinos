@@ -546,7 +546,8 @@ Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implement
 
 - [ ] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo
 - [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente
-- [ ] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
+- [x] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
+  - Evidência: [documentação, migrations, properties e RFW sincronizados](./evidence/7.5.3/README.md).
 - [ ] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
 - [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy
 - [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95
