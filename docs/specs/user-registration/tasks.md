@@ -445,7 +445,8 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
 
 - [x] 6.5.1 Compor `REGISTRATION_CANCELLATION_CONFIRMATION` por outcome ou deep link opaco
   - Evidência: [outcome e rota pública convergentes sem ID interno](./evidence/6.5.1/README.md).
-- [ ] 6.5.2 Exibir consequência irreversível e ação inequívoca
+- [x] 6.5.2 Exibir consequência irreversível e ação inequívoca
+  - Evidência: [consequência definitiva anterior à ação inequívoca](./evidence/6.5.2/README.md).
 - [ ] 6.5.3 Limpar prova antes da chamada assíncrona e integrar provider real
 - [ ] 6.5.4 Cobrir prova inválida, expirada, usada e processo encerrado
 - [ ] 6.5.5 Oferecer novo cadastro ou login somente depois do resultado aplicável

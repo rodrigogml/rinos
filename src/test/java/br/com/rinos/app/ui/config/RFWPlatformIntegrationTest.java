@@ -488,10 +488,13 @@ class RFWPlatformIntegrationTest {
             assertThat(component.getCurrentChallenge().maskedDestination()).isNull();
             assertThat(descendants(component, Paragraph.class))
                 .extracting(Paragraph::getText)
-                .contains("Se houver um cadastro pendente elegível, as instruções de confirmação "
-                    + "serão enviadas ao e-mail informado. O cadastro somente será cancelado "
-                    + "quando um código válido for informado e a ação Confirmar cancelamento "
-                    + "for executada.");
+                .contains("Um código válido confirma a exclusão definitiva do cadastro pendente. "
+                    + "Depois da confirmação, os links e códigos de ativação deixarão de funcionar "
+                    + "e o e-mail poderá ser usado em um novo cadastro. A ação Confirmar "
+                    + "cancelamento não pode ser desfeita.");
+            assertThat(descendants(component, Button.class))
+                .extracting(Button::getText)
+                .contains("Confirmar cancelamento");
           } finally {
             session.unlock();
           }
