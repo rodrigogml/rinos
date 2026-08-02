@@ -132,6 +132,7 @@ class VerificationEmailDispatchServiceTest {
   @Test
   void scheduleAfterCommit_shouldExposeTemplateFailure_withoutTransportAttempt() {
     AtomicInteger attempts = new AtomicInteger();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     EmailDispatchService emailDispatchService = new EmailDispatchService(
         (templateName, locale) -> {
           throw new RFWInfrastructureException(
@@ -142,7 +143,7 @@ class VerificationEmailDispatchServiceTest {
         ignored -> attempts.incrementAndGet());
     VerificationEmailDispatchService service = new VerificationEmailDispatchService(
         emailDispatchService,
-        new SimpleMeterRegistry(),
+        meterRegistry,
         Clock.fixed(NOW, ZoneOffset.UTC));
 
     VerificationEmailDispatchResultVO result = executeCommitted(service);
@@ -151,11 +152,13 @@ class VerificationEmailDispatchServiceTest {
         .isEqualTo(VerificationEmailDispatchStatusEnum.TEMPLATE_FAILURE);
     assertThat(result.resendAvailable()).isTrue();
     assertThat(attempts).hasValue(0);
+    assertFailureMetrics(meterRegistry, "template_failure");
   }
 
   @Test
   void scheduleAfterCommit_shouldExposeTransportFailure_withoutAutomaticRetry() {
     AtomicInteger attempts = new AtomicInteger();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     EmailDispatcher failingDispatcher = ignored -> {
       attempts.incrementAndGet();
       throw new RFWIntegrationException(
@@ -163,7 +166,7 @@ class VerificationEmailDispatchServiceTest {
           "SMTP timeout");
     };
     VerificationEmailDispatchService service =
-        service(failingDispatcher, new SimpleMeterRegistry());
+        service(failingDispatcher, meterRegistry);
 
     VerificationEmailDispatchResultVO result = executeCommitted(service);
 
@@ -171,6 +174,7 @@ class VerificationEmailDispatchServiceTest {
         .isEqualTo(VerificationEmailDispatchStatusEnum.TRANSPORT_FAILURE);
     assertThat(result.resendAvailable()).isTrue();
     assertThat(attempts).hasValue(1);
+    assertFailureMetrics(meterRegistry, "transport_failure");
   }
 
   @Test
@@ -298,6 +302,19 @@ class VerificationEmailDispatchServiceTest {
         NOW.plusSeconds(3600),
         Locale.of("pt", "BR"),
         UUID.fromString("95f6724a-67bf-49fe-90f4-873c96b446ab"));
+  }
+
+  private static void assertFailureMetrics(
+      SimpleMeterRegistry meterRegistry,
+      String result) {
+    assertThat(meterRegistry.counter(
+        VerificationEmailDispatchService.ATTEMPT_METRIC_NAME,
+        "result",
+        result).count()).isEqualTo(1);
+    assertThat(meterRegistry.timer(
+        VerificationEmailDispatchService.DURATION_METRIC_NAME,
+        "result",
+        result).count()).isEqualTo(1);
   }
 
   private static void beginTransaction() {

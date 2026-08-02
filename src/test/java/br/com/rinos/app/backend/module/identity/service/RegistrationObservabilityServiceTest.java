@@ -121,6 +121,48 @@ class RegistrationObservabilityServiceTest {
   }
 
   @Test
+  void metrics_shouldExposeResendBlockActivationCancellationAndCleanup() {
+    SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    RegistrationObservabilityService service =
+        new RegistrationObservabilityService(registry);
+
+    service.recordOperation(
+        RegistrationOperationEnum.RESEND,
+        "EMAIL_SENT",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
+    service.recordOperation(
+        RegistrationOperationEnum.START,
+        "RATE_LIMITED",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
+    service.recordOperation(
+        RegistrationOperationEnum.ACTIVATE,
+        "ACTIVATED",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
+    service.recordOperation(
+        RegistrationOperationEnum.CANCELLATION_CONFIRM,
+        "CANCELLED",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
+    service.recordLifecycle(RegistrationLifecycleEventEnum.EXPIRED, 2);
+
+    assertOperation(registry, "resend", "email_sent");
+    assertOperation(registry, "start", "rate_limited");
+    assertOperation(registry, "activate", "activated");
+    assertOperation(registry, "cancellation_confirm", "cancelled");
+    assertLifecycle(registry, "blocked", 1);
+    assertLifecycle(registry, "activated", 1);
+    assertLifecycle(registry, "cancelled", 1);
+    assertLifecycle(registry, "expired", 2);
+  }
+
+  @Test
   void recordOperation_shouldRejectFreeTextResult() {
     RegistrationObservabilityService service =
         new RegistrationObservabilityService(new SimpleMeterRegistry());
@@ -132,5 +174,33 @@ class RegistrationObservabilityServiceTest {
         Instant.EPOCH,
         Instant.EPOCH))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private static void assertOperation(
+      SimpleMeterRegistry registry,
+      String operation,
+      String result) {
+    assertThat(registry.counter(
+        RegistrationObservabilityService.OPERATION_COUNTER_NAME,
+        "operation",
+        operation,
+        "result",
+        result).count()).isEqualTo(1);
+    assertThat(registry.timer(
+        RegistrationObservabilityService.OPERATION_DURATION_NAME,
+        "operation",
+        operation,
+        "result",
+        result).count()).isEqualTo(1);
+  }
+
+  private static void assertLifecycle(
+      SimpleMeterRegistry registry,
+      String event,
+      double count) {
+    assertThat(registry.counter(
+        RegistrationObservabilityService.LIFECYCLE_COUNTER_NAME,
+        "event",
+        event).count()).isEqualTo(count);
   }
 }
