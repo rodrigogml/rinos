@@ -468,7 +468,8 @@ Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 
 - [~] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados
   - Evidência em andamento: [matriz cenário → automação e lacunas reais](./evidence/7.1.1/README.md).
-- [ ] 7.1.2 Executar cadastro local, reenvio, ativação, cancelamento e expiração contra MySQL 9
+- [x] 7.1.2 Executar cadastro local, reenvio, ativação, cancelamento e expiração contra MySQL 9
+  - Evidência: [ciclo local destrutivo no MySQL 9](./evidence/7.1.2/README.md).
 - [ ] 7.1.3 Executar cadastro Google novo, pendente e usuário ativo com serviços simulados
 - [ ] 7.1.4 Validar roundtrip UI → facade → backend → MySQL sem exposição de entity
 - [ ] 7.1.5 Validar todos os estados de interface com dados reais, não apenas mocks

@@ -122,6 +122,7 @@ public class RegistrationExpiryCleanupService {
             PageRequest.of(0, cleanupProperties.batchSize()));
     int deleted = 0;
     List<UUID> tombstones = new ArrayList<>();
+    List<RegistrationEntity> expiredRegistrations = new ArrayList<>();
     for (RegistrationEntity registration : registrations) {
       UserEntity user = registration.getUser();
       if (user.getStatus() != UserStatusEnum.PENDING_VERIFICATION
@@ -135,8 +136,16 @@ public class RegistrationExpiryCleanupService {
           IdentityTransitionOriginEnum.SCHEDULED_JOB,
           "RETENTION_ELAPSED",
           executionTime);
+      expiredRegistrations.add(registration);
+    }
+    if (!expiredRegistrations.isEmpty()) {
+      registrationRepository.flush();
+    }
+    for (RegistrationEntity registration : expiredRegistrations) {
+      UserEntity user = registration.getUser();
       UUID correlationId = UUID.randomUUID();
       auditService.minimizeForTerminalRemoval(user, registration);
+      registrationRepository.delete(registration);
       userRepository.delete(user);
       tombstones.add(correlationId);
       deleted++;

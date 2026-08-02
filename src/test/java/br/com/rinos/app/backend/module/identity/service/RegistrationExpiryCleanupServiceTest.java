@@ -81,6 +81,8 @@ class RegistrationExpiryCleanupServiceTest {
     assertThat(List.of(first, second, third))
         .extracting(RegistrationEntity::getStatus)
         .containsOnly(RegistrationStatusEnum.EXPIRED);
+    verify(registrationRepository, times(2)).flush();
+    verify(registrationRepository, times(3)).delete(any(RegistrationEntity.class));
     verify(userRepository, times(3)).delete(any(UserEntity.class));
     verify(userRepository, times(2)).flush();
     verify(coordinator, times(2)).executeBatch(any());

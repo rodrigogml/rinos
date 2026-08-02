@@ -2,12 +2,16 @@ package br.com.rinos.app.backend.module.identity.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -75,6 +79,9 @@ import br.com.rinos.app.backend.module.identity.service.PublicApplicationUriServ
 import br.com.rinos.app.backend.module.identity.service.RegistrationCancellationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationActivationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationLifecycleService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationExpiryCleanupService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationObservabilityService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationResendService;
 import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.VerificationService;
 import br.com.rinos.app.backend.module.identity.service.VerificationEmailDispatchService;
@@ -82,15 +89,20 @@ import br.com.rinos.app.backend.module.identity.service.VerificationTokenService
 import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
 import br.com.rinos.app.backend.module.identity.service.OriginLimitService;
 import br.com.rinos.app.backend.module.identity.vo.OriginAddressVO;
+import br.com.rinos.app.backend.module.identity.vo.RegistrationResendTransactionVO;
+import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.config.VerificationPropertiesConfig;
+import br.com.rinos.app.config.CleanupPropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 import br.com.rinos.app.config.OriginPropertiesConfig;
 import br.com.rinos.app.config.RegistrationPropertiesConfig;
+import br.com.rinos.app.backend.module.identity.enums.VerificationEmailDispatchStatusEnum;
+import br.com.rinos.app.backend.module.platform.service.MaintenanceCoordinatorService;
 
 /**
  * Valida unicidade, relacionamento e controle otimista da identidade contra MySQL 9.
@@ -300,6 +312,166 @@ class IdentityRepositoryIT {
       } finally {
         executor.shutdownNow();
       }
+    });
+  }
+
+  /**
+   * Comprova reenvio real no MySQL, invalidando a prova anterior e persistindo somente uma prova aberta.
+   */
+  @Test
+  void resend_shouldInvalidatePreviousProofAndPersistNewOpenProof() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      RegistrationRepository registrationRepository =
+          context.getBean(RegistrationRepository.class);
+      VerificationRepository verificationRepository =
+          context.getBean(VerificationRepository.class);
+      IdentityEventRepository eventRepository = context.getBean(IdentityEventRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      VerificationService verificationService = new VerificationService(
+          verificationRepository,
+          registrationRepository,
+          new VerificationTokenService(),
+          new VerificationPropertiesConfig(Duration.ofHours(24)));
+      RegistrationEntity persistedRegistration = transaction.execute(status -> {
+        UserEntity persistedUser = userRepository.saveAndFlush(new UserEntity(
+            "resend-mysql@example.com",
+            "resend-mysql@example.com",
+            UserStatusEnum.PENDING_VERIFICATION));
+        RegistrationEntity registration = registrationRepository.saveAndFlush(
+            registration(persistedUser, RegistrationMethodEnum.LOCAL));
+        verificationService.issue(
+            registration,
+            VerificationPurposeEnum.REGISTRATION_EMAIL,
+            Instant.parse("2026-07-29T18:00:00Z"));
+        return registration;
+      });
+      PublicApplicationUriService uriService = mock(PublicApplicationUriService.class);
+      when(uriService.activationUri(any())).thenReturn(
+          URI.create("http://localhost:7070/login?step=activation&proof=opaque"));
+      VerificationEmailDispatchService dispatchService =
+          mock(VerificationEmailDispatchService.class);
+      when(dispatchService.scheduleAfterCommit(any())).thenReturn(
+          CompletableFuture.completedFuture(new VerificationEmailDispatchResultVO(
+              VerificationEmailDispatchStatusEnum.ACCEPTED,
+              java.util.UUID.randomUUID(),
+              Duration.ZERO)));
+      RegistrationResendService resendService = new RegistrationResendService(
+          registrationRepository,
+          eventRepository,
+          verificationService,
+          new IdentityAuditService(eventRepository),
+          uriService,
+          dispatchService,
+          new RegistrationPropertiesConfig(
+              Duration.ofDays(15),
+              3,
+              Duration.ofMinutes(15),
+              3,
+              Duration.ofMinutes(15)));
+
+      RegistrationResendTransactionVO result = transaction.execute(status -> resendService.resend(
+          persistedRegistration.getId(),
+          java.util.Locale.of("pt", "BR"),
+          java.util.UUID.randomUUID(),
+          Instant.parse("2026-07-29T18:05:00Z")));
+
+      assertThat(result).isNotNull();
+      assertThat(result.eligible()).isTrue();
+      assertThat(result.blocked()).isFalse();
+      assertThat(result.dispatch().toCompletableFuture().join().accepted()).isTrue();
+      assertThat(verificationRepository.findAll())
+          .extracting(VerificationEntity::getStatus)
+          .containsExactlyInAnyOrder(
+              VerificationStatusEnum.INVALIDATED,
+              VerificationStatusEnum.OPEN);
+      assertThat(eventRepository.findAll())
+          .extracting(IdentityEventEntity::getEventType)
+          .contains(IdentityEventTypeEnum.VERIFICATION_REISSUED);
+    });
+  }
+
+  /**
+   * Comprova ativação local integral no MySQL com prova usada e credencial preservada.
+   */
+  @Test
+  void activateLocalRegistration_shouldCommitLifecycleAndUsedProof() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      RegistrationRepository registrationRepository =
+          context.getBean(RegistrationRepository.class);
+      LocalCredentialRepository credentialRepository =
+          context.getBean(LocalCredentialRepository.class);
+      VerificationRepository verificationRepository =
+          context.getBean(VerificationRepository.class);
+      LegalDocumentVersionRepository documentRepository =
+          context.getBean(LegalDocumentVersionRepository.class);
+      LegalConsentRepository consentRepository = context.getBean(LegalConsentRepository.class);
+      ExternalIdentityRepository externalRepository =
+          context.getBean(ExternalIdentityRepository.class);
+      IdentityEventRepository eventRepository = context.getBean(IdentityEventRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      Instant occurredAt = Instant.parse("2026-07-29T18:00:00Z");
+      VerificationService verificationService = new VerificationService(
+          verificationRepository,
+          registrationRepository,
+          new VerificationTokenService(),
+          new VerificationPropertiesConfig(Duration.ofHours(24)));
+      LegalConsentService legalConsentService =
+          new LegalConsentService(documentRepository, consentRepository);
+      RegistrationActivationService activationService = new RegistrationActivationService(
+          verificationService,
+          legalConsentService,
+          new UserLifecycleService(),
+          new RegistrationLifecycleService(),
+          new ExternalIdentityService(externalRepository),
+          new IdentityAuditService(eventRepository),
+          new EmailPrivacyService());
+      String proof = transaction.execute(status -> {
+        UserEntity user = userRepository.saveAndFlush(new UserEntity(
+            "local-activation@example.com",
+            "local-activation@example.com",
+            UserStatusEnum.PENDING_VERIFICATION));
+        RegistrationEntity registration = registrationRepository.saveAndFlush(
+            registration(user, RegistrationMethodEnum.LOCAL));
+        credentialRepository.saveAndFlush(new LocalCredentialEntity(
+            user,
+            "{argon2}encoded-value"));
+        LegalDocumentVersionEntity terms = documentRepository.saveAndFlush(legalDocument(
+            LegalDocumentTypeEnum.TERMS_OF_USE,
+            "terms-local-activation",
+            occurredAt.minusSeconds(60)));
+        LegalDocumentVersionEntity privacy = documentRepository.saveAndFlush(legalDocument(
+            LegalDocumentTypeEnum.PRIVACY_POLICY,
+            "privacy-local-activation",
+            occurredAt.minusSeconds(60)));
+        legalConsentService.recordCurrentDecisions(
+            user,
+            registration,
+            Map.of(
+                terms.getId(), LegalConsentDecisionEnum.ACCEPTED,
+                privacy.getId(), LegalConsentDecisionEnum.ACCEPTED),
+            occurredAt);
+        return verificationService.issue(
+            registration,
+            VerificationPurposeEnum.REGISTRATION_EMAIL,
+            occurredAt).getToken();
+      });
+
+      RegistrationActivationResultVO result = transaction.execute(status -> activationService.activate(
+          proof,
+          java.util.UUID.randomUUID(),
+          occurredAt.plusSeconds(60)));
+
+      assertThat(result.status()).isEqualTo(RegistrationActivationStatusEnum.ACTIVATED);
+      assertThat(userRepository.findAll().getFirst().getStatus()).isEqualTo(UserStatusEnum.ACTIVE);
+      assertThat(registrationRepository.findAll().getFirst().getStatus())
+          .isEqualTo(RegistrationStatusEnum.ACTIVE);
+      assertThat(credentialRepository.findAll().getFirst().getStatus())
+          .isEqualTo(LocalCredentialStatusEnum.ACTIVE);
+      assertThat(verificationRepository.findAll().getFirst().getStatus())
+          .isEqualTo(VerificationStatusEnum.USED);
+      assertThat(consentRepository.count()).isEqualTo(2);
     });
   }
 
@@ -1000,6 +1172,59 @@ class IdentityRepositoryIT {
       assertThat(selected).hasSize(1);
       assertThat(selected.getFirst().getUser().getNormalizedEmail())
           .isEqualTo("pending-expired@example.com");
+    });
+  }
+
+  /**
+   * Comprova que a limpeza coordenada remove de fato a raiz vencida no MySQL e preserva tombstone sem PII.
+   */
+  @Test
+  void expiryCleanup_shouldDeleteExpiredRootAndPersistPiiFreeTombstone() {
+    contextRunner().run(context -> {
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      RegistrationRepository registrationRepository =
+          context.getBean(RegistrationRepository.class);
+      IdentityEventRepository eventRepository = context.getBean(IdentityEventRepository.class);
+      TransactionTemplate transaction = transaction(context);
+      transaction.executeWithoutResult(status -> {
+        UserEntity user = userRepository.saveAndFlush(new UserEntity(
+            "expired-cleanup@example.com",
+            "expired-cleanup@example.com",
+            UserStatusEnum.PENDING_VERIFICATION));
+        registrationRepository.saveAndFlush(new RegistrationEntity(
+            user,
+            RegistrationMethodEnum.LOCAL,
+            RegistrationStatusEnum.PENDING_VERIFICATION,
+            Instant.parse("2026-07-28T12:00:00Z")));
+      });
+      MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
+      when(coordinator.canStartJob()).thenReturn(true);
+      when(coordinator.executeBatch(any(Runnable.class))).thenAnswer(invocation -> {
+        Runnable batch = invocation.getArgument(0);
+        transaction.executeWithoutResult(status -> batch.run());
+        return true;
+      });
+      RegistrationExpiryCleanupService cleanupService = new RegistrationExpiryCleanupService(
+          registrationRepository,
+          userRepository,
+          new RegistrationLifecycleService(),
+          new IdentityAuditService(eventRepository),
+          coordinator,
+          new CleanupPropertiesConfig(Duration.ofHours(24), 10),
+          mock(RegistrationObservabilityService.class));
+
+      int deleted = cleanupService.cleanup(Instant.parse("2026-07-29T12:00:00Z"));
+
+      assertThat(deleted).isEqualTo(1);
+      assertThat(userRepository.count()).isZero();
+      assertThat(registrationRepository.count()).isZero();
+      assertThat(eventRepository.findAll())
+          .singleElement()
+          .satisfies(event -> {
+            assertThat(event.getEventType()).isEqualTo(IdentityEventTypeEnum.REGISTRATION_EXPIRED);
+            assertThat(event.getUser()).isNull();
+            assertThat(event.getRegistration()).isNull();
+          });
     });
   }
 
