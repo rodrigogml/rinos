@@ -190,6 +190,10 @@ O Rinos mede o intervalo entre o commit do cadastro e a aceitação da mensagem 
 caixa postal, bounce, classificação como spam e atrasos posteriores só integram a observabilidade quando o provedor
 configurado oferecer eventos próprios; sem esses eventos, não constituem gate de release.
 
+Mensagens públicas posteriores ao resultado `ACCEPTED` devem afirmar que o serviço de e-mail aceitou ou que a
+instrução foi encaminhada, nunca que chegou à caixa postal. Elas podem orientar que a entrega leva alguns minutos.
+O Rinos não deve apresentar estado entregue, bounce ou spam enquanto não consumir eventos autenticados do provedor.
+
 O coordenador `VerificationEmailDispatchService` registra o trabalho na sincronização da transação proprietária e
 materializa a mensagem somente no callback `afterCommit`. O resultado assíncrono permanece pendente até a aceitação ou
 falha do SMTP; rollback conclui sem tentativa de envio. Falha não inicia retentativa automática, e um reenvio posterior
