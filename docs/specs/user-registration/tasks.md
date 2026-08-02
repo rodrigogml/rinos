@@ -355,9 +355,9 @@ Ref: [Documentos jurídicos](../../legal/), [Data Model §LegalDocumentVersion](
 
 - [x] 6.0.1 Definir localização, escopo, gates e procedimento de versionamento/publicação
 - [x] 6.0.2 Criar esboços não vigentes para Termos de Uso e Política de Privacidade
-- [ ] 6.0.3 Completar decisões organizacionais, inventário de dados e fornecedores reais
-- [ ] 6.0.4 Obter revisão jurídica especializada e autorização expressa da versão
-- [ ] 6.0.5 Publicar os arquivos aprovados, seed/update global, hash e testes de conteúdo exato
+- [ ] 6.0.3 Completar decisões organizacionais, inventário de dados e fornecedores reais `[release-blocker]`
+- [ ] 6.0.4 Obter revisão jurídica especializada e autorização expressa da versão `[release-blocker]`
+- [ ] 6.0.5 Publicar os arquivos aprovados, seed/update global, hash e testes de conteúdo exato `[release-blocker]`
 
 > [!IMPORTANT]
 > Os itens 6.0.3–6.0.5 bloqueiam a liberação do cadastro em produção, mas não a implementação
@@ -373,7 +373,7 @@ Ref: [Interface §INT-WEB-REG-001](./interface-spec.md), [Spec §FR-REG-001–01
 - [x] 6.1.3 Integrar dados reais pelo provider sem acesso da UI ao backend
 - [x] 6.1.4 Mapear estados inicial, ready, processing, success, erros, offline e conteúdo obsoleto
 - [x] 6.1.5 Preservar somente e-mail e aceites; limpar senha, confirmação e token em toda submissão
-- [ ] 6.1.6 Disponibilizar recuperação preenchida quando a capability obrigatória de release estiver presente
+- [ ] 6.1.6 Disponibilizar recuperação preenchida quando a capability obrigatória de release estiver presente `[release-blocker]`
 - [x] 6.1.7 Cobrir teclado, leitor de tela, touch, telefone, desktop e localização
   - Evidência: instrução localizada associada à senha; foco no primeiro campo inválido e nas
     validações locais; feedback atômico e assertivo; labels, estados required/invalid, reflow,
@@ -466,7 +466,7 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
 
 Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
 
-- [~] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados
+- [~] 7.1.1 Automatizar todos os 20 cenários do quickstart nos níveis apropriados, ainda que os cenários de Argon2id e SMTP também possuam gates especializados `[release-blocker]`
   - Evidência em andamento: [matriz cenário → automação e lacunas reais](./evidence/7.1.1/README.md).
 - [x] 7.1.2 Executar cadastro local, reenvio, ativação, cancelamento e expiração contra MySQL 9
   - Evidência: [ciclo local destrutivo no MySQL 9](./evidence/7.1.2/README.md).
@@ -499,7 +499,7 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
   - Evidência: [auditoria de segredos e PII](./evidence/7.2.4/README.md).
 - [x] 7.2.5 Executar análise de dependências e verificações estáticas disponíveis
   - Evidência: [análise de dependências e verificações estáticas](./evidence/7.2.5/README.md).
-- [!] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática
+- [!] 7.2.6 Validar permissões mínimas do Painel e ausência de tenant ou concessão automática `[release-blocker]`
   - Evidência parcial: [isolamento inicial e dependências para validar o Painel](./evidence/7.2.6/README.md).
   - A ausência de tenant, conta e concessão automática está comprovada. A conclusão Google já materializa a sessão e
     alcança `/user`; o gate de acesso real permanece bloqueado até `user-authentication` cobrir a autenticação geral e
@@ -513,13 +513,13 @@ Ref: [Spec §SC-UR-001, SC-UR-003 e SC-UR-007](./spec.md), [Interface §Shared A
 
 - [x] 7.3.1 Executar verificação automatizada WCAG 2.2 AA sem violações críticas ou sérias
   - Evidência: [axe-core sobre os cinco INTs em quatro apresentações](./evidence/7.3.1/README.md).
-- [ ] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado
-- [ ] 7.3.3 Avaliar manualmente as jornadas principais com leitor de tela
+- [ ] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado `[release-blocker]`
+- [ ] 7.3.3 Avaliar manualmente as jornadas principais com leitor de tela `[release-blocker]`
 - [x] 7.3.4 Renderizar e inspecionar cada `INT-*` em telefone e desktop, claro e escuro
   - Evidência: [matriz visual dos cinco INTs em quatro apresentações](./evidence/7.3.4/README.md).
-- [ ] 7.3.5 Executar teste sem orientação com no mínimo 10 participantes alheios ao desenvolvimento
-- [ ] 7.3.6 Confirmar pelo menos 9 sucessos no envio em três minutos e na ativação de primeira tentativa
-- [ ] 7.3.7 Registrar falhas menores como tarefas e impedir release diante de bloqueios
+- [ ] 7.3.5 Executar teste sem orientação com no mínimo 10 participantes alheios ao desenvolvimento `[release-blocker]`
+- [ ] 7.3.6 Confirmar pelo menos 9 sucessos no envio em três minutos e na ativação de primeira tentativa `[release-blocker]`
+- [ ] 7.3.7 Registrar falhas menores como tarefas e impedir release diante de bloqueios `[release-blocker]`
 
 ### 7.4 Validar operação, métricas e SLO SMTP `[A]`
 
@@ -527,7 +527,7 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
 
 - [x] 7.4.1 Configurar o perfil do gate para permitir ao menos 100 novas pendências por origem e verificação humana controlada, executar 100 cadastros nominais contra SMTP local controlado e medir cada aceite desde o respectivo commit
   - Evidência: [100 commits e 100 aceitações no SMTP local controlado](./evidence/7.4.1/README.md).
-- [ ] 7.4.2 Confirmar ao menos 95 aceitações em até dois minutos, restaurar e validar separadamente o limite padrão de 20 e o Turnstile real e executar um único smoke test no SMTP real sem declarar throughput
+- [ ] 7.4.2 Confirmar ao menos 95 aceitações em até dois minutos, restaurar e validar separadamente o limite padrão de 20 e o Turnstile real e executar um único smoke test no SMTP real sem declarar throughput `[release-blocker]`
   - Evidência parcial: [SLO local, limite 20 e Siteverify externo validados; SMTP real pendente](./evidence/7.4.2/README.md).
 - [x] 7.4.3 Validar métricas de dispatch SMTP, falhas, reenvios, bloqueios, ativações, cancelamentos e limpeza
   - Evidência: [matriz executável de métricas operacionais](./evidence/7.4.3/README.md).
@@ -544,15 +544,16 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
 
 Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implementation Sequencing](./plan.md), [README §Preparação para produção](../../../README.md)
 
-- [ ] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo
-- [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente
+- [ ] 7.5.1 Confirmar que `user-authentication` fornece recuperação mínima de senha e provider RFW ativo `[release-blocker]`
+- [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente `[release-blocker]`
 - [x] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
   - Evidência: [documentação, migrations, properties e RFW sincronizados](./evidence/7.5.3/README.md).
 - [x] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
   - Evidência: [checklist e análise cross-artifact sem blockers](./evidence/7.5.4/README.md).
-- [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy
-- [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95
-- [ ] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate declarado bloqueante estiver aberto, incluindo documentos jurídicos 6.0.3–6.0.5, recuperação de senha e validações humanas ou operacionais de release
+- [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy `[release-blocker]`
+- [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95 `[release-blocker]`
+- [x] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate declarado bloqueante estiver aberto, incluindo documentos jurídicos 6.0.3–6.0.5, recuperação de senha e validações humanas ou operacionais de release `[release-blocker]`
+  - Evidência: [decisão NO-GO e gate Maven de release](./evidence/7.5.7/README.md).
 
 ---
 

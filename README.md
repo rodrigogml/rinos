@@ -148,12 +148,25 @@ ambiente, `SPRING_APPLICATION_JSON`, profiles e arquivos adicionais não complem
 Interpolação por placeholders e chaves de importação também são recusadas. Arquivo ausente, propriedade obrigatória
 vazia ou combinação incompatível impede a inicialização com diagnóstico operacional.
 
-O pacote executável é produzido por:
+O pacote executável para desenvolvimento é produzido por:
 
 ```shell
 mvn clean package
 java -jar target/rinos-1.0.0.jar
 ```
+
+Esse comando não constitui aprovação para produção. O JAR destinado a release DEVE ser
+construído com o profile que valida os gates declarados no backlog:
+
+```shell
+mvn -Prelease clean package
+```
+
+O profile interrompe o build na fase `validate` quando encontra qualquer subtarefa aberta,
+em andamento ou bloqueada marcada com `[release-blocker]` em
+`docs/specs/user-registration/tasks.md`. O marcador fica no backlog que define o gate; não existe
+uma segunda lista permissiva no POM. Remover o profile, omitir deliberadamente `-Prelease` ou apagar
+um marcador sem encerrar sua evidência não transforma o artefato em release aprovado.
 
 O lifecycle Maven executa `vaadin:build-frontend` e incorpora ao JAR o bundle otimizado de
 produção. Não remova esse plugin nem compense sua ausência empacotando o servidor de
@@ -168,6 +181,8 @@ habilitada, todas as suas propriedades obrigatórias devem estar presentes no me
 > [!IMPORTANT]
 > Este checklist evolui junto com a implementação. Uma versão somente pode ser liberada quando os comandos,
 > propriedades e gates mencionados aqui estiverem disponíveis e validados para aquela versão.
+> A construção destinada a produção deve usar `mvn -Prelease clean package`; falha do gate é uma decisão
+> automática de NO-GO e o JAR de um build comum não deve ser promovido como substituto.
 
 1. Preparar um servidor Linux com a versão suportada do Java 25, MySQL 9 e um proxy reverso com HTTPS.
 2. Criar o `application.properties` na raiz a partir do `application.properties.model`, mantendo todas as definições
