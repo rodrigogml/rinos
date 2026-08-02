@@ -47,6 +47,10 @@ mvn verify
 Testes unitários usam o sufixo `*Test`; testes de integração usam `*IT` e são executados pelo Failsafe durante
 `mvn verify`.
 
+O mesmo comando instrumenta testes unitários e integrados com JaCoCo e gera o relatório navegável em
+`target/site/jacoco/index.html`, além dos formatos XML e CSV. A cobertura quantitativa serve para localizar caminhos
+não exercidos; os gates de release continuam definidos pelos comportamentos e critérios de sucesso documentados.
+
 Os testes de migration global, coordenação concorrente e persistência usam um schema descartável
 `rinos_test_<uuid>`. O provedor preferencial é uma instância MySQL 9 externa explicitamente habilitada no
 `application.properties`; sem essa configuração, o projeto usa Testcontainers com a imagem `mysql:9.0`. Quando nenhum
