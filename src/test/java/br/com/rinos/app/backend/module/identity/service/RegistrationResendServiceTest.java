@@ -87,6 +87,8 @@ class RegistrationResendServiceTest {
         new RegistrationPropertiesConfig(
             Duration.ofDays(15),
             3,
+            Duration.ofMinutes(15),
+            3,
             Duration.ofMinutes(15)));
   }
 

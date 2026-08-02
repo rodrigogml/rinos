@@ -105,6 +105,36 @@ class RegistrationCancellationFacadeImplTest {
   }
 
   @Test
+  void request_shouldKeepPublicResponseNeutralAndRecordLimitInternally_whenIssueIsBlocked() {
+    IdentityService identityService = mock(IdentityService.class);
+    RegistrationCancellationService service =
+        mock(RegistrationCancellationService.class);
+    RegistrationObservabilityService observability =
+        mock(RegistrationObservabilityService.class);
+    when(identityService.findPendingRegistration("existing@example.com"))
+        .thenReturn(Optional.of(registration()));
+    when(service.issue(any(), any(), any(), any()))
+        .thenReturn(RegistrationCancellationIssueVO.rateLimited(
+            NOW.plus(Duration.ofMinutes(5))));
+    RegistrationCancellationFacadeImpl facade =
+        facade(identityService, service, observability);
+
+    RegistrationCancellationRequestResultVO result = facade.requestCancellation(
+        request("existing@example.com")).toCompletableFuture().join();
+
+    assertThat(result.status())
+        .isEqualTo(RegistrationCancellationRequestStatusEnum.REQUEST_ACCEPTED);
+    assertThat(result.challengeReference()).isNotBlank();
+    assertThat(result.expiresAt()).isEqualTo(NOW.plus(Duration.ofHours(24)));
+    verify(observability).recordOperation(
+        RegistrationOperationEnum.CANCELLATION_REQUEST,
+        "RATE_LIMITED",
+        CORRELATION_ID,
+        NOW,
+        NOW);
+  }
+
+  @Test
   void confirm_shouldMeasureOnlyThePublicResult() {
     IdentityService identityService = mock(IdentityService.class);
     RegistrationCancellationService service =

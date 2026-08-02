@@ -90,6 +90,7 @@ import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.config.VerificationPropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 import br.com.rinos.app.config.OriginPropertiesConfig;
+import br.com.rinos.app.config.RegistrationPropertiesConfig;
 
 /**
  * Valida unicidade, relacionamento e controle otimista da identidade contra MySQL 9.
@@ -1085,6 +1086,7 @@ class IdentityRepositoryIT {
       RegistrationCancellationService cancellationService =
           new RegistrationCancellationService(
               registrationRepository,
+              eventRepository,
               userRepository,
               verificationService,
               new EmailNormalizationService(),
@@ -1092,7 +1094,13 @@ class IdentityRepositoryIT {
               new UserLifecycleService(),
               new IdentityAuditService(eventRepository),
               mock(PublicApplicationUriService.class),
-              mock(VerificationEmailDispatchService.class));
+              mock(VerificationEmailDispatchService.class),
+              new RegistrationPropertiesConfig(
+                  Duration.ofDays(15),
+                  3,
+                  Duration.ofMinutes(15),
+                  3,
+                  Duration.ofMinutes(15)));
       ExecutorService executor = Executors.newFixedThreadPool(2);
       CountDownLatch start = new CountDownLatch(1);
       try {

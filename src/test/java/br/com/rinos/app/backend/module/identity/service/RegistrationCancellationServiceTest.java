@@ -8,7 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -20,20 +22,24 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
+import br.com.rinos.app.backend.module.identity.entity.IdentityEventEntity;
 import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
+import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.RegistrationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.RegistrationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationConsumptionStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.VerificationEmailDispatchStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.RegistrationRepository;
+import br.com.rinos.app.backend.module.identity.repository.IdentityEventRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.IssuedVerificationVO;
 import br.com.rinos.app.backend.module.identity.vo.RegistrationCancellationIssueVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchRequestVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResultVO;
 import br.com.rinos.app.backend.module.identity.vo.VerificationInspectionVO;
+import br.com.rinos.app.config.RegistrationPropertiesConfig;
 
 @DisplayName("Cancelamento transacional de cadastro pendente")
 class RegistrationCancellationServiceTest {
@@ -44,6 +50,7 @@ class RegistrationCancellationServiceTest {
   private static final String PROOF = "cancellation-proof";
 
   private RegistrationRepository registrationRepository;
+  private IdentityEventRepository eventRepository;
   private UserRepository userRepository;
   private VerificationService verificationService;
   private IdentityAuditService auditService;
@@ -54,6 +61,7 @@ class RegistrationCancellationServiceTest {
   @BeforeEach
   void setUp() {
     registrationRepository = mock(RegistrationRepository.class);
+    eventRepository = mock(IdentityEventRepository.class);
     userRepository = mock(UserRepository.class);
     verificationService = mock(VerificationService.class);
     auditService = mock(IdentityAuditService.class);
@@ -61,6 +69,7 @@ class RegistrationCancellationServiceTest {
     dispatchService = mock(VerificationEmailDispatchService.class);
     service = new RegistrationCancellationService(
         registrationRepository,
+        eventRepository,
         userRepository,
         verificationService,
         new EmailNormalizationService(),
@@ -68,7 +77,13 @@ class RegistrationCancellationServiceTest {
         new UserLifecycleService(),
         auditService,
         uriService,
-        dispatchService);
+        dispatchService,
+        new RegistrationPropertiesConfig(
+            Duration.ofDays(15),
+            3,
+            Duration.ofMinutes(15),
+            3,
+            Duration.ofMinutes(15)));
   }
 
   @Test
@@ -76,6 +91,12 @@ class RegistrationCancellationServiceTest {
     RegistrationEntity registration = pendingRegistration();
     when(registrationRepository.findByIdForUpdate(20L))
         .thenReturn(java.util.Optional.of(registration));
+    when(eventRepository
+        .findByRegistrationIdAndEventTypeAndOccurredAtAfterOrderByOccurredAtAsc(
+            20L,
+            IdentityEventTypeEnum.REGISTRATION_CANCELLATION_REQUESTED,
+            NOW.minus(Duration.ofMinutes(15))))
+        .thenReturn(List.of());
     when(verificationService.issue(any(), any(), any()))
         .thenReturn(new IssuedVerificationVO(
             30L,
@@ -106,6 +127,65 @@ class RegistrationCancellationServiceTest {
     verify(dispatchService).scheduleAfterCommit(request.capture());
     assertThat(request.getValue().template().name())
         .isEqualTo("REGISTRATION_CANCELLATION");
+  }
+
+  @Test
+  void issue_shouldBlockFourthProofWithoutDispatch_whenWindowIsFull() {
+    RegistrationEntity registration = pendingRegistration();
+    when(registrationRepository.findByIdForUpdate(20L))
+        .thenReturn(java.util.Optional.of(registration));
+    IdentityEventEntity first = mock(IdentityEventEntity.class);
+    when(first.getOccurredAt()).thenReturn(NOW.minus(Duration.ofMinutes(10)));
+    when(eventRepository
+        .findByRegistrationIdAndEventTypeAndOccurredAtAfterOrderByOccurredAtAsc(
+            20L,
+            IdentityEventTypeEnum.REGISTRATION_CANCELLATION_REQUESTED,
+            NOW.minus(Duration.ofMinutes(15))))
+        .thenReturn(List.of(first, mock(IdentityEventEntity.class), mock(IdentityEventEntity.class)));
+
+    RegistrationCancellationIssueVO result = service.issue(
+        20L,
+        Locale.of("pt", "BR"),
+        CORRELATION_ID,
+        NOW);
+
+    assertThat(result.rateLimited()).isTrue();
+    assertThat(result.blockedUntil()).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
+    verify(verificationService, never()).issue(any(), any(), any());
+    verify(dispatchService, never()).scheduleAfterCommit(any());
+  }
+
+  @Test
+  void issue_shouldAllowNewProof_whenOldestEventHasLeftWindow() {
+    RegistrationEntity registration = pendingRegistration();
+    when(registrationRepository.findByIdForUpdate(20L))
+        .thenReturn(java.util.Optional.of(registration));
+    when(eventRepository
+        .findByRegistrationIdAndEventTypeAndOccurredAtAfterOrderByOccurredAtAsc(
+            20L,
+            IdentityEventTypeEnum.REGISTRATION_CANCELLATION_REQUESTED,
+            NOW.minus(Duration.ofMinutes(15))))
+        .thenReturn(List.of(mock(IdentityEventEntity.class), mock(IdentityEventEntity.class)));
+    when(verificationService.issue(any(), any(), any()))
+        .thenReturn(new IssuedVerificationVO(30L, PROOF, NOW.plusSeconds(3600)));
+    when(uriService.registrationCancellationUri(PROOF))
+        .thenReturn(URI.create(
+            "https://app.rinos.com.br/cancel-registration?token=cancellation-proof"));
+    when(dispatchService.scheduleAfterCommit(any())).thenReturn(
+        CompletableFuture.completedFuture(new VerificationEmailDispatchResultVO(
+            VerificationEmailDispatchStatusEnum.ACCEPTED,
+            CORRELATION_ID,
+            Duration.ZERO)));
+
+    RegistrationCancellationIssueVO result = service.issue(
+        20L,
+        Locale.of("pt", "BR"),
+        CORRELATION_ID,
+        NOW);
+
+    assertThat(result.issued()).isTrue();
+    verify(verificationService).issue(any(), any(), any());
+    verify(dispatchService).scheduleAfterCommit(any());
   }
 
   @Test

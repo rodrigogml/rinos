@@ -317,7 +317,8 @@ Registro append-only dos eventos exigidos para identidade e cadastro, sem creden
 - Eventos `VERIFICATION_REISSUED` são também a fonte transacional da janela móvel de reenvio;
   `REGISTRATION_STARTED` não consome essa franquia.
 - `REGISTRATION_CANCELLATION_REQUESTED` registra somente a emissão efetiva da prova, com correlation ID e códigos
-  fechados; solicitações neutras para identificador ausente não criam identidade nem evento.
+  fechados. Esses eventos são também a fonte transacional da janela móvel própria, com padrão de três emissões em 15
+  minutos; solicitações neutras para identificador ausente, inelegível ou já limitado não criam evento nem despacho.
 - Os tombstones `REGISTRATION_CANCELLED` e `REGISTRATION_EXPIRED` são eventos já sem FKs e sem PII, retidos por 15
   dias.
 

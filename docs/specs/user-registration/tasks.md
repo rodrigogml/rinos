@@ -428,9 +428,11 @@ Ref: [Interface §INT-WEB-REG-004](./interface-spec.md), [Spec §FR-REG-025–03
   - Evidência: [composição e transição segura a partir da ativação](./evidence/6.4.1/README.md).
 - [x] 6.4.2 Explicar consequência antes da ação e manter resposta pública neutra
   - Evidência: [consequência anterior à ação e resposta pública neutra](./evidence/6.4.2/README.md).
-- [ ] 6.4.3 Integrar Turnstile da operação, limite e provider real
-- [ ] 6.4.4 Preservar identificador somente em rejeição recuperável e descartar token
-- [ ] 6.4.5 Cobrir estados, indisponibilidade, offline e tempo de bloqueio
+- [x] 6.4.3 Integrar Turnstile da operação, limite e provider real
+  - Evidência: [Turnstile contextualizado, limite neutro e provider real](./evidence/6.4.3/README.md).
+- [x] 6.4.4 Preservar identificador somente em rejeição recuperável e descartar token
+  - Evidência: [estado transitório mínimo e token Turnstile de uso único](./evidence/6.4.4/README.md).
+- [ ] 6.4.5 Cobrir estados, indisponibilidade, offline e limitação neutra
 - [ ] 6.4.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
 - [ ] 6.4.7 Criar testes de componente, E2E e inspeção visual registrada
 

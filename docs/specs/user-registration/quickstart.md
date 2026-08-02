@@ -104,9 +104,17 @@ Cenários de validação end-to-end para a futura implementação. Provedores ex
 
 ## Scenario 14: Cancelamento
 
-1. Criar cadastro pendente e comprovar controle do e-mail para a operação de cancelamento.
-2. Confirmar cancelamento na UI.
-3. **Expected**: credencial e comprovações são inutilizadas, o cadastro não pode ser ativado e o e-mail pode iniciar novo processo; permanece somente tombstone sem PII pelo prazo definido.
+1. Criar cadastro pendente e abrir a solicitação de cancelamento com o identificador preenchido.
+2. Informar um token Turnstile válido, provocar uma rejeição recuperável do identificador e tentar submeter novamente sem resolver um novo desafio.
+3. **Expected**: somente o identificador permanece preenchido; o widget é renovado, o token anterior não pode ser reutilizado e a segunda tentativa não alcança o provider de cancelamento.
+4. Voltar ao login e abrir novamente a solicitação.
+5. **Expected**: o estado transitório anterior foi descartado e nenhum identificador ou token é restaurado pela UI.
+6. Solicitar três provas de cancelamento dentro da janela móvel padrão e tentar uma quarta solicitação.
+7. **Expected**: as três emissões criam eventos e despachos; a quarta mantém a mesma resposta pública neutra, mas não cria prova, evento nem mensagem, e registra somente a limitação sanitizada.
+8. Avançar o relógio até o evento mais antigo deixar a janela e solicitar novamente.
+9. **Expected**: uma nova prova pode ser emitida sem alterar o contador de novos cadastros por origem.
+10. Confirmar cancelamento na UI.
+11. **Expected**: credencial e comprovações são inutilizadas, o cadastro não pode ser ativado e o e-mail pode iniciar novo processo; permanece somente tombstone sem PII pelo prazo definido.
 
 ## Scenario 15: Expiração automática
 

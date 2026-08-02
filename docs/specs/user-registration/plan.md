@@ -91,7 +91,7 @@ hospedeira as dependências das capacidades consumidas e substituiu a exceção 
 tipada de infraestrutura e integração. O gate de compatibilidade está encerrado e a
 [Interface Design](./interface-spec.md) referencia os contratos finais.
 
-O ponteiro corrente do submódulo está em `7d8ee5c`, revisão descendente da baseline aprovada. Os deltas posteriores
+O ponteiro corrente do submódulo está em `7d47fe735d181acde035c6aa22c8e1dd6c0c7c17`, revisão descendente da baseline aprovada. Os deltas posteriores
 acrescentam o componente público `RFWPicker` e fazem a transição padrão da ativação para a solicitação de cancelamento
 preservar somente o identificador atual, sem transportar a prova; não alteram as APIs públicas consumidas pela feature.
 
@@ -155,7 +155,7 @@ Todas as definições abaixo têm origem exclusiva `PROPERTY_FILE`, são lidas d
 
 | Grupo | Conteúdo |
 |-------|----------|
-| Cadastro | validade de 24 horas, retenção pendente de 15 dias, limite de três reenvios em 15 minutos e agenda diária de limpeza |
+| Cadastro | validade de 24 horas, retenção pendente de 15 dias, limite de três reenvios em 15 minutos, limite independente de três provas de cancelamento por pendência em 15 minutos e agenda diária de limpeza |
 | Coordenação de manutenção | `instanceId` obrigatório por instância, heartbeat padrão de 30 minutos, abandono após quatro horas, estabilização de 10 minutos e timeout transacional de lote padrão de cinco minutos, obrigatoriamente inferior à estabilização; todos com origem exclusiva `PROPERTY_FILE` |
 | Origem e proxy | proxies confiáveis; limiar/janela para exigir Turnstile, com limiar padrão zero; limite absoluto configurável, com padrão de 20 novas pendências de cadastro local por origem em 24 horas, mesmo após Turnstile válido; e retenção do IP por até 30 dias depois do fim da janela |
 | Turnstile | site key pública, secret key, hostname/action esperados, endpoint e timeouts |

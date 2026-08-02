@@ -110,13 +110,18 @@ public class RegistrationCancellationFacadeImpl implements RegistrationCancellat
       RegistrationCancellationRequestDTO request) {
     Objects.requireNonNull(request, "request must not be null");
     Instant startedAt = clock.instant();
-    return observeRequest(
-        requestCancellationInternal(request, startedAt),
-        request.correlationId(),
-        startedAt);
+    return requestCancellationInternal(request, startedAt)
+        .whenComplete((outcome, failure) -> recordObservation(
+            RegistrationOperationEnum.CANCELLATION_REQUEST,
+            failure == null && outcome != null
+                ? outcome.observationResult()
+                : "UNEXPECTED_FAILURE",
+            request.correlationId(),
+            startedAt))
+        .thenApply(CancellationRequestOutcome::publicResult);
   }
 
-  private CompletionStage<RegistrationCancellationRequestResultVO>
+  private CompletionStage<CancellationRequestOutcome>
       requestCancellationInternal(
           RegistrationCancellationRequestDTO request,
           Instant occurredAt) {
@@ -125,17 +130,19 @@ public class RegistrationCancellationFacadeImpl implements RegistrationCancellat
     try {
       registration = identityService.findPendingRegistration(request.identifier());
     } catch (IllegalArgumentException invalidIdentifier) {
-      return completed(new RegistrationCancellationRequestResultVO(
-          RegistrationCancellationRequestStatusEnum.VALIDATION_REJECTED,
-          null,
-          null,
-          Map.of("identifier", "registration.error.email-invalid")));
+      RegistrationCancellationRequestResultVO rejected =
+          new RegistrationCancellationRequestResultVO(
+              RegistrationCancellationRequestStatusEnum.VALIDATION_REJECTED,
+              null,
+              null,
+              Map.of("identifier", "registration.error.email-invalid"));
+      return completed(CancellationRequestOutcome.publicResult(rejected));
     } catch (RuntimeException unavailable) {
       logNeutralFailure(request.correlationId(), unavailable);
-      return completed(neutral);
+      return completed(CancellationRequestOutcome.publicResult(neutral));
     }
     if (registration.isEmpty()) {
-      return completed(neutral);
+      return completed(CancellationRequestOutcome.publicResult(neutral));
     }
 
     try {
@@ -144,18 +151,21 @@ public class RegistrationCancellationFacadeImpl implements RegistrationCancellat
           request.locale(),
           request.correlationId(),
           occurredAt);
+      if (issue.rateLimited()) {
+        return completed(CancellationRequestOutcome.rateLimited(neutral));
+      }
       if (!issue.issued()) {
-        return completed(neutral);
+        return completed(CancellationRequestOutcome.publicResult(neutral));
       }
       return issue.dispatch().handle((ignored, failure) -> {
         if (failure != null) {
           logNeutralFailure(request.correlationId(), failure);
         }
-        return neutral;
+        return CancellationRequestOutcome.publicResult(neutral);
       });
     } catch (RuntimeException unavailable) {
       logNeutralFailure(request.correlationId(), unavailable);
-      return completed(neutral);
+      return completed(CancellationRequestOutcome.publicResult(neutral));
     }
   }
 
@@ -192,19 +202,6 @@ public class RegistrationCancellationFacadeImpl implements RegistrationCancellat
       return completed(RegistrationCancellationConfirmationResultVO.of(
           RegistrationCancellationConfirmationStatusEnum.UNAVAILABLE));
     }
-  }
-
-  private CompletionStage<RegistrationCancellationRequestResultVO> observeRequest(
-      CompletionStage<RegistrationCancellationRequestResultVO> result,
-      UUID correlationId,
-      Instant startedAt) {
-    return result.whenComplete((value, failure) -> recordObservation(
-        RegistrationOperationEnum.CANCELLATION_REQUEST,
-        failure == null && value != null
-            ? value.status().name()
-            : "UNEXPECTED_FAILURE",
-        correlationId,
-        startedAt));
   }
 
   private CompletionStage<RegistrationCancellationConfirmationResultVO>
@@ -256,5 +253,20 @@ public class RegistrationCancellationFacadeImpl implements RegistrationCancellat
             + "correlationId={}, failureType={}",
         correlationId,
         failure.getClass().getSimpleName());
+  }
+
+  private record CancellationRequestOutcome(
+      RegistrationCancellationRequestResultVO publicResult,
+      String observationResult) {
+
+    private static CancellationRequestOutcome publicResult(
+        RegistrationCancellationRequestResultVO result) {
+      return new CancellationRequestOutcome(result, result.status().name());
+    }
+
+    private static CancellationRequestOutcome rateLimited(
+        RegistrationCancellationRequestResultVO result) {
+      return new CancellationRequestOutcome(result, "RATE_LIMITED");
+    }
   }
 }

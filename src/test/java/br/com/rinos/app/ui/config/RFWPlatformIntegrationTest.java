@@ -5,16 +5,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
@@ -50,6 +55,7 @@ import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
 
 import br.com.rinos.app.RinosApplication;
+import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
@@ -74,6 +80,7 @@ import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationAutoConfigur
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessCapabilityEnum;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWHumanVerificationOperationEnum;
 import br.eng.rodrigogml.rfw.authentication.google.config.RFWGoogleAuthenticationAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityProvider;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
@@ -86,6 +93,8 @@ import br.eng.rodrigogml.rfw.authentication.service.RFWAuthenticationSessionServ
 import br.eng.rodrigogml.rfw.authentication.turnstile.RFWTurnstileVerificationService;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWActivationConsentChallengeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWHumanVerificationRequestVO;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWHumanVerificationResultVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 import br.eng.rodrigogml.rfw.executioncontext.config.RFWExecutionContextAutoConfiguration;
 import br.eng.rodrigogml.rfw.executioncontext.vaadin.config.RFWVaadinExecutionContextAutoConfiguration;
@@ -102,6 +111,7 @@ import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessPropertiesConfig;
 import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessUIAutoConfiguration;
 import br.eng.rodrigogml.rfw.ui.access.google.RFWGoogleSignInComponent;
 import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
+import br.eng.rodrigogml.rfw.ui.access.turnstile.RFWTurnstileComponent;
 import br.eng.rodrigogml.rfw.ui.theme.config.RFWThemeAutoConfiguration;
 import br.eng.rodrigogml.rfw.ui.theme.config.UIThemePropertiesConfig;
 
@@ -482,6 +492,236 @@ class RFWPlatformIntegrationTest {
                     + "serão enviadas ao e-mail informado. O cadastro somente será cancelado "
                     + "quando um código válido for informado e a ação Confirmar cancelamento "
                     + "for executada.");
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
+   * Comprova que a operação específica do Turnstile precede o adapter real de cancelamento.
+   */
+  @Test
+  void cancellationRequest_shouldVerifyTurnstileContextBeforeCallingHostProvider() {
+    AtomicReference<RFWHumanVerificationRequestVO> verificationRequest =
+        new AtomicReference<>();
+    RFWHumanVerificationProvider verificationProvider =
+        new RFWHumanVerificationProvider() {
+          @Override
+          public CompletionStage<RFWHumanVerificationResultVO> verify(
+              String token,
+              String remoteAddress) {
+            throw new AssertionError("A verificação contextualizada deve ser utilizada.");
+          }
+
+          @Override
+          public CompletionStage<RFWHumanVerificationResultVO> verify(
+              RFWHumanVerificationRequestVO request) {
+            verificationRequest.set(request);
+            return CompletableFuture.completedFuture(new RFWHumanVerificationResultVO(
+                true,
+                "rinos.test",
+                Instant.parse("2026-08-01T18:00:00Z"),
+                List.of()));
+          }
+        };
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.requestCancellation(any())).thenReturn(
+        CompletableFuture.completedFuture(new RegistrationCancellationRequestResultVO(
+            RegistrationCancellationRequestStatusEnum.REQUEST_ACCEPTED,
+            "neutral-reference",
+            Instant.parse("2026-08-02T18:00:00Z"),
+            Map.of())));
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(RFWHumanVerificationProvider.class, () -> verificationProvider)
+        .withBean(RFWHumanVerificationRequirementProvider.class, () ->
+            (operation, remoteAddress) -> true)
+        .withBean(RFWRemoteAddressProvider.class, () ->
+            ignored -> "203.0.113.10")
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .withPropertyValues(
+            "rfw.authentication.turnstile.enabled=true",
+            "rfw.authentication.turnstile.site-key=test-site")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse()));
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+                "person@example.com",
+                null));
+            RFWTurnstileComponent turnstile = descendants(
+                component,
+                RFWTurnstileComponent.class).getFirst();
+            turnstile.acceptToken("cancellation-token");
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(verificationRequest.get()).isNotNull();
+            assertThat(verificationRequest.get().token()).isEqualTo("cancellation-token");
+            assertThat(verificationRequest.get().remoteAddress()).isEqualTo("203.0.113.10");
+            assertThat(verificationRequest.get().operation())
+                .isEqualTo(RFWHumanVerificationOperationEnum.REGISTRATION_CANCELLATION);
+            assertThat(verificationRequest.get().action())
+                .isEqualTo("registration-cancellation");
+            verify(cancellationFacade).requestCancellation(any());
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION);
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
+   * Comprova que uma rejeição recuperável retém somente o identificador e exige nova prova humana.
+   */
+  @Test
+  void cancellationRequest_shouldPreserveIdentifierAndNeverReuseConsumedTurnstileToken() {
+    List<String> verifiedTokens = new ArrayList<>();
+    RFWHumanVerificationProvider verificationProvider =
+        new RFWHumanVerificationProvider() {
+          @Override
+          public CompletionStage<RFWHumanVerificationResultVO> verify(
+              String token,
+              String remoteAddress) {
+            throw new AssertionError("A verificação contextualizada deve ser utilizada.");
+          }
+
+          @Override
+          public CompletionStage<RFWHumanVerificationResultVO> verify(
+              RFWHumanVerificationRequestVO request) {
+            verifiedTokens.add(request.token());
+            return CompletableFuture.completedFuture(new RFWHumanVerificationResultVO(
+                request.token() != null,
+                request.token() == null ? null : "rinos.test",
+                Instant.parse("2026-08-01T18:00:00Z"),
+                List.of()));
+          }
+        };
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.requestCancellation(any())).thenReturn(
+        CompletableFuture.completedFuture(new RegistrationCancellationRequestResultVO(
+            RegistrationCancellationRequestStatusEnum.VALIDATION_REJECTED,
+            null,
+            null,
+            Map.of("identifier", "registration.error.email-invalid"))));
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(RFWHumanVerificationProvider.class, () -> verificationProvider)
+        .withBean(RFWHumanVerificationRequirementProvider.class, () ->
+            (operation, remoteAddress) -> true)
+        .withBean(RFWRemoteAddressProvider.class, () ->
+            ignored -> "203.0.113.10")
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .withPropertyValues(
+            "rfw.authentication.turnstile.enabled=true",
+            "rfw.authentication.turnstile.site-key=test-site")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse()));
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+                "original@example.com",
+                null));
+            TextField identifier = descendants(component, TextField.class).getFirst();
+            identifier.setValue("invalid-email");
+            RFWTurnstileComponent consumedTurnstile = descendants(
+                component,
+                RFWTurnstileComponent.class).getFirst();
+            consumedTurnstile.acceptToken("single-use-token");
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            ArgumentCaptor<RegistrationCancellationRequestDTO> requestCaptor =
+                ArgumentCaptor.forClass(RegistrationCancellationRequestDTO.class);
+            verify(cancellationFacade).requestCancellation(requestCaptor.capture());
+            assertThat(requestCaptor.getValue().identifier()).isEqualTo("invalid-email");
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST);
+            assertThat(component.getEntryRequest().identifier()).isEqualTo("invalid-email");
+            assertThat(descendants(component, TextField.class).getFirst().getValue())
+                .isEqualTo("invalid-email");
+            assertThat(consumedTurnstile.consumeToken()).isNull();
+
+            RFWTurnstileComponent renewedTurnstile = descendants(
+                component,
+                RFWTurnstileComponent.class).getFirst();
+            assertThat(renewedTurnstile).isNotSameAs(consumedTurnstile);
+            assertThat(renewedTurnstile.consumeToken()).isNull();
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(verifiedTokens).containsExactly("single-use-token", null);
+            verify(cancellationFacade, times(1)).requestCancellation(any());
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Voltar para entrar".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+            assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
+            assertThat(component.getEntryRequest().identifier()).isNull();
           } finally {
             session.unlock();
           }

@@ -54,6 +54,10 @@ Não inclui autenticação de sessões, implementação da recuperação de aces
 - Q: Qual rotina garante a exclusão dos IPs depois da retenção permitida? -> A: O job diário coordenado de manutenção também exclui `security_originWindow` vencidas em lotes próprios, sob o mesmo lease, timeout transacional, métricas e idempotência da limpeza de cadastros.
 - Q: Quantos cenários do quickstart compõem a suíte documentada? -> A: Todos os 20 cenários devem ser executados, ainda que Argon2id e SMTP também possuam gates especializados.
 
+### Session 2026-08-01
+
+- Q: Como limitar e-mails de cancelamento sem revelar se uma pendência existe? -> A: Exigir Turnstile sempre nessa operação e limitar, por pendência elegível, três provas efetivamente emitidas em uma janela móvel de 15 minutos. Ausência, inelegibilidade e limitação mantêm a mesma resposta pública neutra; o término da janela permanece interno e a limitação não consome o contador de novos cadastros por origem.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Concluir um novo cadastro (Priority: P1)
@@ -179,6 +183,7 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **FR-REG-025**: A pessoa DEVE poder cancelar um cadastro pendente após confirmar controle sobre o identificador primário.
 - **FR-REG-026**: O cancelamento DEVE invalidar imediatamente todas as comprovações abertas e impedir a ativação do cadastro cancelado.
 - **FR-REG-027**: Dados que precisem ser preservados após cancelamento ou expiração por segurança, auditoria ou obrigação legal DEVEM ser minimizados e possuir prazo de retenção documentado.
+- **FR-REG-027-LIMIT**: A solicitação de cancelamento DEVE exigir Turnstile independentemente do limiar de novos cadastros e limitar separadamente, por padrão, três provas efetivamente emitidas para a mesma pendência em uma janela móvel de 15 minutos. Solicitações ausentes, inelegíveis ou limitadas DEVEM manter a mesma resposta pública neutra; somente a limitação interna pode registrar o fim da janela, nenhum desses casos pode consumir o contador de novas pendências por origem e uma limitação não pode despachar nova mensagem.
 
 ### Segurança, Auditoria e Experiência
 
@@ -208,7 +213,7 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **FR-REG-051**: Se a identidade Google não puder ser validada, estiver expirada, tiver sido reutilizada ou não possuir e-mail verificado, o sistema NÃO DEVE criar nem ativar usuário.
 - **FR-REG-052**: Se o serviço Google estiver indisponível antes da validação obrigatória, o sistema NÃO DEVE criar o cadastro por esse fluxo e DEVE permitir que a pessoa tente novamente ou utilize cadastro local.
 
-> Decisões de infraestrutura aplicáveis: a feature mantém estado temporário de comprovação e integra serviços externos de validação anti-bot e identidade. Validade, uso único, idempotência, limitação de solicitações, exclusão automática, controle por origem e falha dos provedores estão definidos em FR-REG-013, FR-REG-015, FR-REG-019, FR-REG-023, FR-REG-024-INFRA-SCHED, FR-REG-032, FR-REG-034 a FR-REG-043 e FR-REG-051 a FR-REG-052. Tokens Google servem somente para validação transitória e NÃO DEVEM ser persistidos como credenciais locais.
+> Decisões de infraestrutura aplicáveis: a feature mantém estado temporário de comprovação e integra serviços externos de validação anti-bot e identidade. Validade, uso único, idempotência, limitação de solicitações, exclusão automática, controle por origem e falha dos provedores estão definidos em FR-REG-013, FR-REG-015, FR-REG-019, FR-REG-023, FR-REG-024-INFRA-SCHED, FR-REG-027-LIMIT, FR-REG-032, FR-REG-034 a FR-REG-043 e FR-REG-051 a FR-REG-052. Tokens Google servem somente para validação transitória e NÃO DEVEM ser persistidos como credenciais locais.
 
 ### Key Entities
 
@@ -239,3 +244,4 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **SC-UR-013**: Em 100% dos testes nos quais o e-mail Google corresponde a usuário ativo sem vínculo, nenhuma associação automática é criada.
 - **SC-UR-014**: Antes da liberação em cada novo perfil de servidor de produção, o Argon2id DEVE ser calibrado com no mínimo 19.456 KiB de memória, duas iterações, paralelismo um, salt de 16 bytes e hash de 32 bytes. Depois do aquecimento da JVM, uma amostra mínima de 50 operações DEVE apresentar mediana entre 500 ms e um segundo e percentil 95 de até 1,5 segundo. Hardware, JVM, parâmetros, data e resultados DEVEM ser registrados, e a produção NÃO DEVE ser liberada quando o piso de segurança ou o limite de latência não for atendido.
 - **SC-UR-015**: Em 100% dos testes com duas instâncias, somente a sessão com lease de manutenção vigente, `epoch` atual e estabilização concluída inicia cada lote de limpeza. Depois da expiração e nova eleição, eventual lote já iniciado pela sessão anterior conclui ou é abortado em no máximo cinco minutos; a nova sessão não começa antes dos 10 minutos de estabilização, não existe sobreposição de escritas e nenhuma ativação concorrente é excluída.
+- **SC-UR-016**: Em 100% dos testes da solicitação de cancelamento, a quarta emissão dentro da janela padrão não cria prova nem despacha e-mail, preserva a mesma resposta pública das solicitações ausentes e aceitas e volta a ser elegível quando o evento mais antigo deixa a janela.

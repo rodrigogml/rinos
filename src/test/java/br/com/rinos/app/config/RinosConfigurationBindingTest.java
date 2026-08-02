@@ -34,8 +34,12 @@ class RinosConfigurationBindingTest {
           assertThat(maintenance.leaseTimeout()).isEqualTo(Duration.ofHours(4));
           assertThat(maintenance.stabilizationPeriod()).isEqualTo(Duration.ofMinutes(10));
           assertThat(maintenance.batchTransactionTimeout()).isEqualTo(Duration.ofMinutes(5));
-          assertThat(context.getBean(RegistrationPropertiesConfig.class).pendingRetention())
-              .isEqualTo(Duration.ofDays(15));
+          RegistrationPropertiesConfig registration =
+              context.getBean(RegistrationPropertiesConfig.class);
+          assertThat(registration.pendingRetention()).isEqualTo(Duration.ofDays(15));
+          assertThat(registration.cancellationRequestLimit()).isEqualTo(3);
+          assertThat(registration.cancellationRequestWindow())
+              .isEqualTo(Duration.ofMinutes(15));
           assertThat(context.getBean(VerificationPropertiesConfig.class).validity())
               .isEqualTo(Duration.ofHours(24));
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
@@ -200,6 +204,23 @@ class RinosConfigurationBindingTest {
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage(
                   "absoluteLimit deve ser positivo e não pode ser menor que turnstileThreshold.");
+        });
+  }
+
+  /**
+   * Comprova que a janela de cancelamento não aceita duração sem significado operacional.
+   */
+  @Test
+  void bind_shouldFail_whenCancellationRequestWindowIsNotPositive() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.registration.cancellation-request-window=0s")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "cancellationRequestWindow deve ser maior que zero.");
         });
   }
 }

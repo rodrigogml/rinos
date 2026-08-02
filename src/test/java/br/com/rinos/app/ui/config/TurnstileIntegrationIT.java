@@ -66,6 +66,31 @@ class TurnstileIntegrationIT {
   }
 
   @Test
+  void verify_shouldAcceptRegistrationCancellationAction_whenContextMatches() {
+    response.set(Response.ok("""
+        {"success":true,"hostname":"rinos.test","action":"registration-cancellation",
+         "challenge_ts":"2026-07-29T12:00:00Z"}
+        """));
+    RFWTurnstileVerificationService service = service(Duration.ofSeconds(1));
+    RFWHumanVerificationRequestVO request = new RFWHumanVerificationRequestVO(
+        "token-cancellation",
+        "203.0.113.10",
+        RFWHumanVerificationOperationEnum.REGISTRATION_CANCELLATION,
+        "registration-cancellation",
+        "attempt-cancellation");
+
+    RFWHumanVerificationResultVO result = service.verify(request)
+        .toCompletableFuture()
+        .join();
+
+    assertThat(result.valid()).isTrue();
+    assertThat(requestBody.get())
+        .contains("response=token-cancellation")
+        .contains("remoteip=203.0.113.10")
+        .contains("idempotency_key=attempt-cancellation");
+  }
+
+  @Test
   void verify_shouldRejectReplayReportedBySiteverify() {
     AtomicInteger attempts = new AtomicInteger();
     server.removeContext("/siteverify");

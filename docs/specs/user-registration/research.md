@@ -73,6 +73,12 @@ Os limites por IP usarão janelas persistidas no schema global. O endereço vali
 
 As credenciais do Turnstile, os limites, as janelas e a lista explícita de proxies confiáveis serão definições exclusivas de `application.properties`. O limiar padrão do Turnstile será zero. O limite absoluto padrão será de 20 novas pendências de cadastro local por origem em uma janela de 24 horas iniciada pela primeira criação contabilizada. Somente uma nova pendência efetivamente persistida consumirá esse limite; rejeições anteriores à persistência, retomadas, reenvios, cancelamentos e convergências idempotentes não serão contabilizados. Falha do Siteverify será tratada como indisponibilidade e impedirá o cadastro quando o desafio for obrigatório.
 
+A solicitação de cancelamento usa política própria e sempre exige Turnstile quando a integração está habilitada. Para
+impedir bombardeio de e-mails sem transformar a resposta em oráculo, somente provas de cancelamento efetivamente
+emitidas para uma pendência elegível consomem uma franquia independente, com padrão de três em 15 minutos. Cadastro
+ausente, inelegível ou limitado recebe a mesma continuação pública aleatória; o instante de liberação permanece
+interno, e essa janela não altera o contador de novas pendências por origem.
+
 O RFW recebe a decisão dinâmica por operação/origem, deriva e valida a `action`, gera uma `idempotency_key` por
 tentativa e aceita um `RFWRemoteAddressProvider` para que a hospedeira entregue apenas a origem já validada. A
 plataforma também distingue prova inválida, divergência de contexto, indisponibilidade e configuração inválida sem

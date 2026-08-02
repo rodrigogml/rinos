@@ -62,6 +62,9 @@ rinos.maintenance.batch-transaction-timeout=5m
 rinos.registration.pending-retention=15d
 rinos.registration.resend-limit=3
 rinos.registration.resend-window=15m
+# Limite independente de provas de cancelamento efetivamente emitidas para a mesma pendência.
+rinos.registration.cancellation-request-limit=3
+rinos.registration.cancellation-request-window=15m
 rinos.verification.validity=24h
 
 # Proteção por origem e proxies confiáveis

@@ -155,14 +155,14 @@ incorporadas ao RFW no commit `fb59049ef916f0854b53159542b71591db24cb8f`, confor
 **Actors and Permissions**: Pessoa não autenticada; o controle do e-mail ainda não está comprovado nesta etapa.
 **Entry and Navigation**: Ação Cancelar cadastro em INT-WEB-REG-002 abre `REGISTRATION_CANCELLATION_REQUEST`, preenchendo o identificador quando já conhecido. Voltar retorna ao login; resposta que exige confirmação abre INT-WEB-REG-005.
 **Content and Data**: Explicação das consequências; identificador; Turnstile conforme política; ação Solicitar cancelamento; Voltar para entrar. A mensagem pública da solicitação permanece neutra.
-**Actions and Behavior**: Validar identificador; aplicar política Turnstile da operação `REGISTRATION_CANCELLATION`; solicitar prova; não cancelar antes da confirmação; impedir repetição durante processamento; preservar identificador em rejeição recuperável e descartar token.
-**Validation and Feedback**: Erro junto ao identificador; indisponibilidade e limitação com orientação; resposta neutra não confirma existência, estado ou destino; se houver pendência válida, enviar prova de uso único; Turnstile inválido é renovado.
+**Actions and Behavior**: Validar identificador; aplicar política Turnstile sempre obrigatória da operação `REGISTRATION_CANCELLATION`; solicitar prova; não cancelar antes da confirmação; impedir repetição durante processamento; preservar identificador em rejeição recuperável e descartar token. Limitar separadamente três provas efetivamente emitidas por pendência em 15 minutos, sem consumir o contador de novos cadastros por origem.
+**Validation and Feedback**: Erro junto ao identificador; indisponibilidade com orientação; resposta neutra não confirma existência, estado, destino ou limitação; se houver pendência válida e dentro da franquia, enviar prova de uso único; Turnstile inválido é renovado. O fim interno da janela de emissão não é apresentado porque diferenciaria uma pendência existente.
 **Responsive/Adaptive Behavior**: Mesmo card; ações empilham em telefone; teclado virtual e touch não encobrem o botão; desafio mantém alternativa acessível da Cloudflare.
 **Accessibility**: Consequência explicada antes da ação; foco no identificador; erros anunciados; ordem identificador, Turnstile, solicitar e voltar; nenhuma confirmação depende apenas de cor; estado ocupado anunciado.
 **Localization**: Mensagens neutras e tempo de bloqueio localizados; termos cancelar cadastro e excluir pendência são consistentes; não interpolar identificador completo na confirmação pública.
 **Components and Design System**: `RFWAccessComponent`, renderer `REGISTRATION_CANCELLATION_REQUEST`, `RFWTurnstileComponent`, feedback e tokens RFW.
 **Integration and Contracts**: `RFWRegistrationCancellationProvider.requestCancellation`, `RFWRegistrationCancellationRequestDTO` e validação Turnstile; SMTP envia a prova quando aplicável.
-**Telemetry**: Eventos `registration_cancellation_requested` e `registration_cancellation_request_rejected`; registrar resultado, Turnstile exigido, limite e duração; excluir identificador, IP bruto, token e informação sobre existência.
+**Telemetry**: Eventos `registration_cancellation_requested` e `registration_cancellation_request_rejected`; registrar internamente resultado, Turnstile exigido, limitação e duração; excluir identificador, IP bruto, token, instante de liberação e informação sobre existência.
 **Wireframe Requirement**: REQUIRED
 **Wireframe**: Embedded em Wireframes, fluxo INT-WEB-REG-004
 
@@ -275,7 +275,7 @@ ativação
 | INT-WEB-REG-001 | User Story 1, User Story 2 | FR-USR-003 a FR-USR-005, FR-USR-010 a FR-USR-012, FR-REG-001 a FR-REG-011, FR-REG-028, FR-REG-030 a FR-REG-042 | SC-UR-001, SC-UR-004, SC-UR-007 a SC-UR-010 | [External Services](./contracts/external-services.md), `RFWRegistrationProvider`, `RFWHumanVerificationRequirementProvider` |
 | INT-WEB-REG-002 | User Story 1, User Story 2 | FR-USR-006 a FR-USR-009, FR-USR-013 a FR-USR-015, FR-REG-012 a FR-REG-024-INFRA-SCHED, FR-REG-029 a FR-REG-033 | SC-UR-002 a SC-UR-006 | [External Services](./contracts/external-services.md), `RFWRegistrationProvider`, `RFWActivationConsentProvider` |
 | INT-WEB-REG-003 | User Story 1 | FR-USR-003 a FR-USR-005, FR-USR-011, FR-USR-015, FR-REG-016 a FR-REG-020, FR-REG-043 a FR-REG-052 | SC-UR-004 a SC-UR-007, SC-UR-011 a SC-UR-013 | [External Services](./contracts/external-services.md), `RFWExternalIdentityResolver`, `RFWExternalRegistrationProvider` |
-| INT-WEB-REG-004 | User Story 3 | FR-REG-025 a FR-REG-030, FR-REG-034 a FR-REG-042 | SC-UR-005, SC-UR-007 a SC-UR-010 | `RFWRegistrationCancellationProvider.requestCancellation`, `RFWHumanVerificationRequirementProvider` |
+| INT-WEB-REG-004 | User Story 3 | FR-REG-025 a FR-REG-027, FR-REG-027-LIMIT, FR-REG-028 a FR-REG-030, FR-REG-034 a FR-REG-042 | SC-UR-005, SC-UR-007 a SC-UR-010, SC-UR-016 | `RFWRegistrationCancellationProvider.requestCancellation`, `RFWHumanVerificationRequirementProvider` |
 | INT-WEB-REG-005 | User Story 3 | FR-USR-006, FR-USR-007, FR-USR-012, FR-REG-025 a FR-REG-030 | SC-UR-004, SC-UR-005, SC-UR-007 | `RFWRegistrationCancellationProvider.confirmCancellation`, `RFWAuthenticationOutcomeVO` |
 
 ## Wireframes

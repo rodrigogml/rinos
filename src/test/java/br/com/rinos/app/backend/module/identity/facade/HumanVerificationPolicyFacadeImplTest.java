@@ -65,6 +65,16 @@ class HumanVerificationPolicyFacadeImplTest {
   }
 
   @Test
+  void isHumanVerificationRequired_shouldAlwaysProtectRegistrationCancellation() {
+    boolean required = facade.isHumanVerificationRequired(
+        HumanVerificationOperationEnum.REGISTRATION_CANCELLATION,
+        "203.0.113.10");
+
+    assertThat(required).isTrue();
+    verifyNoInteractions(originAddressService, originLimitService);
+  }
+
+  @Test
   void isHumanVerificationRequired_shouldFailSafe_whenOriginIsUnavailable() {
     boolean required = facade.isHumanVerificationRequired(
         HumanVerificationOperationEnum.REGISTRATION, null);
