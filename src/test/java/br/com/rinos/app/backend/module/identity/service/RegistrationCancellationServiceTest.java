@@ -260,6 +260,73 @@ class RegistrationCancellationServiceTest {
     verify(auditService, never()).recordCancellationTombstone(any(), any(), any(), any());
   }
 
+  @Test
+  void confirm_shouldTreatUsedProofAsInvalidWithoutRepeatingCancellation() {
+    RegistrationEntity registration = pendingRegistration();
+    when(verificationService.inspect(any(), any(), any()))
+        .thenReturn(new VerificationInspectionVO(
+            VerificationConsumptionStatusEnum.ALREADY_USED,
+            registration,
+            NOW.plusSeconds(3600)));
+
+    RegistrationCancellationConfirmationStatusEnum result = service.confirm(
+        "person@example.com",
+        PROOF,
+        CORRELATION_ID,
+        NOW);
+
+    assertThat(result)
+        .isEqualTo(RegistrationCancellationConfirmationStatusEnum.INVALID_PROOF);
+    verify(verificationService, never()).consume(any(), any(), any(), any());
+    verify(userRepository, never()).delete(any());
+    verify(auditService, never()).recordCancellationTombstone(any(), any(), any(), any());
+  }
+
+  @Test
+  void confirm_shouldReportExpiredProofWithoutCancellingRegistration() {
+    RegistrationEntity registration = pendingRegistration();
+    when(verificationService.inspect(any(), any(), any()))
+        .thenReturn(new VerificationInspectionVO(
+            VerificationConsumptionStatusEnum.EXPIRED,
+            registration,
+            NOW));
+
+    RegistrationCancellationConfirmationStatusEnum result = service.confirm(
+        "person@example.com",
+        PROOF,
+        CORRELATION_ID,
+        NOW);
+
+    assertThat(result)
+        .isEqualTo(RegistrationCancellationConfirmationStatusEnum.EXPIRED_PROOF);
+    verify(verificationService, never()).consume(any(), any(), any(), any());
+    verify(userRepository, never()).delete(any());
+    verify(auditService, never()).recordCancellationTombstone(any(), any(), any(), any());
+  }
+
+  @Test
+  void confirm_shouldTreatClosedRegistrationAsInvalidWithoutConsumingProof() {
+    RegistrationEntity registration = pendingRegistration();
+    registration.setStatus(RegistrationStatusEnum.ACTIVE);
+    when(verificationService.inspect(any(), any(), any()))
+        .thenReturn(new VerificationInspectionVO(
+            VerificationConsumptionStatusEnum.VERIFIED,
+            registration,
+            NOW.plusSeconds(3600)));
+
+    RegistrationCancellationConfirmationStatusEnum result = service.confirm(
+        "person@example.com",
+        PROOF,
+        CORRELATION_ID,
+        NOW);
+
+    assertThat(result)
+        .isEqualTo(RegistrationCancellationConfirmationStatusEnum.INVALID_PROOF);
+    verify(verificationService, never()).consume(any(), any(), any(), any());
+    verify(userRepository, never()).delete(any());
+    verify(auditService, never()).recordCancellationTombstone(any(), any(), any(), any());
+  }
+
   private static RegistrationEntity pendingRegistration() {
     UserEntity user = new UserEntity(
         "person@example.com",

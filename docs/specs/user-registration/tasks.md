@@ -449,7 +449,8 @@ Ref: [Interface §INT-WEB-REG-005](./interface-spec.md), [Spec §FR-REG-025–02
   - Evidência: [consequência definitiva anterior à ação inequívoca](./evidence/6.5.2/README.md).
 - [x] 6.5.3 Limpar prova antes da chamada assíncrona e integrar provider real
   - Evidência: [ciclo efêmero da prova e adapter real](./evidence/6.5.3/README.md).
-- [ ] 6.5.4 Cobrir prova inválida, expirada, usada e processo encerrado
+- [x] 6.5.4 Cobrir prova inválida, expirada, usada e processo encerrado
+  - Evidência: [estados adversos sem repetição do cancelamento](./evidence/6.5.4/README.md).
 - [ ] 6.5.5 Oferecer novo cadastro ou login somente depois do resultado aplicável
 - [ ] 6.5.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
 - [ ] 6.5.7 Criar testes de componente, E2E destrutivo e inspeção visual registrada
