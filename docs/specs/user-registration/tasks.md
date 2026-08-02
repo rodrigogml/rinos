@@ -548,7 +548,8 @@ Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implement
 - [ ] 7.5.2 Validar ação de recuperação preenchida a partir de e-mail existente
 - [x] 7.5.3 Confirmar documentação, migrations, properties model e ponteiro RFW sincronizados
   - Evidência: [documentação, migrations, properties e RFW sincronizados](./evidence/7.5.3/README.md).
-- [ ] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
+- [x] 7.5.4 Confirmar checklist de requisitos 39/39 e análise cross-artifact sem blockers
+  - Evidência: [checklist e análise cross-artifact sem blockers](./evidence/7.5.4/README.md).
 - [ ] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy
 - [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95
 - [ ] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate declarado bloqueante estiver aberto, incluindo documentos jurídicos 6.0.3–6.0.5, recuperação de senha e validações humanas ou operacionais de release
