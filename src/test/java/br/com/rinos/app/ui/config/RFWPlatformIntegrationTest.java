@@ -729,6 +729,136 @@ class RFWPlatformIntegrationTest {
   }
 
   /**
+   * Comprova que ausência de resposta não é interpretada como solicitação aceita.
+   */
+  @Test
+  void cancellationRequest_shouldRemainProcessingUntilProviderResponds() {
+    CompletableFuture<RegistrationCancellationRequestResultVO> pendingRequest =
+        new CompletableFuture<>();
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.requestCancellation(any())).thenReturn(pendingRequest);
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+                "person@example.com",
+                null));
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(component.isBusy()).isTrue();
+            assertThat(component.getElement().getAttribute("aria-busy")).isEqualTo("true");
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST);
+            assertThat(component.getCurrentChallenge()).isNull();
+
+            pendingRequest.complete(new RegistrationCancellationRequestResultVO(
+                RegistrationCancellationRequestStatusEnum.REQUEST_ACCEPTED,
+                "neutral-reference",
+                Instant.parse("2026-08-02T18:00:00Z"),
+                Map.of()));
+
+            assertThat(component.isBusy()).isFalse();
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_CONFIRMATION);
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
+   * Comprova que indisponibilidade mantém a solicitação recuperável sem afirmar envio.
+   */
+  @Test
+  void cancellationRequest_shouldRemainRecoverableWhenProviderIsUnavailable() {
+    RegistrationCancellationFacade cancellationFacade =
+        mock(RegistrationCancellationFacade.class);
+    when(cancellationFacade.requestCancellation(any())).thenReturn(
+        CompletableFuture.failedFuture(new IllegalStateException("provider unavailable")));
+    RFWRegistrationCancellationProviderAdapter cancellationProvider =
+        new RFWRegistrationCancellationProviderAdapter(cancellationFacade);
+
+    contextRunner
+        .withBean(
+            RFWRegistrationCancellationProviderAdapter.class,
+            () -> cancellationProvider)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+            component.open(new RFWAccessEntryRequestVO(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST,
+                "person@example.com",
+                null));
+
+            descendants(component, Button.class).stream()
+                .filter(button -> "Solicitar cancelamento".equals(button.getText()))
+                .findFirst()
+                .orElseThrow()
+                .click();
+
+            assertThat(component.isBusy()).isFalse();
+            assertThat(component.getElement().getAttribute("aria-busy")).isEqualTo("false");
+            assertThat(component.getCurrentStep()).isEqualTo(
+                RFWAccessStepEnum.REGISTRATION_CANCELLATION_REQUEST);
+            assertThat(component.getCurrentChallenge()).isNull();
+            assertThat(descendants(component, TextField.class).getFirst().getValue())
+                .isEqualTo("person@example.com");
+            assertThat(component.getFeedbackComponent().getElement().getText())
+                .contains("A operação está temporariamente indisponível. Tente mais tarde.")
+                .doesNotContain("instruções serão enviadas");
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
    * Comprova que todos os estados públicos desta etapa possuem texto localizado na hospedeira.
    */
   @Test
