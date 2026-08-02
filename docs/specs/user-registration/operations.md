@@ -4,6 +4,9 @@ Este documento define como observar o ciclo local de cadastro sem transformar da
 segredos em logs, métricas ou auditoria permanente. Os nomes abaixo são contratos operacionais
 estáveis; alterar nomes ou tags exige avaliar dashboards, alertas e exporters consumidores.
 
+O procedimento de triagem e resposta está no
+[runbook operacional do cadastro](../../operations/user-registration-runbook.md).
+
 ## Métricas
 
 | Nome lógico Micrometer | Tipo | Tags permitidas | Finalidade |
