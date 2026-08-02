@@ -436,7 +436,8 @@ Ref: [Interface §INT-WEB-REG-004](./interface-spec.md), [Spec §FR-REG-025–03
   - Evidência: [matriz de estados e falhas recuperáveis](./evidence/6.4.5/README.md).
 - [x] 6.4.6 Cobrir teclado, leitor de tela, touch, responsividade e localização
   - Evidência: [teclado, semântica acessível, touch, reflow e pt-BR](./evidence/6.4.6/README.md).
-- [ ] 6.4.7 Criar testes de componente, E2E e inspeção visual registrada
+- [x] 6.4.7 Criar testes de componente, E2E e inspeção visual registrada
+  - Evidência: [matriz de componente, adapter, E2E e inspeção visual](./evidence/6.4.7/README.md).
 
 ### 6.5 Implementar INT-WEB-REG-005 - Confirmação de cancelamento `[A]`
 
