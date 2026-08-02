@@ -472,7 +472,8 @@ Ref: [Plan §Validation Strategy](./plan.md), [Quickstart](./quickstart.md)
   - Evidência: [ciclo local destrutivo no MySQL 9](./evidence/7.1.2/README.md).
 - [x] 7.1.3 Executar cadastro Google novo, pendente e usuário ativo com serviços simulados
   - Evidência: [matriz Google simulada e persistência real](./evidence/7.1.3/README.md).
-- [ ] 7.1.4 Validar roundtrip UI → facade → backend → MySQL sem exposição de entity
+- [x] 7.1.4 Validar roundtrip UI → facade → backend → MySQL sem exposição de entity
+  - Evidência: [roundtrip transacional sem exposição de entidade](./evidence/7.1.4/README.md).
 - [ ] 7.1.5 Validar todos os estados de interface com dados reais, não apenas mocks
 - [ ] 7.1.6 Medir cobertura dos comportamentos críticos e registrar lacunas
 - [ ] 7.1.7 Executar build e testes do Rinos e validação isolada do RFW referenciado

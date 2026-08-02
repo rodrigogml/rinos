@@ -12,7 +12,7 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 
 | Cenário | Automação principal | Situação |
 |--------:|--------------------|----------|
-| 1 | E2E local/ativação; `RegistrationStartFacadeImplTest`; `RegistrationActivationServiceTest`; MySQL em `IdentityRepositoryIT` | Em fechamento por 7.1.2 e 7.1.4 |
+| 1 | E2E local/ativação; ciclo MySQL em `IdentityRepositoryIT`; roundtrip integrado em `RegistrationRoundtripIT` | Automatizado |
 | 2 | E2E de erros/foco; `PasswordPolicyServiceTest`; validação pré-escrita da facade | Automatizado; releitura integrada em 7.1.5 |
 | 3 | `PwnedPasswordsServiceIT`; `PasswordPolicyServiceTest`; falha fechada da facade | Automatizado |
 | 4 | `IdentityRepositoryIT.save_shouldChooseOneUser...`; convergência da facade | Automatizado |
@@ -27,7 +27,7 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 | 13 | `RegistrationActivationServiceTest`; continuação de aceite e adapter RFW | Automatizado |
 | 14 | solicitação/limite/Turnstile; cancelamento concorrente MySQL; E2E desktop/telefone | Automatizado |
 | 15 | coordenação, fencing, timeout e takeover MySQL; limpezas e catálogo unitários | Automatizado |
-| 16 | contratos públicos, UI e MySQL estão cobertos separadamente | Falta roundtrip único; 7.1.4 |
+| 16 | `RegistrationRoundtripIT` percorre UI RFW → adapter → facade → serviços → MySQL e inspeciona os tipos públicos | Automatizado |
 | 17 | E2E teclado/touch e semântica estrutural | Leitor de tela e fluxo real seguem 7.3 e 7.1.5 |
 | 18 | dispatch pós-commit, falha, reenvio explícito e ausência de segredo | Automatizado; execução integrada em 7.4 |
 | 19 | ferramenta de calibração, ≥50 amostras, percentis, pisos e redação de segredos | Harness automatizado; execução no servidor em 7.5.6 |
@@ -35,10 +35,8 @@ ambiente de produção podem ter harness automatizado aqui e execução final na
 
 ## Próximas provas que fecham esta tarefa
 
-1. executar cadastro, reenvio, ativação, cancelamento e expiração contra MySQL 9 (7.1.2);
-2. criar o roundtrip UI → facade → backend → MySQL (7.1.4);
-3. exercer os estados de interface sobre resultados reais (7.1.5);
-4. implementar e executar o harness SMTP nominal de 100 operações (7.4.1).
+1. exercer os estados de interface sobre resultados reais (7.1.5);
+2. implementar e executar o harness SMTP nominal de 100 operações (7.4.1).
 
 > [!IMPORTANT]
 > A tarefa 7.1.1 permanece em andamento até essas provas existirem. A revisão jurídica, o leitor de tela humano, o
