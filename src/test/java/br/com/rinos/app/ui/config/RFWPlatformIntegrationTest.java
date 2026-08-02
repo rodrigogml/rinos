@@ -912,6 +912,10 @@ class RFWPlatformIntegrationTest {
             List<TextField> fields = descendants(component, TextField.class);
             TextField proof = fields.get(1);
 
+            assertThat(proof.isRequired()).isTrue();
+            assertThat(proof.getElement().getAttribute("autocomplete"))
+                .isEqualTo("one-time-code");
+
             descendants(component, Button.class).stream()
                 .filter(button -> "Confirmar cancelamento".equals(button.getText()))
                 .findFirst()
@@ -948,7 +952,7 @@ class RFWPlatformIntegrationTest {
    * Comprova que todos os estados públicos desta etapa possuem texto localizado na hospedeira.
    */
   @Test
-  void context_shouldResolveActivationAndSmtpFailureMessages() {
+  void context_shouldResolveActivationCancellationAndSmtpFailureMessages() {
     contextRunner.run(context -> {
       assertThat(context).hasNotFailed();
       RFWTranslationService translations = context.getBean(RFWTranslationService.class);
@@ -958,6 +962,9 @@ class RFWPlatformIntegrationTest {
           "registration.activation.expired-proof",
           "registration.activation.used-proof",
           "registration.activation.registration-closed",
+          "registration.cancellation.invalid-proof",
+          "registration.cancellation.expired-proof",
+          "registration.cancellation.completed",
           "registration.email-dispatch-failed",
           "registration.resend-email-dispatch-failed"))
           .allSatisfy(key -> assertThat(
