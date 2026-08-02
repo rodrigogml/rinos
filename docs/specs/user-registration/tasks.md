@@ -511,7 +511,8 @@ Ref: [Spec §SC-UR-004–005 e SC-UR-008–013](./spec.md), [Plan §Validation S
 
 Ref: [Spec §SC-UR-001, SC-UR-003 e SC-UR-007](./spec.md), [Interface §Shared Accessibility and Input](./interface-spec.md)
 
-- [ ] 7.3.1 Executar verificação automatizada WCAG 2.2 AA sem violações críticas ou sérias
+- [x] 7.3.1 Executar verificação automatizada WCAG 2.2 AA sem violações críticas ou sérias
+  - Evidência: [axe-core sobre os cinco INTs em quatro apresentações](./evidence/7.3.1/README.md).
 - [ ] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado
 - [ ] 7.3.3 Avaliar manualmente as jornadas principais com leitor de tela
 - [ ] 7.3.4 Renderizar e inspecionar cada `INT-*` em telefone e desktop, claro e escuro

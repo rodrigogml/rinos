@@ -20,9 +20,9 @@ encadeado e isolamento dos schemas de teste.
 | 7.1.7 | RFW, showroom e Rinos aprovados em builds limpos encadeados |
 | 7.1.9 | Schemas MySQL descartáveis e provedor externo de teste validados |
 
-## Referências correntes
+## Referências no momento da consolidação
 
-- o ponteiro documentado do RFW foi atualizado para
+- o ponteiro documentado do RFW naquele checkpoint foi atualizado para
   `7dbf0471c4ee003bee471841c8b4e832bfa6954b`;
 - as evidências históricas mantêm os hashes e resultados das revisões realmente usadas em cada execução;
 - o catálogo legal corrente é obtido por provider e reavaliado pelo RFW a cada renderização do fluxo de acesso;
