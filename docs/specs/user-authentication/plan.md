@@ -237,6 +237,7 @@ docs/specs/user-authentication/
 ├── data-model.md
 ├── quickstart.md
 ├── interface-spec.md
+├── tasks.md
 ├── checklists/
 │   └── requirements.md
 └── contracts/
@@ -244,7 +245,7 @@ docs/specs/user-authentication/
     └── external-services.md
 ```
 
-Interface Design e checklist foram produzidos e aprovados; o backlog será produzido na etapa seguinte do pipeline.
+Interface Design, checklist e backlog foram produzidos; a análise cross-artifact precede a execução.
 
 ### Source Code
 
