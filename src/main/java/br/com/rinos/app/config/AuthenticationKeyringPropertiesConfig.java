@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Keyring local versionado, ativado somente quando segredos explícitos estiverem configurados.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.keyring")
 public record AuthenticationKeyringPropertiesConfig(

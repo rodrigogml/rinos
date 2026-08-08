@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Parâmetros funcionais fixos dos fatores adicionais.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.mfa")
 public record AuthenticationMfaPropertiesConfig(

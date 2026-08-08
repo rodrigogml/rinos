@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Cooldowns fixos das notificações de segurança.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.notification")
 public record AuthenticationNotificationPropertiesConfig(

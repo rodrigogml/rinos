@@ -191,12 +191,20 @@ Ref: Data Model §TotpFactor, §EmailFactor, §RecoveryCodeSet, §RecoveryCode, 
 
 Ref: Data Model §AuthSession, §AuthenticationAttemptWindow; Plan §Configuration Ownership
 
-- [ ] 2.4.1 Criar entities/repositories de sessão, métodos da sessão e janela por identificador
-- [ ] 2.4.2 Implementar referências opacas, digest/MAC e consultas de revogação/atividade
-- [ ] 2.4.3 Criar configs validadas para sessão, abuso, notificações, retenção, MFA, keyring e WebAuthn no `application.properties`
-- [ ] 2.4.4 Atualizar `application.properties.model` com defaults não secretos e exemplos explícitos de secrets
-- [ ] 2.4.5 Integrar limpeza ao catálogo/coordenador global de manutenção existente
-- [ ] 2.4.6 Testar binding exclusivo, falha de startup, expiração e disputa entre instâncias
+- [x] 2.4.1 Criar entities/repositories de sessão, métodos da sessão e janela por identificador
+- [x] 2.4.2 Implementar referências opacas, digest/MAC e consultas de revogação/atividade
+- [x] 2.4.3 Criar configs validadas para sessão, abuso, notificações, retenção, MFA, keyring e WebAuthn no `application.properties`
+- [x] 2.4.4 Atualizar `application.properties.model` com defaults não secretos e exemplos explícitos de secrets
+- [x] 2.4.5 Integrar limpeza ao catálogo/coordenador global de manutenção existente
+- [x] 2.4.6 Testar binding exclusivo, falha de startup, expiração e disputa entre instâncias
+
+> [!IMPORTANT]
+> O cookie de sessão é composto por selector e validator aleatórios de 256 bits; o banco conserva
+> somente SHA-256 de ambos e uma referência UUID distinta, incapaz de autenticar. Apresentar um
+> selector conhecido com validator incorreto revoga a sessão. A janela por identificador aceita
+> exclusivamente MAC de 32 bytes e sua versão de chave, sem receber e-mail; a produção desse MAC
+> pelo keyring permanece no ciclo criptográfico 4.1. Criação da janela usa UK atômica no MySQL e
+> as mutações seguintes usam lock pessimista, compartilhado entre instâncias.
 
 ---
 

@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Retenções operacionais exclusivas dos artefatos de autenticação.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.retention")
 public record AuthenticationRetentionPropertiesConfig(

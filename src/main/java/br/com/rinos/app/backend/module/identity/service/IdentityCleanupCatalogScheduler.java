@@ -34,6 +34,7 @@ public class IdentityCleanupCatalogScheduler {
   private final Supplier<OriginWindowCleanupService> originCleanupSupplier;
   private final Supplier<IdentityTombstoneCleanupService> tombstoneCleanupSupplier;
   private final Supplier<PasswordRecoveryCleanupService> passwordRecoveryCleanupSupplier;
+  private final Supplier<AuthenticationArtifactCleanupService> authenticationCleanupSupplier;
   private final Clock clock;
 
   /**
@@ -42,17 +43,21 @@ public class IdentityCleanupCatalogScheduler {
    * @param registrationCleanupProvider resolução tardia da expiração das pendências
    * @param originCleanupProvider resolução tardia da retenção dos endereços de origem
    * @param tombstoneCleanupProvider resolução tardia da retenção do tombstone
+   * @param passwordRecoveryCleanupProvider resolução tardia das provas de recuperação
+   * @param authenticationCleanupProvider resolução tardia dos artefatos de autenticação
    */
   @Autowired
   public IdentityCleanupCatalogScheduler(
       ObjectProvider<RegistrationExpiryCleanupService> registrationCleanupProvider,
       ObjectProvider<OriginWindowCleanupService> originCleanupProvider,
       ObjectProvider<IdentityTombstoneCleanupService> tombstoneCleanupProvider,
-      ObjectProvider<PasswordRecoveryCleanupService> passwordRecoveryCleanupProvider) {
+      ObjectProvider<PasswordRecoveryCleanupService> passwordRecoveryCleanupProvider,
+      ObjectProvider<AuthenticationArtifactCleanupService> authenticationCleanupProvider) {
     registrationCleanupSupplier = registrationCleanupProvider::getIfAvailable;
     originCleanupSupplier = originCleanupProvider::getIfAvailable;
     tombstoneCleanupSupplier = tombstoneCleanupProvider::getIfAvailable;
     passwordRecoveryCleanupSupplier = passwordRecoveryCleanupProvider::getIfAvailable;
+    authenticationCleanupSupplier = authenticationCleanupProvider::getIfAvailable;
     clock = Clock.systemUTC();
   }
 
@@ -82,6 +87,7 @@ public class IdentityCleanupCatalogScheduler {
     originCleanupSupplier = () -> originCleanup;
     tombstoneCleanupSupplier = () -> tombstoneCleanup;
     passwordRecoveryCleanupSupplier = () -> null;
+    authenticationCleanupSupplier = () -> null;
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
   }
 
@@ -121,6 +127,26 @@ public class IdentityCleanupCatalogScheduler {
       execute(
           "password-recovery-retention",
           instant -> passwordRecoveryCleanup.cleanup(instant),
+          executionTime);
+    }
+    AuthenticationArtifactCleanupService authenticationCleanup =
+        authenticationCleanupSupplier.get();
+    if (authenticationCleanup != null) {
+      execute(
+          "authentication-flow-retention",
+          instant -> authenticationCleanup.cleanupFlows(instant),
+          executionTime);
+      execute(
+          "authentication-proof-retention",
+          instant -> authenticationCleanup.cleanupProofs(instant),
+          executionTime);
+      execute(
+          "authentication-session-retention",
+          instant -> authenticationCleanup.cleanupSessions(instant),
+          executionTime);
+      execute(
+          "authentication-window-retention",
+          instant -> authenticationCleanup.cleanupWindows(instant),
           executionTime);
     }
   }

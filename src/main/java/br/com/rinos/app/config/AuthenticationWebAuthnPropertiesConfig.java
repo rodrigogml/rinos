@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Identidade RP e origins permitidas do WebAuthn.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.webauthn")
 public record AuthenticationWebAuthnPropertiesConfig(

@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Políticas fixas das sessões globais e reautenticação.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.session")
 public record AuthenticationSessionPropertiesConfig(

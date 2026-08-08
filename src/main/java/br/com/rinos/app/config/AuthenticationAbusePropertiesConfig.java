@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Política progressiva por identificador normalizado.
  *
  * @author Rodrigo Leitão
+ * @since 2026-08-08
  */
 @ConfigurationProperties("rinos.authentication.abuse")
 public record AuthenticationAbusePropertiesConfig(
