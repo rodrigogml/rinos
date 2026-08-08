@@ -121,11 +121,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-008](./rfw-gap-analysis.md#gap-auth-rfw-008-gest
 
 Ref: [RFW Gap Analysis AUTH-RFW-009](./rfw-gap-analysis.md#gap-auth-rfw-009-componente-de-passkey-precisa-de-acessibilidade-e-estado-de-falha-tipado), Interface INT-WEB-AUTH-001/007
 
-- [ ] 1.9.1 Publicar eventos tipados para início, sucesso, cancelamento, indisponibilidade e rejeição WebAuthn
-- [ ] 1.9.2 Corrigir busy, foco, anúncio acessível, texto i18n e preservação de método alternativo
-- [ ] 1.9.3 Testar teclado, leitor de tela, cancelamento, navegador incompatível e erro remoto
-- [ ] 1.9.4 Atualizar laboratório visual e documentação multilíngue do showroom
-- [ ] 1.9.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.9.1 Publicar eventos tipados para início, sucesso, cancelamento, indisponibilidade e rejeição WebAuthn
+- [x] 1.9.2 Corrigir busy, foco, anúncio acessível, texto i18n e preservação de método alternativo
+- [x] 1.9.3 Testar teclado, leitor de tela, cancelamento, navegador incompatível e erro remoto
+- [x] 1.9.4 Atualizar laboratório visual e documentação multilíngue do showroom
+- [x] 1.9.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.10 Adicionar gestão de senha local às configurações `[C]`
 

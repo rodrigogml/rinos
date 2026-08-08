@@ -250,6 +250,20 @@ fecham apenas após `COMPLETED`; rejeições permanecem associadas à ação ori
 credential ID, chave, segredo ou prova. Os métodos legados de `List`/`Void` permanecem adaptados para compatibilidade,
 mas providers reais do Rinos devem implementar os outcomes tipados para preservar conflitos e invariants.
 
+## Passkey UI Status
+
+**RFW contracts**: `RFWPasskeyStatusEnum`, `RFWPasskeyStatusEvent` e `RFWPasskeyMessagesVO`<br>
+**Rinos consumers**: composição de acesso, configurações de segurança e telemetria sanitizada.
+
+O componente publica `STARTED`, `COMPLETED`, `CANCELLED`, `UNAVAILABLE` e `REJECTED` sem transportar credential ID,
+assertion, challenge ou causa interna do browser. Esses estados são observacionais: somente o evento de conclusão
+gerado depois dos endpoints WebAuthn e da orquestração aplicável pode avançar o fluxo autenticado.
+
+Durante a cerimônia, somente o botão de passkey fica ocupado; senha, Google ou outro método independente continuam
+disponíveis. Cancelamento, incompatibilidade e falha remota preservam a tela, anunciam texto localizado em região
+`role=status` e devolvem o foco à ação. O Rinos pode contabilizar status e operação, mas não deve registrar mensagem
+livre, detalhe da exceção do browser ou material criptográfico.
+
 ## Error Contract
 
 | Category | Public behavior | Internal evidence |

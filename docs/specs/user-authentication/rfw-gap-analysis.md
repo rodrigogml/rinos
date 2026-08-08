@@ -121,11 +121,16 @@ disponíveis.
 
 ## Gap AUTH-RFW-009: componente de passkey precisa de acessibilidade e estado de falha tipado
 
+**Delivery status**: concluído na baseline `85034ea2cf21e0baee980d94c68a9cf685c10136`.
+
 **Evidence**: o web component interno cria um botão HTML e emite apenas `data-error`/nome genérico; não há mensagem
 localizada, foco, diferenciação de cancelamento, indisponibilidade ou credencial rejeitada.
 
 **Required evolution**: eventos públicos tipados, texto i18n, estado busy, anúncio acessível, foco previsível e
 preservação do método alternativo. Nenhum detalhe criptográfico deve ser exposto.
+
+**Compatibility**: os eventos DOM legados permanecem disponíveis com detalhes sanitizados; os novos estados tipados
+são apenas observacionais e não constituem prova de autenticação nem substituem a conclusão WebAuthn validada.
 
 ## Gap AUTH-RFW-010: configurações de segurança não gerenciam senha local
 

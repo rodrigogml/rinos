@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`e039c9019345d365e1294cb2aa709004f0a5656e` da RFW Platform, publicada como
+`85034ea2cf21e0baee980d94c68a9cf685c10136` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -41,6 +41,11 @@ A baseline também integra a conclusão WebAuthn à orquestração comum de aces
 o renderer padrão oferece QR local, alternativa textual e cancelamento explícito. O Rinos deve implementar validade,
 consumo único, persistência protegida e auditoria sem segredo quando registrar o provider concreto. Até essa
 implementação existir, a capability não deve ser anunciada por provider provisório.
+
+As cerimônias de passkey publicam estados observacionais tipados de início, conclusão, cancelamento,
+indisponibilidade e rejeição. O componente mantém o método alternativo disponível, aplica estado busy somente à ação
+WebAuthn, devolve o foco após falha e anuncia mensagens localizadas sem expor detalhes da credencial. Esses eventos
+servem para feedback e telemetria; autorização continua dependendo exclusivamente da conclusão validada.
 
 O segundo fator por e-mail também usa o protocolo público dessa baseline. O desafio inicial apenas informa os
 métodos permitidos e não dispara entrega. `RFWSecondFactorProvider.getEmissionMethods()` controla quais métodos
