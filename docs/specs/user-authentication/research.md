@@ -148,7 +148,9 @@ serializado.
 
 **Decision**: ampliar a recuperação mínima já implementada em `user-registration`. A prova opaca de uma hora e sua
 resposta neutra permanecem; a conclusão aplica política vigente, invalida provas e sessões e notifica o usuário.
-Recuperação de fator usa código de recuperação ou processo reforçado separado, nunca somente o fator perdido.
+Recuperação de fator no MVP usa outro método forte já confirmado ou código de recuperação ainda válido, nunca somente
+o fator perdido. Suporte manual e qualquer processo reforçado alternativo ficam fora do MVP e exigirão especificação
+própria antes de serem oferecidos.
 
 Usuário sem senha local não recebe senha silenciosamente. O fluxo informa os métodos existentes de maneira neutra e
 qualquer criação de senha exige uma continuação explícita autenticada/recuperada.

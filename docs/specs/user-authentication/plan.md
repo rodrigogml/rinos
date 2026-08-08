@@ -236,12 +236,15 @@ docs/specs/user-authentication/
 ├── rfw-gap-analysis.md
 ├── data-model.md
 ├── quickstart.md
+├── interface-spec.md
+├── checklists/
+│   └── requirements.md
 └── contracts/
     ├── authentication-providers.md
     └── external-services.md
 ```
 
-Interface Design, checklist e backlog serão produzidos nas etapas seguintes do pipeline.
+Interface Design e checklist foram produzidos e aprovados; o backlog será produzido na etapa seguinte do pipeline.
 
 ### Source Code
 
@@ -288,7 +291,7 @@ camada `api`.
 5. Implementar desafios MFA, TOTP, e-mail e recuperação, incluindo keyring e manutenção.
 6. Integrar Google, passkeys e gate legal à conclusão única de autenticação.
 7. Implementar gestão autenticada e reautenticação sobre o componente RFW.
-8. Executar testes por camada, Interface Design, checklist, backlog e gates operacionais.
+8. Executar testes por camada e gates operacionais previstos no backlog e nos artefatos aprovados.
 
 Essa sequência é arquitetural e não substitui `tasks.md`.
 

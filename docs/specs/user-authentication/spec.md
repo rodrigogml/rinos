@@ -20,6 +20,11 @@ Não inclui criação da identidade inicial, configuração dos dados pessoais d
 - Q: Qual deve ser o gatilho padrão do Turnstile no login? -> A: Após 3 falhas relacionadas ao mesmo e-mail informado ou IP em 15 minutos, permanecendo obrigatório até 15 minutos sem nova falha; parâmetros configuráveis.
 - Q: Quantos códigos de recuperação devem ser emitidos e quando expiram? -> A: 10 códigos de uso único, sem expiração fixa; o conjunto é invalidado ao gerar outro, desativar o 2FA ou concluir recuperação que altere os fatores.
 
+### Session 2026-08-08
+
+- Q: Quais sinais de tentativa anormal são obrigatórios no MVP? -> A: Contadores independentes por identificador informado e IP de origem validado; correlação comportamental adicional fica fora do MVP.
+- Q: Qual caminho recupera um segundo fator perdido no MVP? -> A: Outro método forte já confirmado ou código de recuperação ainda válido; não haverá bypass alternativo indefinido.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Entrar com senha (Priority: P1)
@@ -171,7 +176,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 
 ### Proteção contra Automação e Descoberta
 
-- **FR-AUTH-ABUSE-001**: O sistema DEVE aplicar limites progressivos a falhas de autenticação considerando identidade informada, IP de origem validado e padrões anormais de tentativa.
+- **FR-AUTH-ABUSE-001**: O sistema DEVE aplicar limites progressivos a falhas de autenticação considerando, de forma independente, o identificador informado e o IP de origem validado. Correlação comportamental ou análise de risco com outros sinais fica fora do MVP e NÃO DEVE ser presumida como condição para aplicar esses limites.
 - **FR-AUTH-ABUSE-002**: Limites de falha NÃO DEVEM bloquear permanentemente um usuário por ações de terceiros.
 - **FR-AUTH-ABUSE-003**: A quantidade de falhas, a janela de observação e o tempo de espera DEVEM ser configuráveis.
 - **FR-AUTH-ABUSE-004**: O Turnstile DEVE tornar-se obrigatório após 3 falhas relacionadas ao mesmo e-mail informado ou IP de origem validado dentro de 15 minutos e permanecer obrigatório para novas tentativas relacionadas até transcorrerem 15 minutos sem nova falha. A quantidade de falhas, a janela de observação e o período de exigência DEVEM ser configuráveis.
@@ -243,7 +248,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-REC-006**: Redefinir a senha DEVE exigir nova senha compatível com a política vigente.
 - **FR-AUTH-REC-007**: Redefinir a senha DEVE invalidar sessões existentes e todas as provas de recuperação abertas.
 - **FR-AUTH-REC-008**: Usuário sem senha local DEVE ser orientado a usar Google ou passkey existente e não terá senha criada sem confirmação explícita.
-- **FR-AUTH-REC-009**: Recuperação de 2FA DEVE usar código de recuperação ou processo reforçado que não dependa exclusivamente do fator perdido.
+- **FR-AUTH-REC-009**: No MVP, a recuperação de 2FA DEVE usar outro método forte já confirmado e permitido para o contexto ou um código de recuperação ainda válido, nunca depender exclusivamente do fator perdido. O sistema NÃO DEVE oferecer bypass, suporte manual ou processo alternativo de garantia indefinida; qualquer novo processo reforçado exige especificação própria futura.
 - **FR-AUTH-REC-010**: Código de recuperação consumido NÃO DEVE ser aceito novamente.
 - **FR-AUTH-REC-011**: Uma recuperação concluída DEVE notificar o usuário e registrar método, origem e fatores alterados sem expor segredos.
 - **FR-AUTH-REC-012**: Provas de recuperação não utilizadas DEVEM ser removidas ou anonimizadas após o término da retenção operacional definida.
