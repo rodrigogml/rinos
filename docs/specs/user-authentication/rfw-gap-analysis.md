@@ -1,9 +1,9 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `296985de4754562338bf23181b62e66afd798cc0` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `f71bcc018e2007cb83189f3d3873e0c07db28e9a` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
-**Status**: gaps AUTH-RFW-001 a AUTH-RFW-005 entregues; os demais devem ser implementados no RFW antes dos adapters
+**Status**: gaps AUTH-RFW-001 a AUTH-RFW-006 entregues; os demais devem ser implementados no RFW antes dos adapters
 dependentes no Rinos
 
 ## Existing Capabilities Reused
@@ -81,6 +81,8 @@ e da política.
 quando o novo provider estiver presente.
 
 ## Gap AUTH-RFW-006: sessão global não participa da publicação e do logout
+
+**Delivery status**: concluído na baseline `f71bcc018e2007cb83189f3d3873e0c07db28e9a`.
 
 **Evidence**: `RFWAuthenticationSessionService` publica/limpa somente o contexto Spring/RFW e chama o callback de
 lembrar-me. Não existe hook transacional para criar ou revogar o registro de sessão da hospedeira.

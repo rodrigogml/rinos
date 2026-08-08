@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`296985de4754562338bf23181b62e66afd798cc0` da RFW Platform, publicada como
+`f71bcc018e2007cb83189f3d3873e0c07db28e9a` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -52,7 +52,16 @@ cookie opaco e implementa criação, resolução com rotação atômica, revoga�
 quando não há autenticação local, limpa resultados inválidos, expirados, revogados, bloqueados ou com replay e
 preserva a credencial em indisponibilidade transitória. Tanto o logout programático quanto o logout HTTP do Spring
 acionam o lifecycle. `RFWRememberMeProvider` permanece como fallback apenas de criação. O Rinos só deve registrar o
-provider completo depois que a tarefa de sessão global garantir que a credencial seja criada após sua persistência.
+provider completo depois que o modelo e o serviço de sessão global das tarefas 2.4 e 3.3 estiverem implementados.
+
+A sessão autenticada da aplicação hospedeira usa `RFWAuthenticationSessionLifecycleProvider`. O provider prepara um
+estado ainda não utilizável e devolve uma autenticação cujo principal implementa
+`RFWAuthenticationSessionPrincipal`; a RFW salva o contexto local, publica a sessão global e somente depois cria o
+cookie persistente. Falha posterior à preparação executa compensação, remove o contexto e limpa eventual cookie. Um
+guard valida toda requisição autenticada: estados definitivos encerram sessão e cookie, enquanto indisponibilidade
+retorna HTTP 503 sem revogar a credencial. Logout programático e HTTP notificam o lifecycle, mas sempre prosseguem
+com a limpeza local. O provider é opcional para outras hospedeiras e permanece sem implementação real no Rinos até
+as tarefas de schema e núcleo de sessão.
 
 Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
 antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio

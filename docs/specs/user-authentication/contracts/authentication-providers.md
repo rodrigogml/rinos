@@ -121,7 +121,31 @@ Operações de gestão:
 `revoke(reference)` autoriza somente sessão do próprio usuário. `revokeAll(keepCurrent)` bloqueia o usuário e as
 sessões alvo na mesma transação. Revogar a sessão corrente limpa também o contexto local e o cookie.
 
-## Remember-me and Session Lifecycle
+## Authentication Session Lifecycle
+
+**RFW contracts**: `RFWAuthenticationSessionLifecycleProvider`,
+`RFWAuthenticationSessionPreparationVO`, `RFWAuthenticationSessionValidationVO`,
+`RFWAuthenticationSessionStatusEnum` e `RFWAuthenticationSessionPrincipal`<br>
+**Rinos facade proposta**: `AuthenticationSessionLifecycleFacade`
+
+O lifecycle da sessão global segue uma ordem fechada:
+
+1. `prepare(...)` persiste um estado ainda não utilizável e devolve o principal com referência opaca;
+2. o RFW renova a sessão HTTP e salva o `SecurityContext` local;
+3. `publish(...)` ativa a sessão global;
+4. o cookie persistente, quando solicitado, é criado somente depois da publicação global;
+5. falha em qualquer etapa posterior à preparação limpa contexto/cookie e chama `abort(...)` de forma idempotente.
+
+O guard consulta `validate(...)` antes de liberar toda requisição autenticada. `INVALID`, `EXPIRED`, `REVOKED` e
+`BLOCKED` encerram estado remoto, contexto e cookie; `UNAVAILABLE` bloqueia com HTTP 503 sem revogar a credencial.
+`close(...)` participa do logout programático e HTTP e deve ser idempotente. Aplicações sem o provider mantêm o
+comportamento local anterior.
+
+A referência implementada por `RFWAuthenticationSessionPrincipal` não é segredo nem credencial, não equivale ao ID
+sequencial do banco e não aparece em URL, mensagem ou log. Preparações abandonadas por queda do processo devem
+expirar pela política da hospedeira.
+
+## Remember-me
 
 **RFW contracts**: `RFWPersistentLoginProvider`, `RFWPersistentLoginOutcomeVO` e
 `RFWPersistentLoginStatusEnum`<br>
@@ -140,8 +164,9 @@ O filtro RFW não substitui autenticação existente. `INVALID`, `EXPIRED`, `REV
 cookie sem autenticar a requisição. Logout pelo serviço RFW ou pela cadeia HTTP aciona revogação e limpeza. O callback
 `RFWRememberMeProvider` continua compatível apenas para criação e nunca ativa restauração automática.
 
-O contrato público não expõe hash, selector interno, validator, token bruto ou `HttpSession` ID. Até a sessão global
-da tarefa 1.6 ser integrada à ordem de publicação, o Rinos não anuncia nem registra seu provider real.
+O contrato público não expõe hash, selector interno, validator, token bruto ou `HttpSession` ID. O Rinos só registra
+os providers reais de sessão e login persistente depois que as tarefas 2.4 e 3.3 implementarem o modelo e o núcleo
+persistente; até lá, não anuncia essas capabilities.
 
 ## Reauthentication
 

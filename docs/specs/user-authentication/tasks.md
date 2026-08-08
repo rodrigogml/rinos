@@ -91,11 +91,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-005](./rfw-gap-analysis.md#gap-auth-rfw-005-life
 
 Ref: [RFW Gap Analysis AUTH-RFW-006](./rfw-gap-analysis.md#gap-auth-rfw-006-sessão-global-não-participa-da-publicação-e-do-logout), Interface INT-WEB-AUTH-009
 
-- [ ] 1.6.1 Criar lifecycle host para preparar, publicar, validar e encerrar sessão global
-- [ ] 1.6.2 Garantir compensação/falha fechada quando sessão global ou contexto local não puderem ser concluídos
-- [ ] 1.6.3 Testar login, logout, revogação externa, usuário bloqueado e falhas parciais
-- [ ] 1.6.4 Atualizar showroom, laboratório, i18n e documentação multilíngue da integração
-- [ ] 1.6.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.6.1 Criar lifecycle host para preparar, publicar, validar e encerrar sessão global
+- [x] 1.6.2 Garantir compensação/falha fechada quando sessão global ou contexto local não puderem ser concluídos
+- [x] 1.6.3 Testar login, logout, revogação externa, usuário bloqueado e falhas parciais
+- [x] 1.6.4 Atualizar showroom, laboratório, i18n e documentação multilíngue da integração
+- [x] 1.6.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.7 Acrescentar gate legal pós-autenticação `[C]`
 
