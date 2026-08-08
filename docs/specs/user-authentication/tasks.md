@@ -71,11 +71,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-003](./rfw-gap-analysis.md#gap-auth-rfw-003-fato
 
 Ref: [RFW Gap Analysis AUTH-RFW-004](./rfw-gap-analysis.md#gap-auth-rfw-004-reautenticação-aceita-somente-uma-prova-textual), Interface INT-WEB-AUTH-010
 
-- [ ] 1.4.1 Substituir prova textual/boolean por operação, catálogo de métodos e outcome tipados
-- [ ] 1.4.2 Suportar senha, TOTP e passkey com continuação de uso único e cancelamento sem efeito
-- [ ] 1.4.3 Testar garantia já recente, challenge, expiração, conflito, passwordless e compatibilidade
-- [ ] 1.4.4 Atualizar diálogo/laboratório, i18n e documentação multilíngue do showroom
-- [ ] 1.4.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.4.1 Substituir prova textual/boolean por operação, catálogo de métodos e outcome tipados
+- [x] 1.4.2 Suportar senha, TOTP e passkey com continuação de uso único e cancelamento sem efeito
+- [x] 1.4.3 Testar garantia já recente, challenge, expiração, conflito, passwordless e compatibilidade
+- [x] 1.4.4 Atualizar diálogo/laboratório, i18n e documentação multilíngue do showroom
+- [x] 1.4.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.5 Completar lifecycle de login persistente `[C]`
 

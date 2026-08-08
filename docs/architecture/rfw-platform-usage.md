@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`f3af27bec5af5c1bf7de5c5a8f27716b2a728f04` da RFW Platform, publicada como
+`800cb67bd7dd4713041497c41ad5af02ea7b039e` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -40,6 +40,12 @@ tipado expõe somente referência opaca, destino mascarado, expiração, instant
 `retryAfter`. O provider concreto do Rinos deve persistir e invalidar provas atomicamente, entregar a mensagem após o
 commit e nunca devolver sucesso quando o envio falhar. TOTP e código de recuperação permanecem independentes da
 emissão.
+
+A reautenticação de operações sensíveis usa `RFWReauthenticationChallengeProvider`. O provider tipado decide se a
+garantia atual já é recente ou devolve desafio opaco com validade, rótulo humano e métodos permitidos. A UI padrão
+aceita senha, TOTP e passkey, não pré-seleciona método, cancela sem executar a operação e só continua uma vez após
+`COMPLETED`. Expiração, conflito, limitação, rejeição e indisponibilidade permanecem decisões do backend. O provider
+booleano anterior continua como adapter exclusivo de senha e só é usado na ausência do contrato tipado.
 
 Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
 antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio

@@ -136,15 +136,21 @@ O contrato público não deve expor hash, selector interno, validator ou `HttpSe
 
 ## Reauthentication
 
-**RFW contract atual**: `RFWReauthenticationProvider`<br>
+**RFW contracts**: `RFWReauthenticationChallengeProvider`, `RFWReauthenticationBeginRequestDTO`,
+`RFWReauthenticationVerificationRequestDTO`, `RFWReauthenticationChallengeVO` e
+`RFWReauthenticationOutcomeVO`<br>
 **Rinos facade proposta**: `ReauthenticationFacade`
 
 Uma consulta inicial verifica se `lastStrongAuthAt` já está dentro dos 15 minutos e se o nível/método satisfaz a
-operação. Quando não estiver, abre continuação com métodos permitidos. A conclusão atualiza somente a sessão corrente
-e registra evento; não cria outra sessão e não concede authority.
+operação. Quando não estiver, devolve referência opaca, validade, rótulo humano e catálogo de senha, TOTP e/ou
+passkey. A conclusão atualiza somente a sessão corrente e registra evento; não cria outra sessão e não concede
+authority.
 
-O contrato atual recebe uma única string normalmente tratada como senha. A evolução deve aceitar resultado/desafio
-tipado para usuários passwordless, TOTP e passkey, preservando `operationId` estável.
+`begin(...)` pode responder `ALREADY_RECENT` ou `CHALLENGE_REQUIRED`. `verify(...)` recebe a referência, o método
+escolhido e uma prova transitória e só permite continuar a operação original em `COMPLETED`. A referência deve estar
+vinculada ao usuário, sessão e operação, expirar, ser consumida uma única vez e ser cancelada quando a UI fechar. O
+`operationId` permanece interno; somente o rótulo i18n humano do desafio é exibido. O provider tipado tem precedência
+sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
 
 ## Security Settings
 
