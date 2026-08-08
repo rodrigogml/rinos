@@ -12,6 +12,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
     ApplicationPropertiesConfig.class,
+    AuthenticationAbusePropertiesConfig.class,
+    AuthenticationKeyringPropertiesConfig.class,
+    AuthenticationMfaPropertiesConfig.class,
+    AuthenticationNotificationPropertiesConfig.class,
+    AuthenticationRetentionPropertiesConfig.class,
+    AuthenticationSessionPropertiesConfig.class,
+    AuthenticationWebAuthnPropertiesConfig.class,
     CleanupPropertiesConfig.class,
     MaintenancePropertiesConfig.class,
     OriginPropertiesConfig.class,

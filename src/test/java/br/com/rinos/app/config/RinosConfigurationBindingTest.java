@@ -43,6 +43,12 @@ class RinosConfigurationBindingTest {
           assertThat(context.getBean(VerificationPropertiesConfig.class).validity())
               .isEqualTo(Duration.ofHours(24));
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
+          assertThat(context.getBean(AuthenticationSessionPropertiesConfig.class).normalAbsolute())
+              .isEqualTo(Duration.ofHours(12));
+          assertThat(context.getBean(AuthenticationMfaPropertiesConfig.class).recoveryCodeCount())
+              .isEqualTo(10);
+          assertThat(context.getBean(AuthenticationKeyringPropertiesConfig.class).enabled())
+              .isFalse();
           assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())
               .isEqualTo(URI.create("http://localhost:7070"));
           assertThat(context.getBean(ProxyPropertiesConfig.class).trustedProxies())
@@ -221,6 +227,37 @@ class RinosConfigurationBindingTest {
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage(
                   "cancellationRequestWindow deve ser maior que zero.");
+        });
+  }
+
+  @Test
+  void bind_shouldFail_whenEnabledKeyringHasNoUsableActiveKey() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.keyring.enabled=true",
+            "rinos.authentication.keyring.active-version=v1",
+            "rinos.authentication.keyring.keys.v1=short")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasStackTraceContaining(
+                  "chaves do keyring devem usar Base64 válido e ao menos 256 bits");
+        });
+  }
+
+  @Test
+  void bind_shouldFail_whenEnabledWebAuthnAllowsInsecureRemoteOrigin() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.webauthn.enabled=true",
+            "rinos.authentication.webauthn.allowed-origins=http://app.rinos.com.br")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "origin WebAuthn deve ser HTTPS ou localhost HTTP e não conter extras.");
         });
   }
 }

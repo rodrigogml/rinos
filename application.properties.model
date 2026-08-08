@@ -85,6 +85,46 @@ rinos.proxy.trusted-proxies=
 rinos.cleanup.interval=24h
 rinos.cleanup.batch-size=500
 
+# Autenticação global: políticas fixas de sessão, abuso, notificação, MFA e retenção
+rinos.authentication.session.normal-absolute=12h
+rinos.authentication.session.normal-idle=30m
+rinos.authentication.session.remembered-absolute=30d
+rinos.authentication.session.remembered-idle=7d
+rinos.authentication.session.activity-refresh-interval=5m
+rinos.authentication.session.reauthentication-validity=15m
+rinos.authentication.session.cookie-name=RINOS_AUTH
+rinos.authentication.session.cookie-secure=true
+rinos.authentication.session.cookie-same-site=Strict
+rinos.authentication.abuse.failure-threshold=3
+rinos.authentication.abuse.window=15m
+rinos.authentication.abuse.turnstile-duration=15m
+rinos.authentication.abuse.initial-delay=1s
+rinos.authentication.abuse.maximum-delay=15m
+rinos.authentication.abuse.retention=30d
+rinos.authentication.notification.failed-login-cooldown=24h
+rinos.authentication.notification.device-recognition=30d
+rinos.authentication.retention.terminal-sessions=30d
+rinos.authentication.retention.temporary-artifacts=30d
+rinos.authentication.retention.identity-events=365d
+rinos.authentication.mfa.challenge-validity=5m
+rinos.authentication.mfa.maximum-attempts=5
+rinos.authentication.mfa.totp-digits=6
+rinos.authentication.mfa.totp-period=30s
+rinos.authentication.mfa.totp-window=1
+rinos.authentication.mfa.recovery-code-count=10
+
+# Keyring local. Habilite somente depois de substituir o exemplo por segredo Base64 de ao menos 32 bytes.
+rinos.authentication.keyring.enabled=false
+rinos.authentication.keyring.active-version=
+rinos.authentication.keyring.keys.v1=
+
+# WebAuthn. Produção usa HTTPS; HTTP é aceito apenas para localhost de desenvolvimento.
+rinos.authentication.webauthn.enabled=false
+rinos.authentication.webauthn.rp-id=app.rinos.com.br
+rinos.authentication.webauthn.rp-name=Rinos
+rinos.authentication.webauthn.allowed-origins=https://app.rinos.com.br,http://localhost:7070
+rinos.authentication.webauthn.user-verification-required=true
+
 # Consulta de senhas comprometidas
 rinos.hibp.endpoint=https://api.pwnedpasswords.com/range/
 rinos.hibp.user-agent=Rinos/1.0.0
