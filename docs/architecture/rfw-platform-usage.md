@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`ac07dcde4ead389a363c901e64ec453c467ff578` da RFW Platform, publicada como
+`e039c9019345d365e1294cb2aa709004f0a5656e` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -55,6 +55,13 @@ garantia atual já é recente ou devolve desafio opaco com validade, rótulo hum
 aceita senha, TOTP e passkey, não pré-seleciona método, cancela sem executar a operação e só continua uma vez após
 `COMPLETED`. Expiração, conflito, limitação, rejeição e indisponibilidade permanecem decisões do backend. O provider
 booleano anterior continua como adapter exclusivo de senha e só é usado na ausência do contrato tipado.
+
+A gestão autenticada usa `RFWSecurityManagementOutcomeVO<T>` nos métodos `*Outcome` dos providers de passkeys,
+fatores, identidades externas e sessões. Conflito, último método, garantia insuficiente, estado obsoleto e
+indisponibilidade são decisões explícitas do backend; `CONFLICT`/`STALE` exigem refresh. O componente contém falha e
+carregamento por seção, ignora conclusões assíncronas antigas e fecha diálogos somente após `COMPLETED`.
+`RFWAuthenticationMethodVO` publica criação e estado seguro sem material de credencial. Adapters legados de
+`List`/`Void` existem apenas para compatibilidade; os providers do Rinos devem implementar o contrato tipado.
 
 O login persistente completo usa `RFWPersistentLoginProvider`. A aplicação hospedeira permanece proprietária do
 cookie opaco e implementa criação, resolução com rotação atômica, revogação e limpeza. O filtro RFW restaura somente

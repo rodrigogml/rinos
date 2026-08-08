@@ -235,6 +235,21 @@ sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
 Toda operação sensível executa novamente a invariant no backend depois da reautenticação; ocultar/desabilitar botão
 na UI não é controle de segurança.
 
+Consultas e mutações usam preferencialmente os métodos `*Outcome` dos providers e devolvem
+`RFWSecurityManagementOutcomeVO<T>`. O status distingue `COMPLETED`, `REJECTED`, `CONFLICT`, `LAST_METHOD`,
+`INSUFFICIENT_ASSURANCE`, `STALE` e `UNAVAILABLE`; falhas carregam somente `RFWAccessErrorVO` público. `CONFLICT` e
+`STALE` exigem `refreshRequired=true`. O Rinos deve revalidar invariants transacionalmente e devolver outcome, sem
+pedir à UI que deduza o resultado por exceção ou pela fotografia anteriormente carregada.
+
+Cada seção é consultada e atualizada de forma independente. Uma falha não pode apagar dados de outra seção; respostas
+assíncronas antigas não substituem uma consulta mais nova. Após sucesso ou refresh obrigatório, somente a seção
+afetada é reconsultada. Remover/revogar algo já ausente produz `COMPLETED` quando a operação for idempotente. Diálogos
+fecham apenas após `COMPLETED`; rejeições permanecem associadas à ação originadora.
+
+`RFWAuthenticationMethodVO` transporta `createdAt` e estado seguro (`PENDING`, `ACTIVE`, `DISABLED`, `REVOKED`), sem
+credential ID, chave, segredo ou prova. Os métodos legados de `List`/`Void` permanecem adaptados para compatibilidade,
+mas providers reais do Rinos devem implementar os outcomes tipados para preservar conflitos e invariants.
+
 ## Error Contract
 
 | Category | Public behavior | Internal evidence |

@@ -1,9 +1,9 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `f71bcc018e2007cb83189f3d3873e0c07db28e9a` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `e039c9019345d365e1294cb2aa709004f0a5656e` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
-**Status**: gaps AUTH-RFW-001 a AUTH-RFW-006 entregues; os demais devem ser implementados no RFW antes dos adapters
+**Status**: gaps AUTH-RFW-001 a AUTH-RFW-008 entregues; os demais devem ser implementados no RFW antes dos adapters
 dependentes no Rinos
 
 ## Existing Capabilities Reused
@@ -106,6 +106,8 @@ vigente, preservem o método/remember-me sem guardar credenciais e retomem a con
 **Compatibility**: a etapa nova é aditiva. O contrato de ativação permanece inalterado.
 
 ## Gap AUTH-RFW-008: gestão não comunica resultados e invariants de forma suficiente
+
+**Delivery status**: concluído na baseline `e039c9019345d365e1294cb2aa709004f0a5656e`.
 
 **Evidence**: providers autenticados retornam predominantemente `Void`; o componente fecha diálogos antes de saber
 se confirmação/revogação falhou e não possui resultados para “último método”, conflito concorrente ou provider

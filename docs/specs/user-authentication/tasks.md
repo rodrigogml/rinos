@@ -111,11 +111,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-007](./rfw-gap-analysis.md#gap-auth-rfw-007-gate
 
 Ref: [RFW Gap Analysis AUTH-RFW-008](./rfw-gap-analysis.md#gap-auth-rfw-008-gestão-não-comunica-resultados-e-invariants-de-forma-suficiente), Interface INT-WEB-AUTH-005..009
 
-- [ ] 1.8.1 Definir outcomes públicos para listar, adicionar, renomear, remover, revogar e regenerar
-- [ ] 1.8.2 Representar conflito, último método, garantia insuficiente, estado stale e refresh obrigatório
-- [ ] 1.8.3 Testar seções independentes, operações idempotentes, erros e providers opcionais
-- [ ] 1.8.4 Atualizar showroom, laboratório, i18n e documentação multilíngue da gestão
-- [ ] 1.8.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.8.1 Definir outcomes públicos para listar, adicionar, renomear, remover, revogar e regenerar
+- [x] 1.8.2 Representar conflito, último método, garantia insuficiente, estado stale e refresh obrigatório
+- [x] 1.8.3 Testar seções independentes, operações idempotentes, erros e providers opcionais
+- [x] 1.8.4 Atualizar showroom, laboratório, i18n e documentação multilíngue da gestão
+- [x] 1.8.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.9 Tornar passkeys acessíveis e observáveis na UI `[A]`
 
