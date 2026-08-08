@@ -66,6 +66,9 @@ public class ExternalIdentityEntity {
   @Column(name = "activatedAt")
   private Instant activatedAt;
 
+  @Column(name = "lastUsedAt")
+  private Instant lastUsedAt;
+
   @Column(name = "createdAt", nullable = false, insertable = false, updatable = false)
   private Instant createdAt;
 
@@ -193,6 +196,24 @@ public class ExternalIdentityEntity {
    */
   public void setActivatedAt(Instant activatedAt) {
     this.activatedAt = Objects.requireNonNull(activatedAt, "activatedAt must not be null");
+  }
+
+  /**
+   * Retorna o último uso autenticado do vínculo externo.
+   *
+   * @return instante UTC ou {@code null}
+   */
+  public Instant getLastUsedAt() {
+    return lastUsedAt;
+  }
+
+  /**
+   * Registra o uso somente depois de validação e conclusão da autenticação.
+   *
+   * @param lastUsedAt instante UTC obrigatório
+   */
+  public void setLastUsedAt(Instant lastUsedAt) {
+    this.lastUsedAt = Objects.requireNonNull(lastUsedAt, "lastUsedAt must not be null");
   }
 
   /**

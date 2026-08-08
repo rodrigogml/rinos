@@ -7,7 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +27,7 @@ import br.com.rinos.app.backend.module.identity.repository.LocalCredentialReposi
 class LocalCredentialServiceTest {
 
   private static final Instant INVALIDATED_AT = Instant.parse("2026-07-29T18:00:00Z");
+  private static final Instant PASSWORD_CHANGED_AT = Instant.parse("2026-08-08T18:00:00Z");
 
   private LocalCredentialRepository repository;
   private LocalCredentialService service;
@@ -36,7 +39,9 @@ class LocalCredentialServiceTest {
   @BeforeEach
   void setUp() {
     repository = mock(LocalCredentialRepository.class);
-    service = new LocalCredentialService(repository);
+    service = new LocalCredentialService(
+        repository,
+        Clock.fixed(PASSWORD_CHANGED_AT, ZoneOffset.UTC));
     user = new UserEntity(
         "user@example.com",
         "user@example.com",
@@ -69,6 +74,8 @@ class LocalCredentialServiceTest {
 
     assertThat(credential.getPasswordHash()).isEqualTo("{argon2}new-value");
     assertThat(credential.getStatus()).isEqualTo(LocalCredentialStatusEnum.ACTIVE);
+    assertThat(credential.getPasswordChangedAt()).isEqualTo(PASSWORD_CHANGED_AT);
+    assertThat(credential.getCompromisedAt()).isNull();
     verify(repository).save(credential);
   }
 

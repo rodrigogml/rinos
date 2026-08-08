@@ -57,11 +57,12 @@ Os testes de migration global, coordenação concorrente e persistência usam um
 provedor está disponível, esses cenários são reportados explicitamente como ignorados para que o build local continue
 utilizável.
 
-O gate completo deve apresentar os cinco cenários de migration, os oito cenários do lease, os 22 cenários de
-persistência da identidade e o cenário de timeout HIBP local executados, sem skips:
+O gate completo deve apresentar os seis cenários de migration, os quatro cenários físicos do schema de autenticação,
+os oito cenários do lease, os 22 cenários de persistência da identidade e o cenário de timeout HIBP local executados,
+sem skips:
 
 ```shell
-mvn -Dit.test=GlobalDatabaseMigrationIT,MaintenanceLeaseRepositoryIT,IdentityRepositoryIT,PwnedPasswordsServiceIT verify
+mvn -Dit.test=GlobalDatabaseMigrationIT,AuthenticationDatabaseSchemaIT,MaintenanceLeaseRepositoryIT,IdentityRepositoryIT,PwnedPasswordsServiceIT verify
 ```
 
 #### Uso seguro de uma instância MySQL 9 existente

@@ -145,12 +145,12 @@ Ref: [RFW Gap Analysis AUTH-RFW-010](./rfw-gap-analysis.md#gap-auth-rfw-010-conf
 
 Ref: [Data Model](./data-model.md), Spec §Decisões de Infraestrutura Auditáveis
 
-- [ ] 2.1.1 Criar update SQL para fluxos, métodos, provas, fatores, recovery codes, passkeys, sessões e janelas
-- [ ] 2.1.2 Atualizar init global com o estado consolidado sem alterar scripts incrementais já publicados
-- [ ] 2.1.3 Definir FKs, UKs, índices, checks, versões otimistas e ações referenciais do modelo aprovado
-- [ ] 2.1.4 Atualizar marco da versão do schema global e documentação de migração
-- [ ] 2.1.5 Validar init limpo e update sobre schema anterior no MySQL 9 local
-- [ ] 2.1.6 Criar testes de metadados, constraints, concorrência e compatibilidade JPA
+- [x] 2.1.1 Criar update SQL para fluxos, métodos, provas, fatores, recovery codes, passkeys, sessões e janelas
+- [x] 2.1.2 Atualizar init global com o estado consolidado sem alterar scripts incrementais já publicados
+- [x] 2.1.3 Definir FKs, UKs, índices, checks, versões otimistas e ações referenciais do modelo aprovado
+- [x] 2.1.4 Atualizar marco da versão do schema global e documentação de migração
+- [x] 2.1.5 Validar init limpo e update sobre schema anterior no MySQL 9 local
+- [x] 2.1.6 Criar testes de metadados, constraints, concorrência e compatibilidade JPA
 
 ### 2.2 Implementar fluxos, provas e auditoria persistentes `[C]`
 

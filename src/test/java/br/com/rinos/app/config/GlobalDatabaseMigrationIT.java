@@ -48,8 +48,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260729_003_update.sql",
       "classpath:db/global/update/20260729_004_update.sql",
       "classpath:db/global/update/20260729_005_update.sql",
-      "classpath:db/global/update/20260802_001_update.sql");
-  private static final String TARGET_VERSION = "20260802001";
+      "classpath:db/global/update/20260802_001_update.sql",
+      "classpath:db/global/update/20260808_001_update.sql");
+  private static final String TARGET_VERSION = "20260808001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -117,6 +118,7 @@ class GlobalDatabaseMigrationIT {
     assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
     assertThat(tableExists("identity_legalConsent")).isTrue();
     assertThat(tableExists("identity_externalIdentity")).isTrue();
+    assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
     assertThat(tableExists("testGlobalMigrationMarker")).isFalse();
@@ -163,6 +165,7 @@ class GlobalDatabaseMigrationIT {
     assertThat(tableExists("identity_legalDocumentVersion")).isTrue();
     assertThat(tableExists("identity_legalConsent")).isTrue();
     assertThat(tableExists("identity_externalIdentity")).isTrue();
+    assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
@@ -183,7 +186,7 @@ class GlobalDatabaseMigrationIT {
       throws SQLException {
     initializeDatabase();
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260802_002_update.sql";
+        + ",classpath:db/global/failure/20260808_002_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();
@@ -195,6 +198,42 @@ class GlobalDatabaseMigrationIT {
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
     assertThat(tableExists("testFailedUpdateMarker")).isTrue();
     assertThat(tableExists("testUnexpectedUpdateContinuation")).isFalse();
+  }
+
+  /**
+   * Comprova a evolução preservando credenciais criadas na versão anterior.
+   *
+   * @throws SQLException quando o cenário ou seus metadados não podem ser consultados
+   */
+  @Test
+  void startup_shouldBackfillCredentialDates_whenUpdatingPreviousSchema() throws SQLException {
+    initializePreviousDatabase();
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate("""
+          INSERT INTO identity_user (email, normalizedEmail, status)
+          VALUES ('existing@example.com', 'existing@example.com', 'ACTIVE')
+          """);
+      statement.executeUpdate("""
+          INSERT INTO identity_localCredential (idUser, passwordHash, status)
+          VALUES (1, '{argon2id}existing', 'ACTIVE')
+          """);
+      statement.executeUpdate("""
+          INSERT INTO identity_externalIdentity
+            (idUser, provider, issuer, subject, status, verifiedAt, activatedAt)
+          VALUES
+            (1, 'GOOGLE', 'https://accounts.google.com', 'subject-existing', 'ACTIVE',
+             CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+          """);
+    }
+
+    runUpdater();
+
+    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(readTimestamp("identity_localCredential", "passwordChangedAt", 1L)).isNotNull();
+    assertThat(readTimestamp("identity_localCredential", "compromisedAt", 1L)).isNull();
+    assertThat(readTimestamp("identity_externalIdentity", "lastUsedAt", 1L)).isNull();
+    assertAuthenticationTables();
   }
 
   /**
@@ -280,6 +319,44 @@ class GlobalDatabaseMigrationIT {
   }
 
   /**
+   * Reproduz o schema imediatamente anterior sem modificar scripts incrementais publicados.
+   */
+  private void initializePreviousDatabase() {
+    initializeLegacyDatabase();
+    ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
+        new ClassPathResource("db/global/update/20260728_002_update.sql"),
+        new ClassPathResource("db/global/update/20260729_001_update.sql"),
+        new ClassPathResource("db/global/update/20260729_002_update.sql"),
+        new ClassPathResource("db/global/update/20260729_003_update.sql"),
+        new ClassPathResource("db/global/update/20260729_004_update.sql"),
+        new ClassPathResource("db/global/update/20260729_005_update.sql"),
+        new ClassPathResource("db/global/update/20260802_001_update.sql"));
+    populator.execute(dataSource);
+  }
+
+  /**
+   * Lê uma data opcional de um registro conhecido do cenário descartável.
+   *
+   * @param tableName tabela global validada pelo teste
+   * @param columnName coluna temporal validada pelo teste
+   * @param id identificador interno preparado no cenário
+   * @return instante JDBC ou {@code null}
+   * @throws SQLException quando a consulta falha
+   */
+  private java.sql.Timestamp readTimestamp(String tableName, String columnName, long id)
+      throws SQLException {
+    String sql = "SELECT " + columnName + " FROM " + tableName + " WHERE id = ?";
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setLong(1, id);
+      try (ResultSet result = statement.executeQuery()) {
+        assertThat(result.next()).isTrue();
+        return result.getTimestamp(1);
+      }
+    }
+  }
+
+  /**
    * Simula banco criado por artefato posterior ao catálogo disponível.
    *
    * @throws SQLException quando a view de versão não pode ser substituída
@@ -332,6 +409,34 @@ class GlobalDatabaseMigrationIT {
         return result.getInt(1) == 1;
       }
     }
+  }
+
+  /**
+   * Confirma a presença de todas as estruturas globais introduzidas para autenticação.
+   *
+   * @throws SQLException quando os metadados não podem ser consultados
+   */
+  private void assertAuthenticationTables() throws SQLException {
+    assertThat(List.of(
+        "identity_authenticationFlow",
+        "identity_authenticationFlowMethod",
+        "identity_authenticationProof",
+        "identity_totpFactor",
+        "identity_emailFactor",
+        "identity_recoveryCodeSet",
+        "identity_recoveryCode",
+        "identity_passkeyUser",
+        "identity_passkeyCredential",
+        "identity_authSession",
+        "identity_authSessionMethod",
+        "security_authenticationWindow"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
   }
 
   /**

@@ -1,8 +1,10 @@
 package br.com.rinos.app.backend.module.identity.service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +27,27 @@ public class LocalCredentialService {
   private static final int MAXIMUM_HASH_LENGTH = 255;
 
   private final LocalCredentialRepository repository;
+  private final Clock clock;
 
   /**
    * Cria o serviço sobre o repository interno de credenciais.
    *
    * @param repository persistência restrita ao backend
    */
+  @Autowired
   public LocalCredentialService(LocalCredentialRepository repository) {
+    this(repository, Clock.systemUTC());
+  }
+
+  /**
+   * Cria o serviço com relógio controlável para operações e testes determinísticos.
+   *
+   * @param repository persistência restrita ao backend
+   * @param clock relógio UTC usado para marcar substituições
+   */
+  LocalCredentialService(LocalCredentialRepository repository, Clock clock) {
     this.repository = repository;
+    this.clock = Objects.requireNonNull(clock, "clock must not be null");
   }
 
   /**
@@ -52,11 +67,13 @@ public class LocalCredentialService {
     validateUserId(user.getId());
     validatePasswordHash(passwordHash);
 
+    Instant passwordChangedAt = clock.instant();
     LocalCredentialEntity credential = repository.findByUserIdForUpdate(user.getId())
-        .orElseGet(() -> new LocalCredentialEntity(user, passwordHash));
+        .orElseGet(() -> new LocalCredentialEntity(user, passwordHash, passwordChangedAt));
     credential.setPasswordHash(passwordHash);
     credential.setStatus(LocalCredentialStatusEnum.ACTIVE);
     credential.clearInvalidatedAt();
+    credential.markPasswordChanged(passwordChangedAt);
     repository.save(credential);
   }
 

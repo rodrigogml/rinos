@@ -6,6 +6,18 @@ métodos e sessão demonstram quem é o usuário; não armazenam concessões de 
 Os nomes seguem o padrão do projeto: prefixo funcional em inglês, tabelas e colunas em `camelCase`, PK
 `BIGINT AUTO_INCREMENT`, constraints nomeadas em `snake_case`, `TIMESTAMP(6)` em UTC e InnoDB.
 
+## Marco de migration
+
+O update global imutável `20260808_001_update.sql` introduz este modelo e publica a versão
+`20260808001`. O `db/global/init/01-ddl.sql` representa o mesmo estado consolidado para instalações novas, enquanto o
+update preserva credenciais existentes: preenche `passwordChangedAt` pela última atualização/criação conhecida e
+acrescenta os demais campos opcionais sem fabricar histórico de uso ou comprometimento.
+
+Init limpo e evolução desde `20260802001` devem produzir definições equivalentes para todas as novas tabelas. O gate
+MySQL 9 compara o DDL materializado, valida tipos físicos compatíveis com os mappings JPA planejados, FKs em cascata,
+checks de estados/intervalos, unicidades de registros ativos e compare-and-set pela coluna `version`. O catálogo e o
+marco de tenant não são alterados por esta migration.
+
 ## Existing Entities Reused
 
 ### `identity_user`
