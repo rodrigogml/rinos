@@ -31,6 +31,12 @@ public interface LocalCredentialRepository
       Long userId,
       LocalCredentialStatusEnum status);
 
+  boolean existsByUserIdAndStatus(Long userId, LocalCredentialStatusEnum status);
+
+  boolean existsByUserIdAndStatusAndCompromisedAtIsNull(
+      Long userId,
+      LocalCredentialStatusEnum status);
+
   /**
    * Bloqueia a credencial de uma identidade para substituição ou remoção.
    *

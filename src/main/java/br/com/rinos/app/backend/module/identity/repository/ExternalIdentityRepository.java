@@ -60,6 +60,8 @@ public interface ExternalIdentityRepository
       Long userId,
       ExternalIdentityStatusEnum status);
 
+  boolean existsByUserIdAndStatus(Long userId, ExternalIdentityStatusEnum status);
+
   /**
    * Bloqueia os vínculos pendentes de um usuário antes de substituição ou ativação.
    *

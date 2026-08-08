@@ -52,4 +52,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
       """)
   Optional<UserEntity> findByNormalizedEmailForUpdate(
       @Param("normalizedEmail") String normalizedEmail);
+
+  /** Bloqueia a identidade antes de alterar sua coleção de métodos e fatores. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT user FROM UserEntity user WHERE user.id = :userId")
+  Optional<UserEntity> findByIdForUpdate(@Param("userId") Long userId);
 }

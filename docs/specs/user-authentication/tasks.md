@@ -173,12 +173,19 @@ Ref: Data Model §AuthenticationFlow, §AuthenticationFlowMethod, §Authenticati
 
 Ref: Data Model §TotpFactor, §EmailFactor, §RecoveryCodeSet, §RecoveryCode, §PasskeyUser e §PasskeyCredential
 
-- [ ] 2.3.1 Criar entities/enums/repositories de TOTP, fator de e-mail e códigos de recuperação
-- [ ] 2.3.2 Criar entities/repositories WebAuthn e constraints de credencial/usuário público
-- [ ] 2.3.3 Implementar estados pendente, ativo, revogado, consumido e conjunto substituído
-- [ ] 2.3.4 Aplicar invariantes de último método e fator administrativo em service transacional
-- [ ] 2.3.5 Criar mapeamentos seguros para listagem/gestão sem material criptográfico
-- [ ] 2.3.6 Testar unicidade, apresentação única, consumo individual e revogação seletiva
+- [x] 2.3.1 Criar entities/enums/repositories de TOTP, fator de e-mail e códigos de recuperação
+- [x] 2.3.2 Criar entities/repositories WebAuthn e constraints de credencial/usuário público
+- [x] 2.3.3 Implementar estados pendente, ativo, revogado, consumido e conjunto substituído
+- [x] 2.3.4 Aplicar invariantes de último método e fator administrativo em service transacional
+- [x] 2.3.5 Criar mapeamentos seguros para listagem/gestão sem material criptográfico
+- [x] 2.3.6 Testar unicidade, apresentação única, consumo individual e revogação seletiva
+
+> [!NOTE]
+> Alterações de métodos bloqueiam primeiro `User` e depois o fator. Senha comprometida não conta
+> como método utilizável; TOTP ativo e passkey inicializada para verificação local contam para a
+> garantia administrativa. Listagens nunca contêm segredo cifrado, nonce, hash de recuperação,
+> user handle, credential ID, chave pública ou attestation. Geração, apresentação única e validação
+> criptográfica dos valores brutos permanecem nas tarefas 4.1 e 4.2.
 
 ### 2.4 Implementar sessões, abuso e propriedades exclusivas `[C]`
 
