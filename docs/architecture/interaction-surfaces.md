@@ -1,9 +1,9 @@
 # Interaction Surface Architecture
 
 **Created**: 2026-07-25  
-**Last Updated**: 2026-08-02<br>
+**Last Updated**: 2026-08-08<br>
 **Status**: Approved
-**Sources**: briefing 2026-07-17, Constitution 1.1.0, plano `user-registration`
+**Sources**: briefing 2026-07-17, Constitution 1.1.0, planos `user-registration` e `user-authentication`
 
 ## Surface Catalog
 
@@ -45,3 +45,4 @@ Rotas públicas declaram explicitamente as operações anônimas permitidas. Rot
 |------|------------|----------|-----------|--------|
 | 2026-07-25 | `SURF-WEB-RINOS` | Adotar uma aplicação web responsiva Vaadin server-side como única superfície humana do MVP | Stack e operação já aprovadas; reduz duplicação para a equipe inicial | briefing e `user-registration/plan.md` |
 | 2026-07-25 | `SURF-WEB-RINOS` | Tornar obrigatório pesquisar e reutilizar o RFW e seu showroom antes de criar interfaces | Centraliza componentes e devolve melhorias reutilizáveis às aplicações hospedeiras | Constitution 1.1.0 e `rfw-platform-usage.md` |
+| 2026-08-08 | `SURF-WEB-RINOS` | Manter a sessão Vaadin local com afinidade no proxy e separar dela o registro global revogável da autenticação | Evita Spring Session incompatível com a árvore server-side e preserva revogação entre instâncias | `user-authentication/plan.md` e documentação Vaadin |

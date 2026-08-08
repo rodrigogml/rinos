@@ -9,8 +9,8 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 
 ## Baseline aprovada
 
-A feature `user-registration` usa a revisão
-`65ede7c4ce8839b7b9f1fa5d06540f1540edd0c3` da RFW Platform, publicada como
+A baseline executável atual usa a revisão
+`dd7554c8c5ffca3527ffc7ca859eec781703fa46` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -26,6 +26,11 @@ O catálogo legal do acesso usa `RFWAccessComponentConfig.legalDocumentsProvider
 O RFW reconsulta esse provider ao renderizar etapas legais, permitindo que uma versão publicada durante a sessão
 substitua a anterior antes do aceite. O Rinos fornece somente os VOs públicos vigentes pela facade e fecha a
 capacidade de cadastro quando o catálogo não puder ser consultado.
+
+Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
+antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio
+real apesar de `spring.mail.*` estar corretamente configurado. O showroom documenta esse contrato, e a aplicação
+hospedeira não deve compensá-lo registrando dispatcher SMTP paralelo.
 
 O tema claro usa `--rfw-palette-info-700` como destaque semântico, garantindo ao texto normal de links pelo menos
 4,5:1 de contraste sobre branco. O teste de contrato do RFW protege esse piso, e o laboratório de botões do showroom
