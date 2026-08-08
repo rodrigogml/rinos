@@ -59,6 +59,7 @@ Continuação transitória entre uma prova inicial e a criação da sessão.
 | `purpose` | `VARCHAR(32)` | NOT NULL | `SIGN_IN`, `REAUTHENTICATION`, `FACTOR_RECOVERY`, `LEGAL_CONSENT` |
 | `primaryMethod` | `VARCHAR(32)` | NULL | Método já comprovado |
 | `requiredAssurance` | `VARCHAR(24)` | NOT NULL | `SINGLE_FACTOR`, `MULTI_FACTOR`, `PHISHING_RESISTANT` |
+| `persistentLoginRequested` | `BOOLEAN` | NOT NULL | Escolha feita no início e preservada por todas as continuações |
 | `status` | `VARCHAR(24)` | NOT NULL | `OPEN`, `USED`, `INVALIDATED`, `EXPIRED` |
 | `failureCount` | `INT` | NOT NULL | Tentativas rejeitadas do fluxo |
 | `issuedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
@@ -75,6 +76,7 @@ Continuação transitória entre uma prova inicial e a criação da sessão.
 - UK em `referenceHash` e índice em `(idUser, purpose, status, expiresAt)`.
 - `OPEN` vencido é rejeitado imediatamente, ainda que o job não o tenha removido.
 - Uma conclusão bloqueia a linha e a transiciona uma única vez.
+- O cliente não redefine `persistentLoginRequested` nas continuações; a conclusão usa o valor vinculado ao fluxo.
 - Fluxo sem `idUser` nunca pode terminar em autenticação; ele existe apenas quando necessário para equalizar resposta
   e custo observável.
 

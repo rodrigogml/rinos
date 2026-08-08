@@ -95,6 +95,8 @@ cookie utilizável.
 
 ## Gap AUTH-RFW-007: gate legal pós-login não possui etapa própria
 
+**Delivery status**: concluído na baseline `ac07dcde4ead389a363c901e64ec453c467ff578`.
+
 **Evidence**: existe `ACTIVATION_CONSENT_REQUIRED`, semanticamente vinculado ao cadastro/ativação. Login de usuário
 ativo não possui continuação distinta antes da publicação da sessão.
 

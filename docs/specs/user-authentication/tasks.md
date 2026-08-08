@@ -101,11 +101,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-006](./rfw-gap-analysis.md#gap-auth-rfw-006-sess
 
 Ref: [RFW Gap Analysis AUTH-RFW-007](./rfw-gap-analysis.md#gap-auth-rfw-007-gate-legal-pós-login-não-possui-etapa-própria), Interface INT-WEB-AUTH-003
 
-- [ ] 1.7.1 Definir continuação legal tipada com documentos pendentes, aceite e cancelamento
-- [ ] 1.7.2 Integrar etapa antes do callback autenticado sem afetar cadastro/aceites já existentes
-- [ ] 1.7.3 Testar catálogo vazio, nova versão concorrente, falha de integridade e ausência de sessão parcial
-- [ ] 1.7.4 Documentar renderer, exemplo e conteúdo multilíngue no showroom
-- [ ] 1.7.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.7.1 Definir continuação legal tipada com documentos pendentes, aceite e cancelamento
+- [x] 1.7.2 Integrar etapa antes do callback autenticado sem afetar cadastro/aceites já existentes
+- [x] 1.7.3 Testar catálogo vazio, nova versão concorrente, falha de integridade e ausência de sessão parcial
+- [x] 1.7.4 Documentar renderer, exemplo e conteúdo multilíngue no showroom
+- [x] 1.7.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.8 Tipar resultados e invariantes da gestão de segurança `[C]`
 

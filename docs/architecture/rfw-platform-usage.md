@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`f71bcc018e2007cb83189f3d3873e0c07db28e9a` da RFW Platform, publicada como
+`ac07dcde4ead389a363c901e64ec453c467ff578` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -26,6 +26,15 @@ O catálogo legal do acesso usa `RFWAccessComponentConfig.legalDocumentsProvider
 O RFW reconsulta esse provider ao renderizar etapas legais, permitindo que uma versão publicada durante a sessão
 substitua a anterior antes do aceite. O Rinos fornece somente os VOs públicos vigentes pela facade e fecha a
 capacidade de cadastro quando o catálogo não puder ser consultado.
+
+O gate legal posterior à comprovação dos fatores usa `RFWAuthenticationConsentProvider`,
+`RFWAuthenticationConsentChallengeVO` e a etapa própria `AUTHENTICATION_CONSENT`. A referência opaca mantém no
+backend a identidade, os métodos comprovados e a escolha de login persistente; a UI recebe somente os IDs das versões
+pendentes e nunca conserva credencial, prova ou `Authentication`. Catálogo vazio, versão ausente, duplicada ou
+associada a documento opcional falha fechado. Mudança concorrente substitui a continuação e descarta as seleções
+anteriores; cancelamento invalida a referência antes de voltar ao login. Esse protocolo não substitui
+`RFWActivationConsentProvider`, que permanece exclusivo do cadastro/ativação. O Rinos só deve registrar o novo
+provider depois que fluxo, consentimentos e conclusão atômica da autenticação estiverem implementados no global.
 
 A baseline também integra a conclusão WebAuthn à orquestração comum de acesso e publica o enrollment TOTP tipado.
 `RFWSecondFactorEnrollmentVO` entrega referência opaca, validade, URI `otpauth://` e segredo de apresentação única;

@@ -32,7 +32,7 @@ repositories ou services diretamente.
 
 | Domain outcome | RFW/UI outcome |
 |----------------|----------------|
-| Primeiro fator e todos os gates concluídos | `AUTHENTICATED` com principal mínimo e sessão já persistida |
+| Primeiro fator e todos os gates concluídos | `AUTHENTICATED` com principal mínimo; o RFW inicia o lifecycle da sessão |
 | Segundo fator necessário | `CHALLENGE_REQUIRED` com referência, validade e métodos permitidos |
 | Novo aceite obrigatório | continuação legal tipada, sem sessão plena |
 | Credencial/estado/usuário inválido | `REJECTED` com mensagem neutra |
@@ -70,6 +70,39 @@ indisponibilidade não afirma entrega. Passkey abre opções WebAuthn vinculadas
 
 O resultado final pode autenticar, exigir aceite legal, rejeitar com tentativas restantes não enumeráveis ou limitar.
 Nenhuma falha cria sessão parcial.
+
+## Legal Consent after Authentication
+
+**RFW contracts**: `RFWAuthenticationConsentProvider`, `RFWAuthenticationConsentChallengeVO`,
+`RFWAuthenticationConsentRequestDTO` e `RFWAuthenticationOutcomeVO`<br>
+**Rinos facade proposta**: `AuthenticationConsentFacade`
+
+O gate só começa depois que usuário e todos os fatores exigidos foram revalidados. O outcome
+`AUTHENTICATION_CONSENT_REQUIRED` não contém `Authentication`; leva apenas referência opaca, versões obrigatórias
+pendentes, validade e a escolha de login persistente. O registro global de `AuthenticationFlow` vinculado à
+referência conserva no backend `idUser`, métodos comprovados e política de sessão. Nenhuma senha, OTP, assertion ou
+ID token sobrevive à chamada que a consumiu.
+
+### Complete
+
+| Field | Required | Validation |
+|-------|----------|------------|
+| `continuationReference` | yes | hash corresponde a fluxo `OPEN`, finalidade legal, usuário ativo e validade vigente |
+| `acceptedLegalDocumentIds` | yes | conjunto sem duplicidade e exatamente compatível com todas as versões obrigatórias correntes |
+
+Na mesma fronteira transacional, a facade bloqueia o fluxo, reconsulta `LegalDocumentFacade`, insere apenas as novas
+evidências imutáveis, consome a continuação e prepara a conclusão da autenticação. Se o catálogo mudou, nenhuma
+evidência parcial é gravada: a resposta contém uma nova continuação e a UI descarta as seleções anteriores. Somente
+`AUTHENTICATED` permite ao RFW preparar e publicar a sessão global/local conforme o lifecycle oficial.
+
+### Cancel
+
+`cancelAuthenticationConsent(reference)` invalida de forma idempotente o fluxo ainda aberto e não altera aceites
+anteriores. A UI só retorna ao login depois do sucesso; indisponibilidade mantém o gate fechado e permite nova
+tentativa. Catálogo vazio, ID ausente, duplicado, documento opcional ou integridade indisponível nunca liberam sessão.
+
+O adapter Rinos não será registrado antes da entrega do schema e da facade reais. Ausência do bean mantém a capability
+`AUTHENTICATION_CONSENT` fora da composição, sem provider provisório ou sucesso artificial.
 
 ## External Identity
 
