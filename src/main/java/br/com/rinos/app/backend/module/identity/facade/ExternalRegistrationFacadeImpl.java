@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class ExternalRegistrationFacadeImpl implements ExternalRegistrationFacad
    *
    * @param completionService caso de uso transacional
    */
+  @Autowired
   public ExternalRegistrationFacadeImpl(
       ExternalRegistrationCompletionService completionService) {
     this(completionService, Clock.systemUTC());

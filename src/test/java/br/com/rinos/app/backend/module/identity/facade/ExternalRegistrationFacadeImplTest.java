@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
@@ -27,6 +28,20 @@ class ExternalRegistrationFacadeImplTest {
   private static final Instant NOW = Instant.parse("2026-07-29T12:00:00Z");
   private static final UUID CORRELATION_ID =
       UUID.fromString("95f6724a-67bf-49fe-90f4-873c96b446ab");
+
+  @Test
+  void context_shouldCreateFacade_whenTestConstructorAlsoExists() {
+    try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+      context.registerBean(
+          ExternalRegistrationCompletionService.class,
+          () -> mock(ExternalRegistrationCompletionService.class));
+      context.register(ExternalRegistrationFacadeImpl.class);
+
+      context.refresh();
+
+      assertThat(context.getBean(ExternalRegistrationFacadeImpl.class)).isNotNull();
+    }
+  }
 
   @Test
   void complete_shouldPublishPrincipalReturnedAfterDomainCompletion() {

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class GoogleIdentityResolutionFacadeImpl implements GoogleIdentityResolut
    * @param resolutionService resolução transacional
    * @param authenticationProperties emissor configurado e validado
    */
+  @Autowired
   public GoogleIdentityResolutionFacadeImpl(
       GoogleIdentityResolutionService resolutionService,
       RFWAuthenticationPropertiesConfig authenticationProperties) {

@@ -14,6 +14,7 @@ import java.util.concurrent.CompletionStage;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import br.com.rinos.app.api.enums.GoogleIdentityResolutionStatusEnum;
@@ -30,6 +31,23 @@ class GoogleIdentityResolutionFacadeImplTest {
 
   private static final Instant NOW = Instant.parse("2026-07-29T12:00:00Z");
   private static final String ISSUER = "https://accounts.google.com";
+
+  @Test
+  void context_shouldCreateFacade_whenTestConstructorAlsoExists() {
+    try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+      context.registerBean(
+          GoogleIdentityResolutionService.class,
+          () -> mock(GoogleIdentityResolutionService.class));
+      context.registerBean(
+          RFWAuthenticationPropertiesConfig.class,
+          () -> mock(RFWAuthenticationPropertiesConfig.class));
+      context.register(GoogleIdentityResolutionFacadeImpl.class);
+
+      context.refresh();
+
+      assertThat(context.getBean(GoogleIdentityResolutionFacadeImpl.class)).isNotNull();
+    }
+  }
 
   @Test
   void resolve_shouldReturnContinuation_whenDomainAcceptsVerifiedIdentity() {

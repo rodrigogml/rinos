@@ -2,6 +2,7 @@ package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import java.net.URI;
 import java.time.Clock;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -44,6 +46,21 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 class VerificationEmailDispatchServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-07-29T12:00:00Z");
+
+  @Test
+  void context_shouldCreateService_whenTestConstructorAlsoExists() {
+    try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+      context.registerBean(
+          EmailDispatchService.class,
+          () -> mock(EmailDispatchService.class));
+      context.registerBean(SimpleMeterRegistry.class, SimpleMeterRegistry::new);
+      context.register(VerificationEmailDispatchService.class);
+
+      context.refresh();
+
+      assertThat(context.getBean(VerificationEmailDispatchService.class)).isNotNull();
+    }
+  }
 
   @AfterEach
   void clearTransactionState() {

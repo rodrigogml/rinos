@@ -14,6 +14,7 @@ import java.util.concurrent.CompletionStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -61,6 +62,7 @@ public class VerificationEmailDispatchService {
    * @param emailDispatchService montagem e transporte oferecidos pelo RFW
    * @param meterRegistry registro de métricas operacionais
    */
+  @Autowired
   public VerificationEmailDispatchService(
       EmailDispatchService emailDispatchService,
       MeterRegistry meterRegistry) {

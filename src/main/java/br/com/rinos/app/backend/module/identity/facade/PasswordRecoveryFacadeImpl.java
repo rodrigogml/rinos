@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +45,7 @@ public class PasswordRecoveryFacadeImpl implements PasswordRecoveryFacade {
    * @param recoveryService transações de emissão e consumo
    * @param passwordPreparationService política e hash da senha
    */
+  @Autowired
   public PasswordRecoveryFacadeImpl(
       PasswordRecoveryService recoveryService,
       PasswordPreparationService passwordPreparationService) {
