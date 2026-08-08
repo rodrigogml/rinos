@@ -19,6 +19,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import br.com.rinos.app.api.dto.ActivationConsentRequestDTO;
+import br.com.rinos.app.api.dto.AuthenticationFlowIssueRequestDTO;
+import br.com.rinos.app.api.dto.AuthenticationProofIssueRequestDTO;
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationActivationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
@@ -26,6 +28,11 @@ import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationResendRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationStartRequestDTO;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
+import br.com.rinos.app.api.enums.AuthenticationAssuranceEnum;
+import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
+import br.com.rinos.app.api.enums.AuthenticationMethodEnum;
+import br.com.rinos.app.api.enums.AuthenticationOperationStatusEnum;
+import br.com.rinos.app.api.enums.AuthenticationProofTypeEnum;
 import br.com.rinos.app.api.enums.GoogleIdentityResolutionStatusEnum;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
@@ -34,6 +41,8 @@ import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationResendStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationStartStatusEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
+import br.com.rinos.app.api.vo.AuthenticationProofResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
@@ -60,6 +69,8 @@ class PublicContractSecurityTest {
 
   private static final List<Class<?>> PUBLIC_CONTRACT_TYPES = List.of(
       ActivationConsentRequestDTO.class,
+      AuthenticationFlowIssueRequestDTO.class,
+      AuthenticationProofIssueRequestDTO.class,
       ExternalRegistrationCompletionRequestDTO.class,
       RegistrationActivationRequestDTO.class,
       RegistrationCancellationConfirmationDTO.class,
@@ -67,6 +78,8 @@ class PublicContractSecurityTest {
       RegistrationResendRequestDTO.class,
       RegistrationStartRequestDTO.class,
       ExternalRegistrationCompletionResultVO.class,
+      AuthenticationFlowResultVO.class,
+      AuthenticationProofResultVO.class,
       GoogleIdentityResolutionRequestVO.class,
       GoogleIdentityResolutionResultVO.class,
       LegalDocumentContentVO.class,
@@ -133,6 +146,20 @@ class PublicContractSecurityTest {
         .isInstanceOf(UnsupportedOperationException.class);
     assertThatThrownBy(() -> activation.fieldErrors().put("other", "error.other"))
         .isInstanceOf(UnsupportedOperationException.class);
+
+    byte[] sourceDigest = new byte[] {1, 2, 3};
+    AuthenticationProofIssueRequestDTO proofRequest = new AuthenticationProofIssueRequestDTO(
+        "opaque-reference",
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationProofTypeEnum.EMAIL_OTP,
+        sourceDigest,
+        null,
+        Instant.parse("2026-07-30T17:55:00Z"),
+        EXPIRES_AT);
+    sourceDigest[0] = 9;
+    byte[] returnedDigest = proofRequest.getProofDigest();
+    returnedDigest[1] = 9;
+    assertThat(proofRequest.getProofDigest()).containsExactly(1, 2, 3);
   }
 
   @Test
@@ -152,6 +179,25 @@ class PublicContractSecurityTest {
             List.of("terms-v1"),
             address,
             Locale.of("pt", "BR"),
+            CORRELATION_ID),
+        new AuthenticationProofIssueRequestDTO(
+            reference,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            AuthenticationProofTypeEnum.EMAIL_OTP,
+            proof.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            "key-1",
+            Instant.parse("2026-07-30T17:55:00Z"),
+            EXPIRES_AT),
+        new AuthenticationFlowResultVO(
+            AuthenticationOperationStatusEnum.OPEN,
+            reference,
+            42L,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            AuthenticationMethodEnum.PASSWORD,
+            AuthenticationAssuranceEnum.MULTI_FACTOR,
+            Set.of(AuthenticationMethodEnum.TOTP),
+            false,
+            EXPIRES_AT,
             CORRELATION_ID),
         new RegistrationResendRequestDTO(email, Locale.of("pt", "BR"), CORRELATION_ID),
         new RegistrationActivationRequestDTO(email, proof, CORRELATION_ID),

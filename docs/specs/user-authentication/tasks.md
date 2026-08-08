@@ -156,12 +156,18 @@ Ref: [Data Model](./data-model.md), Spec §Decisões de Infraestrutura Auditáve
 
 Ref: Data Model §AuthenticationFlow, §AuthenticationFlowMethod, §AuthenticationProof e §IdentityEvent Evolution
 
-- [ ] 2.2.1 Criar enums/entities de fluxo, método e prova com estados e transições fechadas
-- [ ] 2.2.2 Criar repositories com consultas bloqueantes para consumo e expiração atômicos
-- [ ] 2.2.3 Evoluir eventos de identidade append-only sem segredos ou origem indevida
-- [ ] 2.2.4 Criar services de emissão, inspeção, consumo, cancelamento e limpeza
-- [ ] 2.2.5 Expor DTOs/VOs/facades opacos sem entities na API pública interna
-- [ ] 2.2.6 Testar lifecycle, finalidade, replay, concorrência e auditoria sanitizada
+- [x] 2.2.1 Criar enums/entities de fluxo, método e prova com estados e transições fechadas
+- [x] 2.2.2 Criar repositories com consultas bloqueantes para consumo e expiração atômicos
+- [x] 2.2.3 Evoluir eventos de identidade append-only sem segredos ou origem indevida
+- [x] 2.2.4 Criar services de emissão, inspeção, consumo, cancelamento e limpeza
+- [x] 2.2.5 Expor DTOs/VOs/facades opacos sem entities na API pública interna
+- [x] 2.2.6 Testar lifecycle, finalidade, replay, concorrência e auditoria sanitizada
+
+> [!IMPORTANT]
+> O ciclo implementado adota a ordem única de lock `AuthenticationFlow` → `AuthenticationProof`.
+> A referência bruta do fluxo é devolvida somente na emissão; o banco recebe seu SHA-256 e provas
+> específicas recebem apenas digest protegido. Expiração é lógica no primeiro acesso ou manutenção,
+> e a remoção física ocorre somente depois do limite de retenção informado pelo coordenador.
 
 ### 2.3 Implementar persistência dos métodos e fatores `[C]`
 
