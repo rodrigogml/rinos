@@ -51,11 +51,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-001](./rfw-gap-analysis.md#gap-auth-rfw-001-conc
 
 Ref: [RFW Gap Analysis AUTH-RFW-002](./rfw-gap-analysis.md#gap-auth-rfw-002-enrollment-totp-não-devolve-dados-de-provisionamento), Interface INT-WEB-AUTH-006
 
-- [ ] 1.2.1 Criar VO público de enrollment com referência, URI `otpauth`, segredo de apresentação única e validade
-- [ ] 1.2.2 Evoluir provider/componente para confirmar ou cancelar enrollment sem reexibir segredo confirmado
-- [ ] 1.2.3 Testar lifecycle, descarte, erro, apresentação única e compatibilidade sem provider
-- [ ] 1.2.4 Documentar QR acessível, alternativa textual e exemplo no showroom em todos os idiomas suportados
-- [ ] 1.2.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.2.1 Criar VO público de enrollment com referência, URI `otpauth`, segredo de apresentação única e validade
+- [x] 1.2.2 Evoluir provider/componente para confirmar ou cancelar enrollment sem reexibir segredo confirmado
+- [x] 1.2.3 Testar lifecycle, descarte, erro, apresentação única e compatibilidade sem provider
+- [x] 1.2.4 Documentar QR acessível, alternativa textual e exemplo no showroom em todos os idiomas suportados
+- [x] 1.2.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.3 Modelar emissão, seleção e reenvio de fator por e-mail `[C]`
 

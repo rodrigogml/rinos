@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`dd7554c8c5ffca3527ffc7ca859eec781703fa46` da RFW Platform, publicada como
+`48203dcc5c12634efaf380cc73cde1f88dbfc4e5` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -26,6 +26,12 @@ O catálogo legal do acesso usa `RFWAccessComponentConfig.legalDocumentsProvider
 O RFW reconsulta esse provider ao renderizar etapas legais, permitindo que uma versão publicada durante a sessão
 substitua a anterior antes do aceite. O Rinos fornece somente os VOs públicos vigentes pela facade e fecha a
 capacidade de cadastro quando o catálogo não puder ser consultado.
+
+A baseline também integra a conclusão WebAuthn à orquestração comum de acesso e publica o enrollment TOTP tipado.
+`RFWSecondFactorEnrollmentVO` entrega referência opaca, validade, URI `otpauth://` e segredo de apresentação única;
+o renderer padrão oferece QR local, alternativa textual e cancelamento explícito. O Rinos deve implementar validade,
+consumo único, persistência protegida e auditoria sem segredo quando registrar o provider concreto. Até essa
+implementação existir, a capability não deve ser anunciada por provider provisório.
 
 Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
 antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio
@@ -101,7 +107,8 @@ a descoberta a cargo do artefato e só referencia auto-configurações específi
 
 As integrações declaradas como `provided` pelo POM do RFW pertencem ao classpath da hospedeira. O Rinos declara
 explicitamente apenas o conjunto exigido pelas capacidades que utiliza, incluindo Vaadin, persistência, validação,
-e-mail, Spring Security, Google/WebAuthn, contexto Micrometer e renderização Markdown/HTML. Ao ativar outra capacidade,
+e-mail, Spring Security, Google/WebAuthn, contexto Micrometer, renderização Markdown/HTML e ZXing Core 3.5.4 para o
+QR local do enrollment TOTP. Ao ativar outra capacidade,
 compare primeiro seu contrato e o POM da revisão fixada; não dependa de uma transitividade acidental de versão anterior.
 
 O App Shell da hospedeira deve carregar explicitamente a folha agregada pública do RFW:

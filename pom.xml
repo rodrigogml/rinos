@@ -35,6 +35,7 @@
     <rfw.version>2.0.0</rfw.version>
     <test.jvm.arguments>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</test.jvm.arguments>
     <vaadin.version>25.0.2</vaadin.version>
+    <zxing.version>3.5.4</zxing.version>
   </properties>
 
   <dependencyManagement>
@@ -68,6 +69,12 @@
       <groupId>br.eng.rodrigogml.rfw</groupId>
       <artifactId>rfw</artifactId>
       <version>${rfw.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>core</artifactId>
+      <version>${zxing.version}</version>
     </dependency>
 
     <dependency>
