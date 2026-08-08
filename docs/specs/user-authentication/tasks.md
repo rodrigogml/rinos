@@ -41,11 +41,11 @@ Não há exceção constitucional planejada.
 
 Ref: [RFW Gap Analysis AUTH-RFW-001](./rfw-gap-analysis.md#gap-auth-rfw-001-conclusão-webauthn-contorna-a-orquestração-do-acesso), Interface INT-WEB-AUTH-001/002/003
 
-- [ ] 1.1.1 Definir outcome público que entregue assertion validada à orquestração sem publicar sessão diretamente
-- [ ] 1.1.2 Adaptar componente/endpoints WebAuthn preservando login descobrível e compatibilidade explícita
-- [ ] 1.1.3 Cobrir sucesso, challenge adicional, gate legal, cancelamento, rejeição e replay em testes RFW
-- [ ] 1.1.4 Atualizar showroom, laboratório, i18n e documentos PT/EN/ES/FR/IT/ZH
-- [ ] 1.1.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.1.1 Definir outcome público que entregue assertion validada à orquestração sem publicar sessão diretamente
+- [x] 1.1.2 Adaptar componente/endpoints WebAuthn preservando login descobrível e compatibilidade explícita
+- [x] 1.1.3 Cobrir sucesso, challenge adicional, gate legal, cancelamento, rejeição e replay em testes RFW
+- [x] 1.1.4 Atualizar showroom, laboratório, i18n e documentos PT/EN/ES/FR/IT/ZH
+- [x] 1.1.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.2 Entregar provisionamento tipado de TOTP `[C]`
 
