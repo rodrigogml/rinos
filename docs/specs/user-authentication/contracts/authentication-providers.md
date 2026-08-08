@@ -13,6 +13,22 @@ repositories ou services diretamente.
 - Capability só é anunciada quando o provider real e todas as dependências obrigatórias estiverem disponíveis.
 - Um resultado autenticado só pode existir depois de usuário, fatores e documentos legais terem sido revalidados.
 
+## Authentication Orchestration Core
+
+**Rinos facade**: `AuthenticationOrchestrationFacade`
+
+O núcleo recebe somente fatores que o serviço especializado já comprovou e conserva no banco a fotografia dos
+métodos verificados. `start(...)` abre o fluxo depois do primeiro fator, `advance(...)` acrescenta uma evidência
+permitida, `complete(...)` consome uma conclusão pronta uma única vez e `cancel(...)` invalida a continuação
+idempotentemente. Nenhum desses métodos publica `SecurityContext`.
+
+A garantia é calculada sobre os métodos comprovados. Passkey com user verification satisfaz garantia resistente a
+phishing; dois canais independentes satisfazem MFA; Google e código enviado ao mesmo e-mail não contam como canais
+independentes. O principal mínimo somente é devolvido por uma conclusão pronta ou consumida. A criação compensável
+da sessão pertence ao lifecycle descrito em [Authentication Session Lifecycle](#authentication-session-lifecycle),
+e o registro atômico dos novos aceites pertence ao provider descrito em
+[Legal Consent after Authentication](#legal-consent-after-authentication).
+
 ## Password Authentication
 
 **RFW contract**: `RFWPasswordAuthenticationProvider`<br>

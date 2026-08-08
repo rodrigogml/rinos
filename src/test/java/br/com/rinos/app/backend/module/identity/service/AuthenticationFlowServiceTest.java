@@ -32,6 +32,7 @@ import br.com.rinos.app.backend.module.identity.repository.AuthenticationFlowRep
 import br.com.rinos.app.backend.module.identity.repository.AuthenticationProofRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowInspectionVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.eng.rodrigogml.rfw.authentication.service.RFWOpaqueTokenService;
 
@@ -152,6 +153,40 @@ class AuthenticationFlowServiceTest {
     assertThat(wrongPurpose.status()).isEqualTo(AuthenticationOperationStatusEnum.REJECTED);
     assertThat(flow.getFailureCount()).isEqualTo(1);
     assertThat(expired.status()).isEqualTo(AuthenticationOperationStatusEnum.EXPIRED);
+  }
+
+  @Test
+  void verifyMethod_shouldMoveAllowedMethodToVerifiedEvidence() {
+    String reference = tokenService.generate();
+    AuthenticationFlowEntity flow = flow(reference, ISSUED_AT.plusSeconds(60));
+    AuthenticationFlowMethodEntity password = new AuthenticationFlowMethodEntity(
+        flow,
+        AuthenticationMethodEnum.PASSWORD);
+    password.markVerified(ISSUED_AT, null);
+    AuthenticationFlowMethodEntity totp = new AuthenticationFlowMethodEntity(
+        flow,
+        AuthenticationMethodEnum.TOTP);
+    when(flowRepository.findByReferenceHashForUpdate(any(byte[].class)))
+        .thenReturn(Optional.of(flow));
+    when(methodRepository.findByFlowIdAndMethodForUpdate(
+        51L,
+        AuthenticationMethodEnum.TOTP)).thenReturn(Optional.of(totp));
+    when(methodRepository.findByFlowIdOrderByMethod(51L))
+        .thenReturn(List.of(password, totp));
+
+    AuthenticationFlowSnapshotVO result = service.verifyMethod(
+        reference,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationMethodEnum.TOTP,
+        ISSUED_AT.plusSeconds(10),
+        null,
+        ISSUED_AT.plusSeconds(10));
+
+    assertThat(result.status()).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
+    assertThat(result.permittedMethods()).isEmpty();
+    assertThat(result.verifiedMethods())
+        .extracting(method -> method.method())
+        .containsExactly(AuthenticationMethodEnum.PASSWORD, AuthenticationMethodEnum.TOTP);
   }
 
   private AuthenticationFlowEntity flow(String reference, Instant expiresAt) {

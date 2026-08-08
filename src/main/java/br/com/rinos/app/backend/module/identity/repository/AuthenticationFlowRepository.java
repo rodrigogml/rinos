@@ -33,6 +33,16 @@ public interface AuthenticationFlowRepository
   Optional<AuthenticationFlowEntity> findByReferenceHashForUpdate(
       @Param("referenceHash") byte[] referenceHash);
 
+  /** Resolve a identidade antes da ordem de lock usuário → fluxo. */
+  @Query("""
+      SELECT flow
+      FROM AuthenticationFlowEntity flow
+      JOIN FETCH flow.user
+      WHERE flow.referenceHash = :referenceHash
+      """)
+  Optional<AuthenticationFlowEntity> findByReferenceHash(
+      @Param("referenceHash") byte[] referenceHash);
+
   /** Bloqueia um fluxo pelo identificador interno durante trabalhos de manutenção. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("""
