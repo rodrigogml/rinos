@@ -378,10 +378,10 @@ recuperação, credential ID completo, token Google ou prova WebAuthn.
 | Fluxos e provas expirados | Rejeição imediata por tempo; exclusão física diária depois da janela operacional |
 | TOTP pendente | Exclusão diária após expiração do enrollment |
 | OTP de e-mail | Exclusão diária após expiração/retenção operacional curta |
-| Sessão expirada/revogada | Retenção limitada para reconhecimento/auditoria; cookie deixa de funcionar imediatamente |
+| Sessão expirada/revogada | 30 dias por padrão para reconhecimento/auditoria; cookie deixa de funcionar imediatamente |
 | Janelas antifraude | Até 30 dias depois do fim da janela, alinhado a `OriginWindow` |
 | Métodos ativos e consentimentos | Enquanto a identidade permanecer vigente ou conforme governança futura |
-| Eventos | Política global de auditoria/LGPD futura; sem segredos e com minimização terminal aplicável |
+| Eventos de autenticação | 365 dias por padrão; depois, exclusão física. Não contêm segredos e usam minimização terminal aplicável |
 
-O catálogo diário usa o coordenador global existente. Cada tarefa relê estado e tempo dentro da transação; falha de
-limpeza não prolonga validade lógica.
+Os prazos são configuráveis exclusivamente no `application.properties`. O catálogo diário usa o coordenador global
+existente. Cada tarefa relê estado e tempo dentro da transação; falha de limpeza não prolonga validade lógica.

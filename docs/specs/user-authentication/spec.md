@@ -2,7 +2,7 @@
 
 **Feature**: `user-authentication`
 **Created**: 2026-07-19
-**Status**: Clarified — pronta para planejamento
+**Status**: Ready for implementation
 
 ## Escopo
 
@@ -11,6 +11,16 @@ Esta feature permite que um usuário ativo prove sua identidade por senha, passk
 Inclui proteção contra automação e descoberta de usuários, gestão dos métodos de autenticação, vínculo explícito com Google, recuperação de senha e fatores, auditoria e elevação de segurança para acessos administrativos.
 
 Não inclui criação da identidade inicial, configuração dos dados pessoais do usuário, criação ou seleção de contas, definição de papéis, grupos ou chaves de acesso, nem autorização sobre dados de tenant.
+
+## Constitution Alignment
+
+- **I. Isolamento Multi-Tenant**: identidade, credenciais, fatores e sessões são globais e não acessam schema de tenant; eventual contexto administrativo futuro permanece explícito e fora desta feature.
+- **II. Autorização Contextual**: autenticação comprova identidade e garantia, mas não concede papel, grupo, chave, authority ou acesso a conta.
+- **III. Integridade e Rastreabilidade**: provas, revogações, sessões e eventos usam consumo atômico, migração versionada e auditoria sanitizada.
+- **IV. Arquitetura RFW**: toda interface e protocolo genérico reutiliza ou evolui a RFW Platform antes de qualquer composição própria do Rinos.
+- **V. Qualidade Antes de Escopo**: segurança, testes por camada, documentação, acessibilidade, migração e validação operacional são gates de entrega.
+
+Não há exceção constitucional nesta feature.
 
 ## Clarifications
 
@@ -24,6 +34,9 @@ Não inclui criação da identidade inicial, configuração dos dados pessoais d
 
 - Q: Quais sinais de tentativa anormal são obrigatórios no MVP? -> A: Contadores independentes por identificador informado e IP de origem validado; correlação comportamental adicional fica fora do MVP.
 - Q: Qual caminho recupera um segundo fator perdido no MVP? -> A: Outro método forte já confirmado ou código de recuperação ainda válido; não haverá bypass alternativo indefinido.
+- Q: Quais eventos de segurança geram notificação no MVP? -> A: Mudança de método e recuperação concluída sempre notificam; falhas repetidas notificam ao atingir o limiar do Turnstile, no máximo uma vez em 24 horas; nova sessão notifica quando o navegador não foi reconhecido nos 30 dias anteriores.
+- Q: Por quanto tempo os dados operacionais de autenticação permanecem? -> A: Sessões encerradas e janelas antifraude por 30 dias, eventos sanitizados por 365 dias e artefatos temporários somente pela validade mais a retenção técnica configurada; todos os prazos são propriedades explícitas.
+- Q: Como medir os critérios percentuais de jornada? -> A: No mínimo 20 jornadas independentes por método no ambiente candidato à produção, registrando ambiente, duração e causa das falhas; 95% equivale a 19 de 20 e 90% a 18 de 20.
 
 ## User Scenarios & Testing
 
@@ -184,7 +197,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-ABUSE-006**: Se o Turnstile estiver indisponível quando obrigatório, o sistema NÃO DEVE prosseguir com o login afetado e DEVE orientar nova tentativa posterior.
 - **FR-AUTH-ABUSE-007**: O desafio e os limites NÃO DEVEM produzir respostas diferentes que revelem a existência, o estado ou os métodos configurados de um usuário.
 - **FR-AUTH-ABUSE-008**: A origem DEVE ser determinada de forma segura quando a aplicação estiver atrás de proxy reverso.
-- **FR-AUTH-ABUSE-009**: O sistema DEVE permitir alertar o usuário após atividade suspeita confirmada sem enviar notificações a e-mails inexistentes.
+- **FR-AUTH-ABUSE-009**: Quando a janela por identificador de um usuário existente atingir o limiar configurado que torna o Turnstile obrigatório, o sistema DEVE notificá-lo no e-mail principal confirmado, no máximo uma vez a cada 24 horas por padrão enquanto a condição persistir. O cooldown DEVE ser configurável e nenhuma notificação DEVE ser enviada a e-mail inexistente.
 - **FR-AUTH-ABUSE-010**: O fluxo de recuperação DEVE possuir limites próprios e não poderá ser usado para contornar os limites de login.
 
 ### Passkeys e Chaves de Segurança
@@ -236,7 +249,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-MFA-015**: Códigos de recuperação NÃO DEVEM ser exibidos novamente após sua emissão e DEVEM ser armazenados de forma não recuperável.
 - **FR-AUTH-MFA-016**: Remover ou substituir um fator DEVE exigir reautenticação recente e, quando possível, confirmação por outro fator.
 - **FR-AUTH-MFA-017**: O sistema DEVE impedir que a remoção de fatores deixe um administrador incapaz de satisfazer o 2FA obrigatório.
-- **FR-AUTH-MFA-018**: Alterações de 2FA, uso de recuperação e falhas repetidas DEVEM ser auditados e notificados ao usuário.
+- **FR-AUTH-MFA-018**: Alterações de 2FA e recuperação concluída DEVEM ser auditadas e notificadas ao usuário após o commit. Falhas repetidas DEVEM seguir exatamente o limiar e o cooldown de notificação definidos em FR-AUTH-ABUSE-009.
 
 ### Recuperação de Acesso
 
@@ -265,7 +278,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-SES-008**: Operações administrativas ou sensíveis DEVEM exigir reautenticação quando a última autenticação válida tiver ocorrido há mais de 15 minutos.
 - **FR-AUTH-SES-009**: Sessões não autenticadas usadas durante login ou recuperação DEVEM ser separadas de sessões autenticadas e inutilizadas após conclusão ou expiração.
 - **FR-AUTH-SES-010**: Identificadores de sessão NÃO DEVEM aparecer em URLs, logs ou mensagens ao usuário.
-- **FR-AUTH-SES-011**: O sistema DEVE notificar criação de sessão em contexto incomum quando o risco justificar, sem expor informações sensíveis.
+- **FR-AUTH-SES-011**: O sistema DEVE notificar a criação de sessão quando o `userAgentDigest` não corresponder a nenhuma sessão do mesmo usuário retida nos 30 dias anteriores. A mensagem NÃO DEVE expor IP completo, digest, cookie ou identificador técnico; o período de reconhecimento DEVE ser configurável.
 - **FR-AUTH-SES-012**: Restaurar dados de backup NÃO DEVE reativar sessões, provas, códigos ou credenciais temporárias já expiradas ou revogadas no estado restaurado.
 
 ### Decisões de Infraestrutura Auditáveis
@@ -276,6 +289,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **FR-AUTH-INFRA-LOCK**: Consumo de provas, códigos, desafios, sessões revogadas e credenciais de uso único DEVE ser atômico e consistente entre todas as instâncias da aplicação.
 - **FR-AUTH-INFRA-BACKUP**: Dados persistentes de autenticação DEVEM participar dos backups do sistema, e a restauração DEVE ser testada sem reativar artefatos temporários expirados ou revogados.
 - **FR-AUTH-INFRA-IDEMP**: Repetições da mesma confirmação, redefinição ou revogação DEVEM produzir no máximo um efeito e retornar resultado consistente sem recriar artefatos consumidos.
+- **FR-AUTH-INFRA-RETENTION**: Sessões encerradas DEVEM ser removidas após 30 dias, janelas antifraude após no máximo 30 dias do fim da janela e eventos de autenticação sanitizados após 365 dias. Esses prazos e a retenção técnica de artefatos temporários DEVEM ser configuráveis em `application.properties`; expiração lógica e revogação produzem efeito imediato, independentemente da limpeza física.
 
 ### Key Entities
 
@@ -293,8 +307,8 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 
 ### Measurable Outcomes
 
-- **SC-AUTH-001**: Pelo menos 95% dos usuários com credenciais válidas concluem login por senha em até 30 segundos, excluído o tempo de entrega do segundo fator.
-- **SC-AUTH-002**: Pelo menos 95% dos usuários com passkey compatível concluem o login em até 15 segundos.
+- **SC-AUTH-001**: Em no mínimo 20 jornadas independentes no ambiente candidato à produção, ao menos 19 usuários com credenciais válidas concluem login por senha em até 30 segundos, excluído o tempo de entrega do segundo fator; ambiente, duração e falhas devem ser registrados.
+- **SC-AUTH-002**: Em no mínimo 20 jornadas independentes no ambiente candidato à produção, ao menos 19 usuários com passkey compatível concluem o login em até 15 segundos; ambiente, duração e falhas devem ser registrados.
 - **SC-AUTH-003**: Em 100% dos testes, respostas para e-mail inexistente, senha incorreta e usuário indisponível não revelam qual condição ocorreu.
 - **SC-AUTH-004**: Em 100% dos testes, usuário bloqueado, desativado ou cancelado não inicia nem mantém sessão.
 - **SC-AUTH-005**: Em 100% dos testes, desafios, provas, tokens e códigos expirados, reutilizados ou de outra finalidade são rejeitados.
@@ -302,7 +316,7 @@ Um usuário consulta suas sessões e métodos de autenticação, encerra sessõe
 - **SC-AUTH-007**: Em 100% dos testes de coincidência de e-mail Google, nenhum vínculo com usuário ativo é criado sem autenticação e confirmação explícitas.
 - **SC-AUTH-008**: Em 100% dos testes administrativos, senha exige segundo fator e login Google não aceita código enviado ao mesmo e-mail como 2FA.
 - **SC-AUTH-009**: Em 100% dos testes, passkey somente satisfaz 2FA quando a verificação local é comprovada.
-- **SC-AUTH-010**: Pelo menos 90% dos usuários em teste concluem ativação de TOTP sem ajuda em até três minutos.
+- **SC-AUTH-010**: Em no mínimo 20 jornadas independentes no ambiente candidato à produção, ao menos 18 usuários concluem ativação de TOTP sem ajuda em até três minutos; ambiente, duração e falhas devem ser registrados.
 - **SC-AUTH-011**: Em 100% dos testes, redefinição de senha, bloqueio ou desativação invalida todas as sessões existentes.
 - **SC-AUTH-012**: Em 100% dos testes, revogar uma passkey ou sessão impede seu uso posterior sem afetar credenciais não selecionadas.
 - **SC-AUTH-013**: Em 100% dos testes, o último método utilizável de um usuário não pode ser removido.

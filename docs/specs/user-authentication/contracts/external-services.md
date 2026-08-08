@@ -86,9 +86,10 @@ Nenhuma chave privada, PIN ou biometria é recebida pelo Rinos.
 | Template | Trigger | Contains secret? |
 |----------|---------|------------------|
 | `authentication-email-code` | usuário escolhe/reenvia fator de e-mail | OTP de uso único |
-| `authentication-new-session` | sessão de risco confirmada | no |
+| `authentication-new-session` | navegador não reconhecido nas sessões retidas dos 30 dias anteriores | no |
 | `authentication-method-changed` | fator/vínculo/passkey alterado | no |
 | `authentication-recovery-completed` | senha ou fatores recuperados | no |
+| `authentication-repeated-failures` | janela por identificador atinge o limiar do Turnstile fora do cooldown | no |
 
 ### OTP dispatch
 
@@ -102,6 +103,12 @@ Nenhuma chave privada, PIN ou biometria é recebida pelo Rinos.
 
 Notificações de segurança não revertem a alteração já confirmada. Falha fica observável e pode ser reprocessada apenas
 quando existir contrato seguro de entrega; não se persiste segredo para viabilizar a retentativa.
+
+- Mudança de método e recuperação concluída notificam uma vez por operação confirmada.
+- Falhas repetidas notificam somente usuário existente quando a janela por identificador alcança o limiar do
+  Turnstile, com cooldown configurável de 24 horas por padrão.
+- Nova sessão usa `authentication-new-session` quando o `userAgentDigest` não aparece nas sessões retidas do mesmo
+  usuário nos 30 dias anteriores; digest e IP completo nunca entram na mensagem.
 
 ## Pwned Passwords
 

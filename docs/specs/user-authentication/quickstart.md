@@ -157,3 +157,13 @@ servidores locais controláveis nos testes automatizados; integrações reais re
 4. **Expected**: nenhuma nova sessão é criada e a existente é negada no próximo guard.
 5. Restaurar snapshot contendo sessões/provas já vencidas pelos timestamps persistidos.
 6. **Expected**: nenhuma é aceita; o job posterior apenas remove os registros.
+
+## Scenario 16: Medição das jornadas humanas
+
+1. No ambiente candidato à produção, registrar navegador/dispositivo, instante inicial/final e resultado de ao menos
+   20 jornadas independentes de login por senha, 20 por passkey e 20 de enrollment TOTP.
+2. Excluir do tempo de senha somente a entrega externa do segundo fator, sem excluir interação, renderização ou rede da
+   aplicação.
+3. **Expected**: ao menos 19 jornadas de senha terminam em até 30 segundos, 19 de passkey em até 15 segundos e 18 de
+   TOTP sem ajuda em até três minutos.
+4. Registrar causa observável de cada falha sem coletar senha, OTP, passkey, e-mail completo ou outro segredo.

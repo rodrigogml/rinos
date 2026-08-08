@@ -21,6 +21,18 @@ Escopo: implementar autenticação global por senha, passkey e Google, MFA, recu
 > Cada tarefa do RFW é um ciclo próprio: código, testes, documentação multilíngue no showroom, validação isolada,
 > commit e push no repositório RFW, seguidos por atualização rastreável do ponteiro no Rinos.
 
+## Constitution Alignment
+
+| Princípio | Aplicação obrigatória no backlog |
+|-----------|-----------------------------------|
+| I. Isolamento Multi-Tenant | Toda persistência desta feature permanece global; nenhuma tarefa introduz contexto implícito de tenant |
+| II. Autorização Contextual | Sessão e garantia não criam papel, grupo, chave ou authority; rotas autenticadas continuam deny-by-default |
+| III. Integridade e Rastreabilidade | Fases 2–4 exigem migrations versionadas, locks, idempotência, auditoria e falha fechada |
+| IV. Arquitetura RFW | Fase 1 encerra cada lacuna reutilizável no RFW antes da UI correspondente, com ciclo próprio de publicação |
+| V. Qualidade Antes de Escopo | Toda tarefa de implementação contém teste; fases 6–7 bloqueiam conclusão com gate falho |
+
+Não há exceção constitucional planejada.
+
 ---
 
 ## FASE 1 - Evoluções reutilizáveis da RFW Platform
@@ -168,7 +180,7 @@ Ref: Data Model §AuthSession, §AuthenticationAttemptWindow; Plan §Configurati
 
 - [ ] 2.4.1 Criar entities/repositories de sessão, métodos da sessão e janela por identificador
 - [ ] 2.4.2 Implementar referências opacas, digest/MAC e consultas de revogação/atividade
-- [ ] 2.4.3 Criar configs validadas para sessão, abuso, MFA, keyring e WebAuthn no `application.properties`
+- [ ] 2.4.3 Criar configs validadas para sessão, abuso, notificações, retenção, MFA, keyring e WebAuthn no `application.properties`
 - [ ] 2.4.4 Atualizar `application.properties.model` com defaults não secretos e exemplos explícitos de secrets
 - [ ] 2.4.5 Integrar limpeza ao catálogo/coordenador global de manutenção existente
 - [ ] 2.4.6 Testar binding exclusivo, falha de startup, expiração e disputa entre instâncias
@@ -265,7 +277,7 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 - [ ] 4.4.1 Integrar recuperação existente à invalidação real de sessões, provas e fatores aplicáveis
 - [ ] 4.4.2 Orientar identidade passwordless sem criar senha ou revelar métodos a solicitante anônimo
 - [ ] 4.4.3 Criar templates/eventos de nova sessão de risco, método alterado, falhas repetidas e recuperação concluída
-- [ ] 4.4.4 Disparar notificações somente pós-commit, com cooldown e conteúdo sanitizado
+- [ ] 4.4.4 Disparar notificações pós-commit conforme mudança/recuperação, limiar com cooldown de 24 horas ou navegador não reconhecido em 30 dias
 - [ ] 4.4.5 Estender limpeza diária para fluxos, provas, sessões, janelas e códigos expirados
 - [ ] 4.4.6 Testar neutralidade, falha SMTP, invalidação, retenção e execução idempotente da manutenção
 
@@ -359,7 +371,7 @@ Ref: Spec SC-AUTH-001..002, SC-AUTH-015..016; Quickstart §Scenario 14
 - [ ] 6.3.1 Executar E2E dos métodos, combinações MFA, legal gate, recuperação, gestão e reautenticação
 - [ ] 6.3.2 Validar teclado, leitor de tela, foco, contraste, zoom/reflow, reduced motion e toque
 - [ ] 6.3.3 Renderizar desktop/telefone e registrar inspeção visual contra wireframes e estados
-- [ ] 6.3.4 Medir metas de conclusão de senha, passkey e enrollment TOTP em ambiente controlado
+- [ ] 6.3.4 Medir ao menos 20 jornadas independentes por método no ambiente candidato e registrar duração/causas sem segredos
 - [ ] 6.3.5 Consolidar rastreabilidade entre requisitos, testes, interações e resultados
 
 ---
