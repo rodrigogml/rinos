@@ -81,11 +81,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-004](./rfw-gap-analysis.md#gap-auth-rfw-004-reau
 
 Ref: [RFW Gap Analysis AUTH-RFW-005](./rfw-gap-analysis.md#gap-auth-rfw-005-lifecycle-de-lembrar-me-é-incompleto), Plan §Session and Remember-me Strategy
 
-- [ ] 1.5.1 Definir contrato de criação, resolução, rotação, revogação e limpeza de cookie persistente
-- [ ] 1.5.2 Integrar hooks ao início e término da sessão sem expor selector, validator ou `HttpSession` ID
-- [ ] 1.5.3 Testar restauração válida, rotação, replay, expiração, bloqueio e provider ausente
-- [ ] 1.5.4 Documentar segurança do lifecycle e exemplos no showroom em todos os idiomas suportados
-- [ ] 1.5.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.5.1 Definir contrato de criação, resolução, rotação, revogação e limpeza de cookie persistente
+- [x] 1.5.2 Integrar hooks ao início e término da sessão sem expor selector, validator ou `HttpSession` ID
+- [x] 1.5.3 Testar restauração válida, rotação, replay, expiração, bloqueio e provider ausente
+- [x] 1.5.4 Documentar segurança do lifecycle e exemplos no showroom em todos os idiomas suportados
+- [x] 1.5.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.6 Integrar sessão global à publicação e ao logout `[C]`
 

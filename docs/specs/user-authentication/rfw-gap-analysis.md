@@ -1,9 +1,9 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `800cb67f2e7c3547f5118d1d5d6af55d5e772226` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `296985de4754562338bf23181b62e66afd798cc0` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
-**Status**: gaps AUTH-RFW-001 a AUTH-RFW-004 entregues; os demais devem ser implementados no RFW antes dos adapters
+**Status**: gaps AUTH-RFW-001 a AUTH-RFW-005 entregues; os demais devem ser implementados no RFW antes dos adapters
 dependentes no Rinos
 
 ## Existing Capabilities Reused
@@ -67,6 +67,8 @@ sucesso, rejeição ou limitação. O renderer deve reutilizar a UI de desafio e
 e não pode coexistir de forma ambígua.
 
 ## Gap AUTH-RFW-005: lifecycle de “lembrar-me” é incompleto
+
+**Delivery status**: concluído na baseline `296985de4754562338bf23181b62e66afd798cc0`.
 
 **Evidence**: `RFWRememberMeProvider` recebe apenas sucesso. Não resolve cookie em nova requisição, não rotaciona,
 revoga, limpa nem participa do logout/expiração.

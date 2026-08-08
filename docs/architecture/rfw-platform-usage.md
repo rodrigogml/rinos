@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`800cb67f2e7c3547f5118d1d5d6af55d5e772226` da RFW Platform, publicada como
+`296985de4754562338bf23181b62e66afd798cc0` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -46,6 +46,13 @@ garantia atual já é recente ou devolve desafio opaco com validade, rótulo hum
 aceita senha, TOTP e passkey, não pré-seleciona método, cancela sem executar a operação e só continua uma vez após
 `COMPLETED`. Expiração, conflito, limitação, rejeição e indisponibilidade permanecem decisões do backend. O provider
 booleano anterior continua como adapter exclusivo de senha e só é usado na ausência do contrato tipado.
+
+O login persistente completo usa `RFWPersistentLoginProvider`. A aplicação hospedeira permanece proprietária do
+cookie opaco e implementa criação, resolução com rotação atômica, revogação e limpeza. O filtro RFW restaura somente
+quando não há autenticação local, limpa resultados inválidos, expirados, revogados, bloqueados ou com replay e
+preserva a credencial em indisponibilidade transitória. Tanto o logout programático quanto o logout HTTP do Spring
+acionam o lifecycle. `RFWRememberMeProvider` permanece como fallback apenas de criação. O Rinos só deve registrar o
+provider completo depois que a tarefa de sessão global garantir que a credencial seja criada após sua persistência.
 
 Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
 antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio

@@ -123,16 +123,25 @@ sessões alvo na mesma transação. Revogar a sessão corrente limpa também o c
 
 ## Remember-me and Session Lifecycle
 
-O contrato atual `RFWRememberMeProvider.onAuthenticationSuccess(...)` não cobre restauração, rotação, revogação e
-falha do cookie. A evolução RFW deve fornecer um protocolo de lifecycle que permita:
+**RFW contracts**: `RFWPersistentLoginProvider`, `RFWPersistentLoginOutcomeVO` e
+`RFWPersistentLoginStatusEnum`<br>
+**Rinos facade proposta**: `PersistentLoginFacade`
+
+`RFWPersistentLoginProvider` mantém o lifecycle completo:
 
 1. criar cookie apenas depois da sessão global persistida;
 2. resolver cookie em nova requisição sem sessão local;
-3. rotacionar validador depois do uso;
+3. rotacionar o validador atomicamente antes de retornar `RESTORED`;
 4. limpar cookie após expiração, bloqueio ou revogação;
 5. construir `Authentication` somente a partir de sessão e usuário ainda válidos.
 
-O contrato público não deve expor hash, selector interno, validator ou `HttpSession` ID.
+O filtro RFW não substitui autenticação existente. `INVALID`, `EXPIRED`, `REVOKED`, `BLOCKED` e
+`REPLAY_DETECTED` limpam o cookie; o último exige que a facade já tenha revogado a família. `UNAVAILABLE` mantém o
+cookie sem autenticar a requisição. Logout pelo serviço RFW ou pela cadeia HTTP aciona revogação e limpeza. O callback
+`RFWRememberMeProvider` continua compatível apenas para criação e nunca ativa restauração automática.
+
+O contrato público não expõe hash, selector interno, validator, token bruto ou `HttpSession` ID. Até a sessão global
+da tarefa 1.6 ser integrada à ordem de publicação, o Rinos não anuncia nem registra seu provider real.
 
 ## Reauthentication
 
