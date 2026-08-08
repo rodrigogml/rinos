@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`48203dcc5c12634efaf380cc73cde1f88dbfc4e5` da RFW Platform, publicada como
+`f3af27bec5af5c1bf7de5c5a8f27716b2a728f04` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -32,6 +32,14 @@ A baseline também integra a conclusão WebAuthn à orquestração comum de aces
 o renderer padrão oferece QR local, alternativa textual e cancelamento explícito. O Rinos deve implementar validade,
 consumo único, persistência protegida e auditoria sem segredo quando registrar o provider concreto. Até essa
 implementação existir, a capability não deve ser anunciada por provider provisório.
+
+O segundo fator por e-mail também usa o protocolo público dessa baseline. O desafio inicial apenas informa os
+métodos permitidos e não dispara entrega. `RFWSecondFactorProvider.getEmissionMethods()` controla quais métodos
+emitíveis aparecem; a escolha explícita usa `begin(...)`, e `resend(...)` substitui a prova anterior. O outcome
+tipado expõe somente referência opaca, destino mascarado, expiração, instante mínimo de reenvio ou erro público com
+`retryAfter`. O provider concreto do Rinos deve persistir e invalidar provas atomicamente, entregar a mensagem após o
+commit e nunca devolver sucesso quando o envio falhar. TOTP e código de recuperação permanecem independentes da
+emissão.
 
 Os deltas até a revisão atual também fazem a auto-configuração de e-mail aguardar a configuração SMTP do Spring Boot
 antes de decidir se a capacidade está disponível. Isso impede que a ordem de criação dos beans desabilite o envio

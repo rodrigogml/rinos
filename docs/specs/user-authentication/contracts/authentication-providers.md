@@ -42,8 +42,8 @@ repositories ou services diretamente.
 
 ## Second Factor
 
-**RFW contracts**: `RFWSecondFactorProvider` e evolução descrita em
-[rfw-gap-analysis.md](../rfw-gap-analysis.md)<br>
+**RFW contracts**: `RFWSecondFactorProvider`, `RFWSecondFactorEmissionRequestDTO`,
+`RFWSecondFactorEmissionOutcomeVO` e `RFWSecondFactorEmissionVO`<br>
 **Rinos facade proposta**: `SecondFactorFacade`
 
 ### Begin/resend
@@ -55,7 +55,10 @@ repositories ou services diretamente.
 | `origin` | yes | origem validada |
 
 TOTP e recovery code não exigem emissão. E-mail emite um OTP novo após commit, invalida o anterior e devolve destino
-mascarado e validade. Passkey abre opções WebAuthn vinculadas ao mesmo fluxo.
+mascarado, validade e primeiro instante de reenvio. A UI só oferece e-mail quando
+`RFWSecondFactorProvider.getEmissionMethods()` o declara e só chama `begin(...)` depois da seleção explícita. Um
+`resend(...)` bem-sucedido substitui atomicamente a prova anterior; limitação usa erro público com `retryAfter`, e
+indisponibilidade não afirma entrega. Passkey abre opções WebAuthn vinculadas ao mesmo fluxo.
 
 ### Verify
 

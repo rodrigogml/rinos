@@ -61,11 +61,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-002](./rfw-gap-analysis.md#gap-auth-rfw-002-enro
 
 Ref: [RFW Gap Analysis AUTH-RFW-003](./rfw-gap-analysis.md#gap-auth-rfw-003-fator-por-e-mail-não-possui-emissão-seleção-e-reenvio), Interface INT-WEB-AUTH-002/006
 
-- [ ] 1.3.1 Definir contratos begin/resend com referência opaca, destino mascarado, validade e limite
-- [ ] 1.3.2 Integrar seleção explícita e troca de método ao renderer de challenge sem envio automático
-- [ ] 1.3.3 Testar reenvio, invalidação do código anterior, cooldown, indisponibilidade e métodos independentes
-- [ ] 1.3.4 Atualizar showroom, laboratório, i18n e documentação multilíngue do protocolo
-- [ ] 1.3.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.3.1 Definir contratos begin/resend com referência opaca, destino mascarado, validade e limite
+- [x] 1.3.2 Integrar seleção explícita e troca de método ao renderer de challenge sem envio automático
+- [x] 1.3.3 Testar reenvio, invalidação do código anterior, cooldown, indisponibilidade e métodos independentes
+- [x] 1.3.4 Atualizar showroom, laboratório, i18n e documentação multilíngue do protocolo
+- [x] 1.3.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ### 1.4 Generalizar reautenticação por método e garantia `[C]`
 
