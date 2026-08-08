@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowMethodStateEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationProofStatusEnum;
@@ -79,6 +80,22 @@ class AuthenticationStateEntityTest {
         ISSUED_AT,
         ISSUED_AT.plusSeconds(10)))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void flowMethod_shouldPreserveVerifiedEvidence_afterIdempotentReplay() {
+    AuthenticationFlowMethodEntity method = new AuthenticationFlowMethodEntity(
+        flow(), AuthenticationMethodEnum.PASSKEY);
+    Instant verifiedAt = ISSUED_AT.plusSeconds(5);
+
+    method.markVerified(verifiedAt, true);
+    method.markVerified(verifiedAt, true);
+
+    assertThat(method.getState()).isEqualTo(AuthenticationFlowMethodStateEnum.VERIFIED);
+    assertThat(method.getVerifiedAt()).isEqualTo(verifiedAt);
+    assertThat(method.getUserVerification()).isTrue();
+    assertThatThrownBy(() -> method.markVerified(verifiedAt.plusSeconds(1), true))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   private static AuthenticationFlowEntity flow() {

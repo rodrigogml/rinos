@@ -224,6 +224,9 @@ CREATE TABLE identity_authenticationFlowMethod (
   id BIGINT AUTO_INCREMENT NOT NULL,
   idAuthenticationFlow BIGINT NOT NULL,
   method VARCHAR(32) NOT NULL,
+  state VARCHAR(24) NOT NULL,
+  verifiedAt TIMESTAMP(6) NULL,
+  userVerification BOOLEAN NULL,
   createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   CONSTRAINT pk_identity_authentication_flow_method PRIMARY KEY (id),
   CONSTRAINT fk_identity_authentication_flow_method_flow FOREIGN KEY (idAuthenticationFlow)
@@ -232,7 +235,14 @@ CREATE TABLE identity_authenticationFlowMethod (
     ON UPDATE RESTRICT,
   CONSTRAINT uk_identity_authentication_flow_method UNIQUE (idAuthenticationFlow, method),
   CONSTRAINT ck_identity_authentication_flow_method
-    CHECK (method IN ('PASSWORD', 'GOOGLE', 'PASSKEY', 'TOTP', 'EMAIL_CODE', 'RECOVERY_CODE'))
+    CHECK (method IN ('PASSWORD', 'GOOGLE', 'PASSKEY', 'TOTP', 'EMAIL_CODE', 'RECOVERY_CODE')),
+  CONSTRAINT ck_identity_authentication_flow_method_state
+    CHECK (state IN ('PERMITTED', 'VERIFIED')),
+  CONSTRAINT ck_identity_authentication_flow_method_verification
+    CHECK (
+      (state = 'PERMITTED' AND verifiedAt IS NULL AND userVerification IS NULL)
+      OR (state = 'VERIFIED' AND verifiedAt IS NOT NULL)
+    )
 ) ENGINE = InnoDB;
 
 CREATE TABLE identity_authenticationProof (

@@ -8,10 +8,12 @@ Os nomes seguem o padrão do projeto: prefixo funcional em inglês, tabelas e co
 
 ## Marco de migration
 
-O update global imutável `20260808_001_update.sql` introduz este modelo e publica a versão
-`20260808001`. O `db/global/init/01-ddl.sql` representa o mesmo estado consolidado para instalações novas, enquanto o
-update preserva credenciais existentes: preenche `passwordChangedAt` pela última atualização/criação conhecida e
-acrescenta os demais campos opcionais sem fabricar histórico de uso ou comprometimento.
+O update global imutável `20260808_001_update.sql` introduz este modelo. O update incremental
+`20260808_002_update.sql` completa a fotografia dos métodos comprovados no fluxo e publica a versão
+`20260808002`. O `db/global/init/01-ddl.sql` representa o mesmo estado consolidado para instalações novas. A cadeia
+preserva credenciais existentes: preenche `passwordChangedAt` pela última atualização/criação conhecida,
+acrescenta os demais campos opcionais sem fabricar histórico de uso ou comprometimento e classifica métodos de
+fluxos anteriores como `PERMITTED`, nunca como comprovação presumida.
 
 Init limpo e evolução desde `20260802001` devem produzir definições equivalentes para todas as novas tabelas. O gate
 MySQL 9 compara o DDL materializado, valida tipos físicos compatíveis com os mappings JPA planejados, FKs em cascata,
@@ -101,9 +103,14 @@ Continuação transitória entre uma prova inicial e a criação da sessão.
 | `id` | `BIGINT` | PK, auto increment | |
 | `idAuthenticationFlow` | `BIGINT` | NOT NULL, FK | |
 | `method` | `VARCHAR(32)` | NOT NULL | Enum fechado permitido no fluxo |
+| `state` | `VARCHAR(24)` | NOT NULL | `PERMITTED` ou `VERIFIED` |
+| `verifiedAt` | `TIMESTAMP(6)` | NULL | Obrigatório somente quando comprovado |
+| `userVerification` | `BOOLEAN` | NULL | Resultado local WebAuthn, quando aplicável |
 | `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 
 UK em `(idAuthenticationFlow, method)`. A coleção é inserida junto do fluxo e não recebe valores livres do cliente.
+Somente um método previamente permitido pode transicionar para `VERIFIED`; a evidência é imutável e permite que
+MFA e gate legal retomem o nível de garantia sem conservar senha, OTP, assertion ou outro segredo.
 
 ## Entity: AuthenticationProof
 

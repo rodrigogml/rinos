@@ -95,8 +95,44 @@ class AuthenticationDatabaseSchemaIT {
     dataSource = testDatabase.recreateSchema();
     executeUpdates(dataSource);
 
-    assertThat(readVersion(dataSource)).isEqualTo("20260808001");
+    assertThat(readVersion(dataSource)).isEqualTo("20260808002");
     assertThat(readTableDefinitions(dataSource)).isEqualTo(initializedDefinitions);
+  }
+
+  /**
+   * Comprova que o update não transforma métodos históricos em fatores comprovados.
+   *
+   * @throws SQLException quando o estado migrado não pode ser consultado
+   */
+  @Test
+  void flowMethodUpdate_shouldBackfillExistingRowsAsPermitted() throws SQLException {
+    dataSource = testDatabase.recreateSchema();
+    new ResourceDatabasePopulator(new ByteArrayResource("""
+        CREATE TABLE identity_authenticationFlowMethod (
+          id BIGINT AUTO_INCREMENT NOT NULL,
+          idAuthenticationFlow BIGINT NOT NULL,
+          method VARCHAR(32) NOT NULL,
+          createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+          CONSTRAINT pk_identity_authentication_flow_method PRIMARY KEY (id)
+        ) ENGINE = InnoDB;
+        INSERT INTO identity_authenticationFlowMethod (idAuthenticationFlow, method)
+        VALUES (10, 'PASSWORD');
+        """.getBytes(StandardCharsets.UTF_8)),
+        new ClassPathResource("db/global/update/20260808_002_update.sql"))
+        .execute(dataSource);
+
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery("""
+            SELECT state, verifiedAt, userVerification
+            FROM identity_authenticationFlowMethod
+            WHERE id = 1
+            """)) {
+      assertThat(result.next()).isTrue();
+      assertThat(result.getString("state")).isEqualTo("PERMITTED");
+      assertThat(result.getTimestamp("verifiedAt")).isNull();
+      assertThat(result.getObject("userVerification")).isNull();
+    }
   }
 
   /**
@@ -185,6 +221,8 @@ class AuthenticationDatabaseSchemaIT {
   void metadata_shouldExposeJpaCompatibleNamesTypesAndVersions() throws SQLException {
     assertColumn("identity_authenticationFlow", "referenceHash", "binary(32)", "NO");
     assertColumn("identity_authenticationFlow", "idUser", "bigint", "YES");
+    assertColumn("identity_authenticationFlowMethod", "state", "varchar(24)", "NO");
+    assertColumn("identity_authenticationFlowMethod", "verifiedAt", "timestamp(6)", "YES");
     assertColumn("identity_authenticationProof", "proofDigest", "varbinary(96)", "NO");
     assertColumn("identity_totpFactor", "encryptedSecret", "varbinary(512)", "NO");
     assertColumn("identity_passkeyCredential", "credentialId", "varbinary(1024)", "NO");
@@ -239,7 +277,8 @@ class AuthenticationDatabaseSchemaIT {
         "20260729_004_update.sql",
         "20260729_005_update.sql",
         "20260802_001_update.sql",
-        "20260808_001_update.sql")) {
+        "20260808_001_update.sql",
+        "20260808_002_update.sql")) {
       populator.addScript(new ClassPathResource("db/global/update/" + script));
     }
     populator.execute(target);
