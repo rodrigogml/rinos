@@ -1,10 +1,10 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `e039c9019345d365e1294cb2aa709004f0a5656e` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `87909e4a3b9213e18180127cdafe02fe7b02bd1a` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
-**Status**: gaps AUTH-RFW-001 a AUTH-RFW-008 entregues; os demais devem ser implementados no RFW antes dos adapters
-dependentes no Rinos
+**Status**: gaps AUTH-RFW-001 a AUTH-RFW-010 entregues; os adapters dependentes no Rinos podem avançar conforme a
+ordem do backlog
 
 ## Existing Capabilities Reused
 
@@ -133,6 +133,8 @@ preservação do método alternativo. Nenhum detalhe criptográfico deve ser exp
 são apenas observacionais e não constituem prova de autenticação nem substituem a conclusão WebAuthn validada.
 
 ## Gap AUTH-RFW-010: configurações de segurança não gerenciam senha local
+
+**Delivery status**: concluído na baseline `87909e4a3b9213e18180127cdafe02fe7b02bd1a`.
 
 **Evidence**: `RFWSecuritySettingsSectionEnum` cobre passkeys, fatores, identidades externas, sessões e códigos de
 recuperação, mas não possui seção/provider para criar, alterar ou reconhecer a credencial local.

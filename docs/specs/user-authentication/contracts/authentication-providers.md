@@ -226,6 +226,7 @@ sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
 
 | Section | Provider | Rinos authority |
 |---------|----------|-----------------|
+| password | `RFWPasswordManagementProvider` | estado e criação/substituição da senha local do usuário atual |
 | passkeys | `RFWPasskeyManagementProvider` | passkeys do usuário atual |
 | factors | `RFWSecondFactorManagementProvider` | TOTP/e-mail, enrollment e último método |
 | external identities | `RFWExternalIdentityManagementProvider` | vínculos `issuer + sub` |
@@ -234,6 +235,14 @@ sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
 
 Toda operação sensível executa novamente a invariant no backend depois da reautenticação; ocultar/desabilitar botão
 na UI não é controle de segurança.
+
+Para senha, `getPasswordCredential()` devolve somente `RFWPasswordCredentialVO`: estado `ABSENT`, `CONFIGURED` ou
+`COMPROMISED`, datas públicas e versão concorrente. `changePassword(...)` recebe `RFWPasswordChangeRequestDTO` com
+senha e confirmação transitórias e `expectedVersion`; não recebe nem devolve hash. O provider deve revalidar a
+garantia recente, política, comprometimento e versão dentro da operação protegida, produzir Argon2id no domínio,
+auditar sem segredo e aplicar a política de invalidação de sessões. Rejeições por campo usam exclusivamente
+`newPassword` e `confirmation`; conflito ou estado obsoleto solicitam refresh da seção. A criação passwordless segue
+o mesmo contrato e nunca vincula automaticamente uma identidade externa.
 
 Consultas e mutações usam preferencialmente os métodos `*Outcome` dos providers e devolvem
 `RFWSecurityManagementOutcomeVO<T>`. O status distingue `COMPLETED`, `REJECTED`, `CONFLICT`, `LAST_METHOD`,

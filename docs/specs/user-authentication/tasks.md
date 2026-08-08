@@ -131,11 +131,11 @@ Ref: [RFW Gap Analysis AUTH-RFW-009](./rfw-gap-analysis.md#gap-auth-rfw-009-comp
 
 Ref: [RFW Gap Analysis AUTH-RFW-010](./rfw-gap-analysis.md#gap-auth-rfw-010-configurações-de-segurança-não-gerenciam-senha-local), Interface INT-WEB-AUTH-005/008
 
-- [ ] 1.10.1 Criar seção, provider, VOs e outcomes para estado, criação e alteração de senha
-- [ ] 1.10.2 Integrar reautenticação, validações por campo e capability opcional sem receber hash
-- [ ] 1.10.3 Testar usuário passwordless, senha comprometida, conflito, último método e provider ausente
-- [ ] 1.10.4 Atualizar laboratório, i18n e documentação multilíngue do showroom
-- [ ] 1.10.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
+- [x] 1.10.1 Criar seção, provider, VOs e outcomes para estado, criação e alteração de senha
+- [x] 1.10.2 Integrar reautenticação, validações por campo e capability opcional sem receber hash
+- [x] 1.10.3 Testar usuário passwordless, senha comprometida, conflito, último método e provider ausente
+- [x] 1.10.4 Atualizar laboratório, i18n e documentação multilíngue do showroom
+- [x] 1.10.5 Validar, commitar e publicar o RFW; atualizar e publicar separadamente o ponteiro no Rinos
 
 ---
 
