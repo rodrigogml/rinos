@@ -10,7 +10,7 @@ Este documento organiza a sequência recomendada das especificações funcionais
 | Ordem | ID | Feature | Objetivo | Dependências | Status |
 |------:|----|---------|----------|--------------|--------|
 | 1 | FND-001 | `user-registration` | Criar a identidade global do usuário e concluir seu ciclo inicial de cadastro | Nenhuma | Backlog criado após Interface Design e quality gate aprovados |
-| 2 | FND-002 | `user-authentication` | Autenticar por senha, passkey ou Google, oferecer 2FA, manter sessões, recuperar acesso e proteger o login contra automação e descoberta de usuários | FND-001 | Planejada; Interface Design pendente |
+| 2 | FND-002 | `user-authentication` | Autenticar por senha, passkey ou Google, oferecer 2FA, manter sessões, recuperar acesso e proteger o login contra automação e descoberta de usuários | FND-001 | Interface Design aprovada; quality gate pendente |
 | 3 | FND-003 | `user-dashboard` | Disponibilizar ao usuário ativo seu painel e suas configurações pessoais | FND-001, FND-002 | Especificada e clarificada |
 | 4 | FND-004 | `account-registration` | Criar e manter contas genéricas (tenants), inicialmente no plano Free, deixando a classificação PF/PJ para evolução futura | FND-003 | Especificada e clarificada |
 | 5 | FND-005 | `account-membership` | Associar uma identidade de usuário a múltiplas contas, inclusive por convite | FND-001, FND-003, FND-004 | Especificada e clarificada |

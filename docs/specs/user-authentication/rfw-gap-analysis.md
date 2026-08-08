@@ -115,6 +115,17 @@ localizada, foco, diferenciação de cancelamento, indisponibilidade ou credenci
 **Required evolution**: eventos públicos tipados, texto i18n, estado busy, anúncio acessível, foco previsível e
 preservação do método alternativo. Nenhum detalhe criptográfico deve ser exposto.
 
+## Gap AUTH-RFW-010: configurações de segurança não gerenciam senha local
+
+**Evidence**: `RFWSecuritySettingsSectionEnum` cobre passkeys, fatores, identidades externas, sessões e códigos de
+recuperação, mas não possui seção/provider para criar, alterar ou reconhecer a credencial local.
+
+**Required evolution**: seção e provider de senha com estados “configurada/ausente/comprometida”, alteração mediante
+reautenticação, criação explícita para usuário externo/passwordless e validações por campo. O componente não aplica a
+política nem recebe o hash; a hospedeira continua responsável por HIBP, Argon2id, sessões e auditoria.
+
+**Compatibility**: seção aparece somente com provider real; aplicações sem gestão de senha permanecem inalteradas.
+
 ## Required RFW Delivery Gate
 
 Para cada gap implementado:
