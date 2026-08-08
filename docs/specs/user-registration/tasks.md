@@ -514,7 +514,8 @@ Ref: [Spec §SC-UR-001, SC-UR-003 e SC-UR-007](./spec.md), [Interface §Shared A
 
 - [x] 7.3.1 Executar verificação automatizada WCAG 2.2 AA sem violações críticas ou sérias
   - Evidência: [axe-core sobre os cinco INTs em quatro apresentações](./evidence/7.3.1/README.md).
-- [ ] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado `[release-blocker]`
+- [!] 7.3.2 Avaliar manualmente todas as jornadas principais somente por teclado `[release-blocker]`
+  - Evidência parcial: [fluxos executados no JAR e protocolo humano ainda necessário](./evidence/7.3.2/README.md).
 - [ ] 7.3.3 Avaliar manualmente as jornadas principais com leitor de tela `[release-blocker]`
 - [x] 7.3.4 Renderizar e inspecionar cada `INT-*` em telefone e desktop, claro e escuro
   - Evidência: [matriz visual dos cinco INTs em quatro apresentações](./evidence/7.3.4/README.md).
