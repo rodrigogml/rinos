@@ -1,7 +1,7 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `800cb67bd7dd4713041497c41ad5af02ea7b039e` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `800cb67f2e7c3547f5118d1d5d6af55d5e772226` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
 **Status**: gaps AUTH-RFW-001 a AUTH-RFW-004 entregues; os demais devem ser implementados no RFW antes dos adapters
 dependentes no Rinos
@@ -55,7 +55,7 @@ de emissão estiver presente.
 
 ## Gap AUTH-RFW-004: reautenticação aceita somente uma prova textual
 
-**Delivery status**: concluído na baseline `800cb67bd7dd4713041497c41ad5af02ea7b039e`.
+**Delivery status**: concluído na baseline `800cb67f2e7c3547f5118d1d5d6af55d5e772226`.
 
 **Evidence**: `RFWReauthenticationProvider` retorna `boolean` para `operationId + proof`; o componente sempre abre
 `PasswordField`. Usuário passwordless não pode usar passkey/TOTP, e não existe continuação tipada.
