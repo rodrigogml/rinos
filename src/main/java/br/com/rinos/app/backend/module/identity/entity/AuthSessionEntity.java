@@ -41,7 +41,10 @@ import jakarta.persistence.Version;
             columnNames = "publicReference"),
         @UniqueConstraint(
             name = "uk_identity_auth_session_selector",
-            columnNames = "selectorHash")
+            columnNames = "selectorHash"),
+        @UniqueConstraint(
+            name = "uk_identity_auth_session_flow",
+            columnNames = "idAuthenticationFlow")
     },
     indexes = {
         @Index(
@@ -61,6 +64,10 @@ public class AuthSessionEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "idUser", nullable = false)
   private UserEntity user;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "idAuthenticationFlow")
+  private AuthenticationFlowEntity authenticationFlow;
 
   @Column(name = "publicReference", nullable = false, length = 16,
       columnDefinition = "BINARY(16)")
@@ -94,6 +101,9 @@ public class AuthSessionEntity {
 
   @Column(name = "authenticatedAt", nullable = false)
   private Instant authenticatedAt;
+
+  @Column(name = "activatedAt")
+  private Instant activatedAt;
 
   @Column(name = "lastStrongAuthAt", nullable = false)
   private Instant lastStrongAuthAt;
@@ -157,7 +167,98 @@ public class AuthSessionEntity {
       String deviceDescription,
       byte[] originAddress,
       byte[] userAgentDigest) {
+    this(
+        user,
+        null,
+        publicReference,
+        selectorHash,
+        validatorDigest,
+        keyVersion,
+        remembered,
+        primaryMethod,
+        assuranceLevel,
+        authenticatedAt,
+        absoluteExpiresAt,
+        idleExpiresAt,
+        deviceDescription,
+        originAddress,
+        userAgentDigest,
+        AuthSessionStatusEnum.ACTIVE);
+  }
+
+  /**
+   * Cria uma sessão preparada e ainda inutilizável, vinculada ao fluxo que a concluirá.
+   *
+   * @param user identidade ativa bloqueada pelo serviço
+   * @param authenticationFlow fluxo aberto que originou a preparação
+   * @param publicReference referência opaca de gestão
+   * @param selectorHash digest de localização reservado ao cookie posterior
+   * @param validatorDigest verificador reservado ao cookie posterior
+   * @param keyVersion versão do mecanismo do verificador
+   * @param remembered escolha persistida no início do login
+   * @param primaryMethod primeiro método comprovado
+   * @param assuranceLevel garantia calculada
+   * @param authenticatedAt instante da última comprovação exigida
+   * @param absoluteExpiresAt limite absoluto
+   * @param idleExpiresAt limite inicial de inatividade
+   * @param deviceDescription descrição sanitizada ou {@code null}
+   * @param originAddress origem binária validada ou {@code null}
+   * @param userAgentDigest digest do agente ou {@code null}
+   */
+  public AuthSessionEntity(
+      UserEntity user,
+      AuthenticationFlowEntity authenticationFlow,
+      byte[] publicReference,
+      byte[] selectorHash,
+      byte[] validatorDigest,
+      String keyVersion,
+      boolean remembered,
+      AuthenticationMethodEnum primaryMethod,
+      AuthenticationAssuranceEnum assuranceLevel,
+      Instant authenticatedAt,
+      Instant absoluteExpiresAt,
+      Instant idleExpiresAt,
+      String deviceDescription,
+      byte[] originAddress,
+      byte[] userAgentDigest) {
+    this(
+        user,
+        Objects.requireNonNull(authenticationFlow, "authenticationFlow must not be null"),
+        publicReference,
+        selectorHash,
+        validatorDigest,
+        keyVersion,
+        remembered,
+        primaryMethod,
+        assuranceLevel,
+        authenticatedAt,
+        absoluteExpiresAt,
+        idleExpiresAt,
+        deviceDescription,
+        originAddress,
+        userAgentDigest,
+        AuthSessionStatusEnum.PREPARED);
+  }
+
+  private AuthSessionEntity(
+      UserEntity user,
+      AuthenticationFlowEntity authenticationFlow,
+      byte[] publicReference,
+      byte[] selectorHash,
+      byte[] validatorDigest,
+      String keyVersion,
+      boolean remembered,
+      AuthenticationMethodEnum primaryMethod,
+      AuthenticationAssuranceEnum assuranceLevel,
+      Instant authenticatedAt,
+      Instant absoluteExpiresAt,
+      Instant idleExpiresAt,
+      String deviceDescription,
+      byte[] originAddress,
+      byte[] userAgentDigest,
+      AuthSessionStatusEnum initialStatus) {
     this.user = Objects.requireNonNull(user, "user must not be null");
+    this.authenticationFlow = authenticationFlow;
     this.publicReference = exact(publicReference, 16, "publicReference");
     this.selectorHash = exact(selectorHash, 32, "selectorHash");
     this.validatorDigest = bounded(validatorDigest, 1, 96, "validatorDigest");
@@ -182,7 +283,8 @@ public class AuthSessionEntity {
     this.originAddress = nullableBounded(originAddress, 4, 16, "originAddress");
     this.userAgentDigest = userAgentDigest == null
         ? null : exact(userAgentDigest, 32, "userAgentDigest");
-    status = AuthSessionStatusEnum.ACTIVE;
+    status = Objects.requireNonNull(initialStatus, "initialStatus must not be null");
+    activatedAt = status == AuthSessionStatusEnum.ACTIVE ? authenticatedAt : null;
   }
 
   /** @return identificador interno ou {@code null} antes da persistência */
@@ -193,6 +295,11 @@ public class AuthSessionEntity {
   /** @return identidade proprietária */
   public UserEntity getUser() {
     return user;
+  }
+
+  /** @return fluxo de conclusão ou {@code null} depois de sua retenção */
+  public AuthenticationFlowEntity getAuthenticationFlow() {
+    return authenticationFlow;
   }
 
   /** @return cópia da referência de gestão */
@@ -238,6 +345,11 @@ public class AuthSessionEntity {
   /** @return instante da autenticação */
   public Instant getAuthenticatedAt() {
     return authenticatedAt;
+  }
+
+  /** @return instante da publicação global ou {@code null} enquanto preparada */
+  public Instant getActivatedAt() {
+    return activatedAt;
   }
 
   /** @return instante da última autenticação forte */
@@ -291,9 +403,24 @@ public class AuthSessionEntity {
     this.keyVersion = requiredText(keyVersion, 32, "keyVersion");
   }
 
+  /** Publica idempotentemente uma preparação depois que o contexto local foi salvo. */
+  public void activate(Instant at) {
+    Objects.requireNonNull(at, "at must not be null");
+    if (status == AuthSessionStatusEnum.ACTIVE) {
+      return;
+    }
+    if (status != AuthSessionStatusEnum.PREPARED) {
+      throw new IllegalStateException("only a prepared session can be activated");
+    }
+    status = AuthSessionStatusEnum.ACTIVE;
+    activatedAt = at;
+  }
+
   /** Encerra a sessão por motivo fechado previamente validado. */
   public void revoke(Instant at, String reason) {
-    requireActive();
+    if (status != AuthSessionStatusEnum.PREPARED && status != AuthSessionStatusEnum.ACTIVE) {
+      throw new IllegalStateException("session cannot be revoked from its current state");
+    }
     status = AuthSessionStatusEnum.REVOKED;
     revokedAt = Objects.requireNonNull(at, "at must not be null");
     revocationReason = requiredText(reason, 48, "reason");
@@ -301,7 +428,9 @@ public class AuthSessionEntity {
 
   /** Encerra a sessão por vencimento observado. */
   public void expire(Instant at) {
-    requireActive();
+    if (status != AuthSessionStatusEnum.PREPARED && status != AuthSessionStatusEnum.ACTIVE) {
+      throw new IllegalStateException("session cannot expire from its current state");
+    }
     status = AuthSessionStatusEnum.EXPIRED;
     revokedAt = Objects.requireNonNull(at, "at must not be null");
     revocationReason = "EXPIRY";

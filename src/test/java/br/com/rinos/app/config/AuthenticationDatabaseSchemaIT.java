@@ -95,7 +95,7 @@ class AuthenticationDatabaseSchemaIT {
     dataSource = testDatabase.recreateSchema();
     executeUpdates(dataSource);
 
-    assertThat(readVersion(dataSource)).isEqualTo("20260808002");
+    assertThat(readVersion(dataSource)).isEqualTo("20260809001");
     assertThat(readTableDefinitions(dataSource)).isEqualTo(initializedDefinitions);
   }
 
@@ -132,6 +132,43 @@ class AuthenticationDatabaseSchemaIT {
       assertThat(result.getString("state")).isEqualTo("PERMITTED");
       assertThat(result.getTimestamp("verifiedAt")).isNull();
       assertThat(result.getObject("userVerification")).isNull();
+    }
+  }
+
+  /**
+   * Comprova que uma preparação é única por fluxo e não fica ativa sem publicação.
+   *
+   * @throws SQLException quando o cenário de integridade não pode ser executado
+   */
+  @Test
+  void authSessionLifecycle_shouldRequireUniqueFlowAndActivationTimestamp()
+      throws SQLException {
+    long userId = insertUser();
+    long flowId = insertAuthenticationFlow(userId);
+    insertPreparedSession(userId, flowId, (byte) 11);
+
+    assertThatThrownBy(() -> insertPreparedSession(userId, flowId, (byte) 12))
+        .isInstanceOf(SQLException.class);
+
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement activateWithoutTimestamp = connection.prepareStatement("""
+            UPDATE identity_authSession
+            SET status = 'ACTIVE'
+            WHERE idAuthenticationFlow = ?
+            """)) {
+      activateWithoutTimestamp.setLong(1, flowId);
+      assertThatThrownBy(activateWithoutTimestamp::executeUpdate)
+          .isInstanceOf(SQLException.class);
+    }
+
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement activate = connection.prepareStatement("""
+            UPDATE identity_authSession
+            SET status = 'ACTIVE', activatedAt = CURRENT_TIMESTAMP(6)
+            WHERE idAuthenticationFlow = ?
+            """)) {
+      activate.setLong(1, flowId);
+      assertThat(activate.executeUpdate()).isOne();
     }
   }
 
@@ -278,7 +315,8 @@ class AuthenticationDatabaseSchemaIT {
         "20260729_005_update.sql",
         "20260802_001_update.sql",
         "20260808_001_update.sql",
-        "20260808_002_update.sql")) {
+        "20260808_002_update.sql",
+        "20260809_001_update.sql")) {
       populator.addScript(new ClassPathResource("db/global/update/" + script));
     }
     populator.execute(target);
@@ -370,6 +408,37 @@ class AuthenticationDatabaseSchemaIT {
             """)) {
       insert.setLong(1, flowId);
       insert.setBytes(2, repeatedBytes(digestByte, 32));
+      assertThat(insert.executeUpdate()).isOne();
+    }
+  }
+
+  /**
+   * Insere uma preparação ainda inutilizável para validar as constraints do lifecycle.
+   *
+   * @param userId identidade proprietária
+   * @param flowId fluxo de conclusão
+   * @param marker byte distinto para as chaves opacas
+   * @throws SQLException quando a preparação viola a integridade esperada
+   */
+  private void insertPreparedSession(long userId, long flowId, byte marker)
+      throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement insert = connection.prepareStatement("""
+            INSERT INTO identity_authSession
+              (idUser, idAuthenticationFlow, publicReference, selectorHash, validatorDigest,
+               keyVersion, remembered, status, primaryMethod, assuranceLevel,
+               authenticatedAt, lastStrongAuthAt, lastActivityAt, absoluteExpiresAt,
+               idleExpiresAt)
+            VALUES (?, ?, ?, ?, ?, 'SHA256', FALSE, 'PREPARED', 'PASSWORD',
+                    'SINGLE_FACTOR', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6),
+                    CURRENT_TIMESTAMP(6), TIMESTAMPADD(HOUR, 12, CURRENT_TIMESTAMP(6)),
+                    TIMESTAMPADD(MINUTE, 30, CURRENT_TIMESTAMP(6)))
+            """)) {
+      insert.setLong(1, userId);
+      insert.setLong(2, flowId);
+      insert.setBytes(3, repeatedBytes(marker, 16));
+      insert.setBytes(4, repeatedBytes(marker, 32));
+      insert.setBytes(5, repeatedBytes(marker, 32));
       assertThat(insert.executeUpdate()).isOne();
     }
   }

@@ -423,6 +423,7 @@ CREATE TABLE identity_passkeyCredential (
 CREATE TABLE identity_authSession (
   id BIGINT AUTO_INCREMENT NOT NULL,
   idUser BIGINT NOT NULL,
+  idAuthenticationFlow BIGINT NULL,
   publicReference BINARY(16) NOT NULL,
   selectorHash BINARY(32) NOT NULL,
   validatorDigest VARBINARY(96) NOT NULL,
@@ -432,6 +433,7 @@ CREATE TABLE identity_authSession (
   primaryMethod VARCHAR(32) NOT NULL,
   assuranceLevel VARCHAR(24) NOT NULL,
   authenticatedAt TIMESTAMP(6) NOT NULL,
+  activatedAt TIMESTAMP(6) NULL,
   lastStrongAuthAt TIMESTAMP(6) NOT NULL,
   lastActivityAt TIMESTAMP(6) NOT NULL,
   absoluteExpiresAt TIMESTAMP(6) NOT NULL,
@@ -449,9 +451,21 @@ CREATE TABLE identity_authSession (
     REFERENCES identity_user (id)
     ON DELETE CASCADE
     ON UPDATE RESTRICT,
+  CONSTRAINT fk_identity_auth_session_flow FOREIGN KEY (idAuthenticationFlow)
+    REFERENCES identity_authenticationFlow (id)
+    ON DELETE SET NULL
+    ON UPDATE RESTRICT,
   CONSTRAINT uk_identity_auth_session_reference UNIQUE (publicReference),
   CONSTRAINT uk_identity_auth_session_selector UNIQUE (selectorHash),
-  CONSTRAINT ck_identity_auth_session_status CHECK (status IN ('ACTIVE', 'REVOKED', 'EXPIRED')),
+  CONSTRAINT uk_identity_auth_session_flow UNIQUE (idAuthenticationFlow),
+  CONSTRAINT ck_identity_auth_session_status
+    CHECK (status IN ('PREPARED', 'ACTIVE', 'REVOKED', 'EXPIRED')),
+  CONSTRAINT ck_identity_auth_session_activation
+    CHECK (
+      (status = 'PREPARED' AND activatedAt IS NULL)
+      OR status IN ('REVOKED', 'EXPIRED')
+      OR (status = 'ACTIVE' AND activatedAt IS NOT NULL)
+    ),
   CONSTRAINT ck_identity_auth_session_method
     CHECK (primaryMethod IN ('PASSWORD', 'GOOGLE', 'PASSKEY', 'TOTP', 'EMAIL_CODE', 'RECOVERY_CODE')),
   CONSTRAINT ck_identity_auth_session_assurance

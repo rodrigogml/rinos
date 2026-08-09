@@ -22,6 +22,29 @@ import jakarta.persistence.LockModeType;
  */
 public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, Long> {
 
+  /** Bloqueia a preparação única vinculada a um fluxo de autenticação. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT session FROM AuthSessionEntity session WHERE session.authenticationFlow.id = :flowId")
+  Optional<AuthSessionEntity> findByAuthenticationFlowIdForUpdate(
+      @Param("flowId") Long flowId);
+
+  /** Resolve usuário e fluxo antes de aplicar a ordem de locks do lifecycle. */
+  @Query("""
+      SELECT session
+      FROM AuthSessionEntity session
+      JOIN FETCH session.user
+      LEFT JOIN FETCH session.authenticationFlow
+      WHERE session.publicReference = :publicReference
+      """)
+  Optional<AuthSessionEntity> findByPublicReference(
+      @Param("publicReference") byte[] publicReference);
+
+  /** Bloqueia a sessão pela referência opaca depois de usuário e fluxo. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT session FROM AuthSessionEntity session WHERE session.publicReference = :publicReference")
+  Optional<AuthSessionEntity> findByPublicReferenceForUpdate(
+      @Param("publicReference") byte[] publicReference);
+
   /** Bloqueia uma sessão pelo digest do seletor apresentado no cookie. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT session FROM AuthSessionEntity session WHERE session.selectorHash = :selectorHash")

@@ -199,6 +199,7 @@ sempre o e-mail principal confirmado no instante da emissão.
 |-------|------|-------------|-------|
 | `id` | `BIGINT` | PK, auto increment | |
 | `idUser` | `BIGINT` | NOT NULL, FK | |
+| `idAuthenticationFlow` | `BIGINT` | NULL, FK, UK | Fluxo que originou a preparação; `SET NULL` após sua retenção |
 | `reference` | `BINARY(16)` | NOT NULL, UK | Identifica o conjunto sem autenticar |
 | `status` | `VARCHAR(24)` | NOT NULL | `ACTIVE`, `INVALIDATED`, `EXHAUSTED` |
 | `activeMarker` | `BOOLEAN` | NULL | `TRUE` somente no conjunto ativo |
@@ -287,10 +288,11 @@ biométrico chega ao Rinos.
 | `validatorDigest` | `VARBINARY(96)` | NOT NULL | Verificador protegido/versionado |
 | `keyVersion` | `VARCHAR(32)` | NOT NULL | Versão do MAC |
 | `remembered` | `BOOLEAN` | NOT NULL | Seleciona política de duração |
-| `status` | `VARCHAR(24)` | NOT NULL | `ACTIVE`, `REVOKED`, `EXPIRED` |
+| `status` | `VARCHAR(24)` | NOT NULL | `PREPARED`, `ACTIVE`, `REVOKED`, `EXPIRED` |
 | `primaryMethod` | `VARCHAR(32)` | NOT NULL | Método inicial |
 | `assuranceLevel` | `VARCHAR(24)` | NOT NULL | Garantia calculada, não autoridade |
 | `authenticatedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
+| `activatedAt` | `TIMESTAMP(6)` | NULL | Publicação global posterior ao contexto local |
 | `lastStrongAuthAt` | `TIMESTAMP(6)` | NOT NULL | Base da janela de 15 minutos |
 | `lastActivityAt` | `TIMESTAMP(6)` | NOT NULL | Atualização limitada |
 | `absoluteExpiresAt` | `TIMESTAMP(6)` | NOT NULL | Nunca prorrogado |
@@ -308,6 +310,10 @@ biométrico chega ao Rinos.
 
 - Cookie bruto, `HttpSession` ID e segredo de validação não são retornados pela gestão.
 - `publicReference` não localiza o cookie e não autentica.
+- `PREPARED` ainda não é utilizável. Somente `publish(...)`, depois de o RFW salvar o contexto local, transiciona
+  a sessão para `ACTIVE`; `abort(...)` encerra a preparação ou compensa uma publicação parcial.
+- O vínculo único com `AuthenticationFlow` torna a preparação idempotente. A remoção posterior do fluxo por
+  retenção usa `ON DELETE SET NULL` e não invalida a sessão ativa.
 - Sessão é válida somente quando `status=ACTIVE`, usuário permanece `ACTIVE`, `now < absoluteExpiresAt` e
   `now < idleExpiresAt`.
 - Atualização da atividade usa `min(now + idleTimeout, absoluteExpiresAt)` e ocorre no máximo no intervalo técnico
