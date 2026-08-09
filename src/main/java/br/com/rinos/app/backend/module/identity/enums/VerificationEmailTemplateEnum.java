@@ -10,7 +10,8 @@ public enum VerificationEmailTemplateEnum {
 
   REGISTRATION_CONFIRMATION("registration-verification"),
   REGISTRATION_CANCELLATION("registration-cancellation"),
-  PASSWORD_RECOVERY("password-recovery");
+  PASSWORD_RECOVERY("password-recovery"),
+  AUTHENTICATION_EMAIL_CODE("authentication-email-code");
 
   private final String templateName;
 

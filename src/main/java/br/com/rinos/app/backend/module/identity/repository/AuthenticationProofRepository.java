@@ -69,6 +69,25 @@ public interface AuthenticationProofRepository
       Long flowId,
       AuthenticationProofTypeEnum type);
 
+  /**
+   * Lista emissões recentes do usuário sob o lock já adquirido da identidade.
+   *
+   * <p>Estados terminais também contam para o limite, impedindo que reenvio ou falha de entrega
+   * reinicie a franquia de emissão.
+   */
+  @Query("""
+      SELECT proof.issuedAt
+      FROM AuthenticationProofEntity proof
+      WHERE proof.flow.user.id = :userId
+        AND proof.type = :type
+        AND proof.issuedAt > :cutoff
+      ORDER BY proof.issuedAt, proof.id
+      """)
+  List<Instant> findIssuedAtByUserIdAndTypeSince(
+      @Param("userId") Long userId,
+      @Param("type") AuthenticationProofTypeEnum type,
+      @Param("cutoff") Instant cutoff);
+
   /** Remove provas terminais retidas em fluxos ainda existentes. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("""

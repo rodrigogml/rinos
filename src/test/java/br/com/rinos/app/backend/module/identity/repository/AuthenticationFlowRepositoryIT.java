@@ -47,6 +47,7 @@ import br.com.rinos.app.backend.module.identity.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationKeyringMacService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationOrchestrationService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationProofService;
@@ -113,7 +114,8 @@ class AuthenticationFlowRepositoryIT {
           context.getBean(AuthenticationFlowRepository.class),
           context.getBean(AuthenticationProofRepository.class),
           tokenService,
-          auditService);
+          auditService,
+          mock(AuthenticationKeyringMacService.class));
 
       Long userId = transaction.execute(status -> userRepository.saveAndFlush(new UserEntity(
           "concurrency@example.test",
@@ -237,7 +239,8 @@ class AuthenticationFlowRepositoryIT {
           tokens,
           audit);
       AuthenticationProofService proofs = new AuthenticationProofService(
-          flowsRepository, proofsRepository, tokens, audit);
+          flowsRepository, proofsRepository, tokens, audit,
+          mock(AuthenticationKeyringMacService.class));
       LegalConsentService legal = new LegalConsentService(
           context.getBean(LegalDocumentVersionRepository.class),
           context.getBean(LegalConsentRepository.class));

@@ -99,6 +99,10 @@ Nenhuma chave privada, PIN ou biometria é recebida pelo Rinos.
 - Falha de SMTP não registra prova como entregue e permite reenvio limitado que invalida a prova anterior.
 - Mensagem informa expiração real e que nova emissão invalida a anterior.
 
+O template concreto é `authentication-email-code`. O Rinos passa somente código e expiração ao serviço de templates
+da RFW e aguarda o resultado do dispatcher pós-commit. O SMTP não recebe link de autenticação, cookie, referência do
+fluxo ou dados de sessão. A compensação de falha usa o digest já persistido, nunca o código em claro.
+
 ### Notification dispatch
 
 Notificações de segurança não revertem a alteração já confirmada. Falha fica observável e pode ser reprocessada apenas

@@ -113,7 +113,8 @@ token ou origem.
 
 **RFW contracts**: `RFWSecondFactorProvider`, `RFWSecondFactorEmissionRequestDTO`,
 `RFWSecondFactorEmissionOutcomeVO` e `RFWSecondFactorEmissionVO`<br>
-**Rinos facade proposta**: `SecondFactorFacade`
+**Rinos facades**: `EmailOtpFacade` para emissão/consumo por e-mail; `SecondFactorFacade` será a composição contextual
+da tarefa 4.1.5
 
 ### Begin/resend
 
@@ -128,6 +129,17 @@ mascarado, validade e primeiro instante de reenvio. A UI só oferece e-mail quan
 `RFWSecondFactorProvider.getEmissionMethods()` o declara e só chama `begin(...)` depois da seleção explícita. Um
 `resend(...)` bem-sucedido substitui atomicamente a prova anterior; limitação usa erro público com `retryAfter`, e
 indisponibilidade não afirma entrega. Passkey abre opções WebAuthn vinculadas ao mesmo fluxo.
+
+O contrato concreto de e-mail conserva a referência do próprio fluxo como `challengeReference`; o reenvio troca a
+prova protegida sob essa mesma continuação, de modo que o código anterior deixa de corresponder imediatamente. O
+backend limita cada usuário a três emissões em uma janela móvel de 15 minutos e exige 1 minuto entre emissões por
+fluxo, por padrão. Esses valores são propriedades fixas de `rinos.authentication.mfa.*`. O código possui a validade
+do desafio, limitada também pela expiração anterior do fluxo, e no máximo cinco tentativas por padrão.
+
+`EmailOtpFacade.begin/resend` só conclui com `EMITTED` depois que o SMTP aceitou a mensagem no callback pós-commit.
+Falha de template, transporte ou rollback nunca publica destino/validade como se houvesse envio; uma compensação em
+nova transação invalida somente o digest daquela emissão. A comparação exata impede que uma falha atrasada cancele
+um reenvio concorrente posterior.
 
 ### Verify
 

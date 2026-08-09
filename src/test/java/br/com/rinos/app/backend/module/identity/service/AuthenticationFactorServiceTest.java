@@ -102,7 +102,9 @@ class AuthenticationFactorServiceTest {
         references,
         audit,
         mock(TotpProtocolService.class),
-        new AuthenticationMfaPropertiesConfig(java.time.Duration.ofMinutes(5), 5));
+        new AuthenticationMfaPropertiesConfig(
+            java.time.Duration.ofMinutes(5), 5, java.time.Duration.ofMinutes(1), 3,
+            java.time.Duration.ofMinutes(15)));
 
     FactorOperationStatusEnum result = service.revoke(11L, factor.getReference(),
         true, UUID.randomUUID(), NOW.plusSeconds(1));

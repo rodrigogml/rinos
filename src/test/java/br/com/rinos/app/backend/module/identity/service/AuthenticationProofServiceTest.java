@@ -1,8 +1,12 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalMatchers.aryEq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -37,6 +41,7 @@ class AuthenticationProofServiceTest {
   private IdentityAuditService auditService;
   private RFWOpaqueTokenService tokenService;
   private AuthenticationProofService service;
+  private AuthenticationKeyringMacService keyringMacService;
   private AuthenticationFlowEntity flow;
   private String reference;
 
@@ -45,12 +50,14 @@ class AuthenticationProofServiceTest {
     flowRepository = mock(AuthenticationFlowRepository.class);
     proofRepository = mock(AuthenticationProofRepository.class);
     auditService = mock(IdentityAuditService.class);
+    keyringMacService = mock(AuthenticationKeyringMacService.class);
     tokenService = new RFWOpaqueTokenService();
     service = new AuthenticationProofService(
         flowRepository,
         proofRepository,
         tokenService,
-        auditService);
+        auditService,
+        keyringMacService);
     reference = tokenService.generate();
     flow = new AuthenticationFlowEntity(
         null,
@@ -110,6 +117,58 @@ class AuthenticationProofServiceTest {
     assertThat(result.status()).isEqualTo(AuthenticationOperationStatusEnum.REJECTED);
     assertThat(proof.getAttemptCount()).isEqualTo(1);
     assertThat(flow.getFailureCount()).isEqualTo(1);
+    assertThat(proof.getStatus()).isEqualTo(AuthenticationProofStatusEnum.OPEN);
+  }
+
+  @Test
+  void consumeMac_shouldUsePersistedKeyVersionAndInvalidateAtAttemptLimit() {
+    byte[] digest = new byte[32];
+    AuthenticationProofEntity proof = new AuthenticationProofEntity(
+        flow,
+        AuthenticationProofTypeEnum.EMAIL_OTP,
+        digest,
+        "key-previous",
+        ISSUED_AT,
+        ISSUED_AT.plusSeconds(120));
+    when(proofRepository.findFirstByFlowIdAndTypeOrderByIssuedAtDesc(
+        71L,
+        AuthenticationProofTypeEnum.EMAIL_OTP)).thenReturn(Optional.of(proof));
+    when(keyringMacService.matches(any(), any(), any())).thenReturn(false);
+
+    AuthenticationProofInspectionVO first = service.consumeMac(
+        reference, AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationProofTypeEnum.EMAIL_OTP, "email-otp:71", new byte[] {1}, 2,
+        ISSUED_AT.plusSeconds(30));
+    AuthenticationProofInspectionVO exhausted = service.consumeMac(
+        reference, AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationProofTypeEnum.EMAIL_OTP, "email-otp:71", new byte[] {2}, 2,
+        ISSUED_AT.plusSeconds(31));
+
+    assertThat(first.status()).isEqualTo(AuthenticationOperationStatusEnum.REJECTED);
+    assertThat(exhausted.status()).isEqualTo(AuthenticationOperationStatusEnum.INVALIDATED);
+    assertThat(exhausted.attemptCount()).isEqualTo(2);
+    assertThat(proof.getStatus()).isEqualTo(AuthenticationProofStatusEnum.INVALIDATED);
+    verify(keyringMacService).matches(
+        eq("email-otp:71"),
+        aryEq(new byte[] {1}),
+        argThat(protectedValue -> protectedValue.keyVersion().equals("key-previous")
+            && java.util.Arrays.equals(protectedValue.digest(), digest)));
+  }
+
+  @Test
+  void cancelIfDigestMatches_shouldNotCancelNewerProof() {
+    byte[] currentDigest = new byte[] {7, 8, 9};
+    AuthenticationProofEntity proof = proof(currentDigest);
+    when(proofRepository.findFirstByFlowIdAndTypeOrderByIssuedAtDesc(
+        71L,
+        AuthenticationProofTypeEnum.EMAIL_OTP)).thenReturn(Optional.of(proof));
+
+    AuthenticationProofInspectionVO staleFailure = service.cancelIfDigestMatches(
+        reference, AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationProofTypeEnum.EMAIL_OTP, new byte[] {1, 2, 3},
+        ISSUED_AT.plusSeconds(30));
+
+    assertThat(staleFailure.status()).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
     assertThat(proof.getStatus()).isEqualTo(AuthenticationProofStatusEnum.OPEN);
   }
 

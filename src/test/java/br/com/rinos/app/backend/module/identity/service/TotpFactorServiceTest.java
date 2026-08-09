@@ -64,7 +64,8 @@ class TotpFactorServiceTest {
         references,
         audit,
         protocol,
-        new AuthenticationMfaPropertiesConfig(Duration.ofMinutes(5), 2));
+        new AuthenticationMfaPropertiesConfig(
+            Duration.ofMinutes(5), 2, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)));
   }
 
   @Test

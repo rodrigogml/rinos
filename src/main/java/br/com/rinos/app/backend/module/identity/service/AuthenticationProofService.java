@@ -22,6 +22,7 @@ import br.com.rinos.app.backend.module.identity.repository.AuthenticationFlowRep
 import br.com.rinos.app.backend.module.identity.repository.AuthenticationProofRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationCleanupResultVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationProofInspectionVO;
+import br.com.rinos.app.backend.module.identity.vo.ProtectedAuthenticationKeyVO;
 import br.eng.rodrigogml.rfw.authentication.service.RFWOpaqueTokenService;
 
 /**
@@ -41,16 +42,19 @@ public class AuthenticationProofService {
   private final AuthenticationProofRepository proofRepository;
   private final RFWOpaqueTokenService opaqueTokenService;
   private final IdentityAuditService auditService;
+  private final AuthenticationKeyringMacService keyringMacService;
 
   public AuthenticationProofService(
       AuthenticationFlowRepository flowRepository,
       AuthenticationProofRepository proofRepository,
       RFWOpaqueTokenService opaqueTokenService,
-      IdentityAuditService auditService) {
+      IdentityAuditService auditService,
+      AuthenticationKeyringMacService keyringMacService) {
     this.flowRepository = flowRepository;
     this.proofRepository = proofRepository;
     this.opaqueTokenService = opaqueTokenService;
     this.auditService = auditService;
+    this.keyringMacService = keyringMacService;
   }
 
   /** Substitui atomicamente a prova aberta do mesmo tipo e persiste somente o digest. */
@@ -159,6 +163,86 @@ public class AuthenticationProofService {
         type.name(),
         occurredAt);
     return view(proof, AuthenticationOperationStatusEnum.USED);
+  }
+
+  /**
+   * Verifica um candidato curto contra o MAC versionado persistido e aplica consumo único.
+   *
+   * <p>A comparação usa a versão gravada na prova, permitindo rotação do keyring. A prova é
+   * invalidada na mesma transação quando a tentativa rejeitada alcança o limite.
+   */
+  @Transactional
+  public AuthenticationProofInspectionVO consumeMac(
+      String flowReference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      AuthenticationProofTypeEnum type,
+      String domain,
+      byte[] candidate,
+      int maximumAttempts,
+      Instant occurredAt) {
+    Objects.requireNonNull(candidate, "candidate must not be null");
+    if (maximumAttempts <= 0) {
+      throw new IllegalArgumentException("maximumAttempts must be positive");
+    }
+    AuthenticationFlowEntity flow = requireOpenFlow(flowReference, expectedPurpose, occurredAt);
+    if (flow == null || type == null) {
+      return AuthenticationProofInspectionVO.rejected();
+    }
+    AuthenticationProofEntity proof = proofRepository
+        .findFirstByFlowIdAndTypeOrderByIssuedAtDesc(flow.getId(), type)
+        .orElse(null);
+    AuthenticationProofInspectionVO current = classify(proof, occurredAt);
+    if (current.status() != AuthenticationOperationStatusEnum.OPEN) {
+      return current;
+    }
+    ProtectedAuthenticationKeyVO protectedValue = new ProtectedAuthenticationKeyVO(
+        proof.getProofDigest(), proof.getKeyVersion());
+    if (!keyringMacService.matches(domain, candidate, protectedValue)) {
+      proof.registerAttempt();
+      flow.registerFailure();
+      boolean exhausted = proof.getAttemptCount() >= maximumAttempts;
+      if (exhausted) {
+        proof.invalidate(occurredAt);
+      }
+      auditRejected(flow, occurredAt);
+      return view(
+          proof,
+          exhausted
+              ? AuthenticationOperationStatusEnum.INVALIDATED
+              : AuthenticationOperationStatusEnum.REJECTED);
+    }
+    proof.markUsed(occurredAt);
+    auditConsumed(flow, type, occurredAt);
+    return view(proof, AuthenticationOperationStatusEnum.USED);
+  }
+
+  /**
+   * Invalida somente a prova aberta cujo digest corresponde à emissão informada.
+   *
+   * <p>A comparação impede que uma falha SMTP atrasada cancele um reenvio concorrente mais novo.
+   */
+  @Transactional
+  public AuthenticationProofInspectionVO cancelIfDigestMatches(
+      String flowReference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      AuthenticationProofTypeEnum type,
+      byte[] expectedDigest,
+      Instant occurredAt) {
+    Objects.requireNonNull(expectedDigest, "expectedDigest must not be null");
+    AuthenticationFlowEntity flow = requireOpenFlow(flowReference, expectedPurpose, occurredAt);
+    if (flow == null || type == null) {
+      return AuthenticationProofInspectionVO.rejected();
+    }
+    AuthenticationProofEntity proof = proofRepository
+        .findFirstByFlowIdAndTypeOrderByIssuedAtDesc(flow.getId(), type)
+        .orElse(null);
+    AuthenticationProofInspectionVO current = classify(proof, occurredAt);
+    if (current.status() != AuthenticationOperationStatusEnum.OPEN
+        || !MessageDigest.isEqual(expectedDigest, proof.getProofDigest())) {
+      return current;
+    }
+    proof.invalidate(occurredAt);
+    return view(proof, AuthenticationOperationStatusEnum.INVALIDATED);
   }
 
   /**
@@ -294,6 +378,35 @@ public class AuthenticationProofService {
       case INVALIDATED -> view(proof, AuthenticationOperationStatusEnum.INVALIDATED);
       case EXPIRED -> view(proof, AuthenticationOperationStatusEnum.EXPIRED);
     };
+  }
+
+  private void auditRejected(AuthenticationFlowEntity flow, Instant occurredAt) {
+    auditService.record(
+        flow.getUser(),
+        null,
+        flow.getCorrelationId(),
+        IdentityEventTypeEnum.AUTHENTICATION_ATTEMPTED,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        "PROOF_REJECTED",
+        occurredAt);
+  }
+
+  private void auditConsumed(
+      AuthenticationFlowEntity flow,
+      AuthenticationProofTypeEnum type,
+      Instant occurredAt) {
+    auditService.record(
+        flow.getUser(),
+        null,
+        flow.getCorrelationId(),
+        IdentityEventTypeEnum.AUTHENTICATION_CHALLENGE_CONSUMED,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        type.name(),
+        occurredAt);
   }
 
   private static AuthenticationProofInspectionVO view(

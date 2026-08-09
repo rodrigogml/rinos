@@ -303,7 +303,12 @@ Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 > O protocolo, a persistência protegida, o adapter RFW e os testes de replay estão registrados em
 > [`evidence/4.1.2/README.md`](./evidence/4.1.2/README.md). A aplicação fornece a URI `otpauth://`; o renderer RFW
 > produz o QR localmente, sem enviar segredo ou imagem a terceiros.
-- [ ] 4.1.3 Implementar emissão/reenvio/consumo de OTP por e-mail com limites e envio pós-commit
+- [x] 4.1.3 Implementar emissão/reenvio/consumo de OTP por e-mail com limites e envio pós-commit
+
+> [!NOTE]
+> A reutilização de `AuthenticationProof`, o vínculo ao e-mail atual, os limites e o despacho pós-commit estão
+> registrados em [`evidence/4.1.3/README.md`](./evidence/4.1.3/README.md). O adapter contextual da RFW será composto
+> na tarefa 4.1.5, depois que TOTP, e-mail e recovery codes estiverem disponíveis sob a mesma política.
 - [ ] 4.1.4 Implementar geração de 10 recovery codes, hash individual, consumo e substituição total
 - [ ] 4.1.5 Implementar seleção de fator por contexto e invariantes administrativas/mesmo canal
 - [ ] 4.1.6 Testar vetores RFC, rotação de chave, concorrência, expiração, limites e apresentação única

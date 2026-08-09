@@ -59,7 +59,8 @@ class PasswordAuthenticationFacadeImplTest {
         abuseProtection,
         availability,
         orchestration,
-        new AuthenticationMfaPropertiesConfig(Duration.ofMinutes(5), 5),
+        new AuthenticationMfaPropertiesConfig(
+            Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 

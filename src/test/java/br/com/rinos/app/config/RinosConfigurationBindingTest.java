@@ -48,8 +48,12 @@ class RinosConfigurationBindingTest {
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
           assertThat(context.getBean(AuthenticationSessionPropertiesConfig.class).normalAbsolute())
               .isEqualTo(Duration.ofHours(12));
-          assertThat(context.getBean(AuthenticationMfaPropertiesConfig.class).maximumAttempts())
-              .isEqualTo(5);
+          AuthenticationMfaPropertiesConfig mfa =
+              context.getBean(AuthenticationMfaPropertiesConfig.class);
+          assertThat(mfa.maximumAttempts()).isEqualTo(5);
+          assertThat(mfa.emailResendCooldown()).isEqualTo(Duration.ofMinutes(1));
+          assertThat(mfa.emailEmissionLimit()).isEqualTo(3);
+          assertThat(mfa.emailEmissionWindow()).isEqualTo(Duration.ofMinutes(15));
           assertThat(context.getBean(AuthenticationKeyringPropertiesConfig.class).enabled())
               .isFalse();
           assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())
@@ -267,6 +271,22 @@ class RinosConfigurationBindingTest {
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage(
                   "absoluteLimit deve ser positivo e não pode ser menor que turnstileThreshold.");
+        });
+  }
+
+  /** Comprova que o cooldown de reenvio precisa caber na janela de emissões. */
+  @Test
+  void bind_shouldFail_whenEmailOtpCooldownExceedsEmissionWindow() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.mfa.email-resend-cooldown=16m",
+            "rinos.authentication.mfa.email-emission-window=15m")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "emailResendCooldown não pode exceder emailEmissionWindow.");
         });
   }
 

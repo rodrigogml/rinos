@@ -108,6 +108,9 @@ rinos.authentication.retention.temporary-artifacts=30d
 rinos.authentication.retention.identity-events=365d
 rinos.authentication.mfa.challenge-validity=5m
 rinos.authentication.mfa.maximum-attempts=5
+rinos.authentication.mfa.email-resend-cooldown=1m
+rinos.authentication.mfa.email-emission-limit=3
+rinos.authentication.mfa.email-emission-window=15m
 
 # Keyring local. Base64 canônico de 32+ bytes; a versão ativa escreve e as anteriores permanecem para leitura.
 # Todas as instâncias usam o mesmo keyring. Não remova uma versão enquanto houver dado protegido por ela.

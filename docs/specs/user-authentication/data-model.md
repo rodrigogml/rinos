@@ -145,6 +145,13 @@ Prova efêmera associada a um fluxo, como OTP de e-mail ou continuação legal.
 UK em `(idAuthenticationFlow, type, activeMarker)` garante no máximo uma prova aberta por tipo, usando o mesmo padrão
 de nulidade de `OriginWindow`. Nova emissão bloqueia o fluxo, encerra a prova corrente e só então insere a vencedora.
 
+Para `EMAIL_OTP`, `proofDigest` é HMAC-SHA-256 versionado sobre o código e o e-mail normalizado atual, separado pelo
+domínio do fluxo e do fator. Assim, o código não é recuperável no banco, uma rotação preserva provas emitidas e a
+troca do e-mail principal invalida a prova anterior. O código só existe em memória até o despacho pós-commit. Cada
+reenvio cria outra linha, invalida a prova aberta anterior e continua contando no limite móvel por usuário,
+independentemente de sucesso SMTP ou estado terminal. A mesma linha registra tentativas, expiração e consumo único;
+ao atingir o máximo configurado, sai de `OPEN` na própria transação da tentativa.
+
 Para `LEGAL_CONSENT`, `proofDigest` identifica a fotografia ordenada das versões obrigatórias do catálogo. O usuário
 continua recebendo somente a referência opaca do `AuthenticationFlow`: após reconsulta do catálogo e gravação dos
 aceites na mesma transação, o marcador é consumido, enquanto o fluxo permanece `OPEN` até o lifecycle preparar e
