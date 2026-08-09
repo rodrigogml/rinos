@@ -27,6 +27,10 @@ marco de tenant não são alterados por esta migration.
 Permanece a raiz global. Somente `ACTIVE` inicia ou mantém sessão. Mudança para `BLOCKED`, `DEACTIVATED` ou
 `CANCELLED` invalida sessões, fluxos e provas.
 
+O lifecycle operacional revoga todas as sessões, na mesma transação da mudança, sempre que uma identidade deixa
+`ACTIVE`. O catálogo admite cancelamento terminal também a partir de `ACTIVE`, `BLOCKED` ou `DEACTIVATED`; os casos de
+uso que autorizam essas transições permanecem separados do cadastro inicial.
+
 ### `identity_localCredential`
 
 A tabela existente recebe evolução incremental:
@@ -39,6 +43,8 @@ A tabela existente recebe evolução incremental:
 
 `passwordHash` mantém o formato do `DelegatingPasswordEncoder`. Uma redefinição substitui o hash, limpa
 `compromisedAt`, atualiza `passwordChangedAt` e invalida todas as sessões e provas aplicáveis na mesma operação.
+Criação inicial da senha e substituição de uma senha existente são operações distintas: somente a segunda aceita
+conclusão quando a autoridade de sessão estiver disponível e revoga todas as sessões com a mesma correlação.
 
 ### `identity_externalIdentity`
 

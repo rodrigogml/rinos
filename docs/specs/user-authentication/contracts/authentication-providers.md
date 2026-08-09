@@ -274,6 +274,11 @@ autoridade global para observar revogação cross-instance imediatamente, mas so
 inatividade é sempre `min(now + idleTimeout, absoluteExpiresAt)`; alcançar exatamente qualquer limite expira antes
 de tentar renovar atividade.
 
+Bloqueio, desativação ou cancelamento passam pelo lifecycle operacional da identidade, que troca o estado e revoga
+todas as sessões sob a mesma transação e correlação. A substituição de uma senha existente possui uma operação
+separada da criação inicial: grava o novo hash e revoga todas as sessões atomicamente. A recuperação existente será
+conectada a essa operação na tarefa 4.4.1, junto da invalidação adicional de provas e fatores aplicáveis.
+
 A referência implementada por `RFWAuthenticationSessionPrincipal` não é segredo nem credencial, não equivale ao ID
 sequencial do banco e não aparece em URL, mensagem ou log. Preparações abandonadas por queda do processo devem
 expirar pela política da hospedeira.

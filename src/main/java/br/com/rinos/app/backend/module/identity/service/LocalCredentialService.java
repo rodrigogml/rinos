@@ -3,6 +3,7 @@ package br.com.rinos.app.backend.module.identity.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.rinos.app.backend.module.identity.entity.LocalCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.LocalCredentialStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
+import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.LocalCredentialRepository;
 
 /**
@@ -28,15 +31,23 @@ public class LocalCredentialService {
 
   private final LocalCredentialRepository repository;
   private final Clock clock;
+  private final AuthSessionService sessionService;
 
   /**
    * Cria o serviço sobre o repository interno de credenciais.
    *
    * @param repository persistência restrita ao backend
    */
-  @Autowired
   public LocalCredentialService(LocalCredentialRepository repository) {
-    this(repository, Clock.systemUTC());
+    this(repository, Clock.systemUTC(), null);
+  }
+
+  /** Cria a implementação operacional com invalidação global de sessões. */
+  @Autowired
+  public LocalCredentialService(
+      LocalCredentialRepository repository,
+      @Lazy AuthSessionService sessionService) {
+    this(repository, Clock.systemUTC(), sessionService);
   }
 
   /**
@@ -46,8 +57,16 @@ public class LocalCredentialService {
    * @param clock relógio UTC usado para marcar substituições
    */
   LocalCredentialService(LocalCredentialRepository repository, Clock clock) {
+    this(repository, clock, null);
+  }
+
+  LocalCredentialService(
+      LocalCredentialRepository repository,
+      Clock clock,
+      AuthSessionService sessionService) {
     this.repository = repository;
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
+    this.sessionService = sessionService;
   }
 
   /**
@@ -63,11 +82,43 @@ public class LocalCredentialService {
    */
   @Transactional
   public void replace(UserEntity user, String passwordHash) {
+    replaceAt(user, passwordHash, clock.instant());
+  }
+
+  /**
+   * Substitui uma senha existente e revoga todas as sessões na mesma transação.
+   *
+   * <p>Fluxos de criação inicial devem continuar usando {@link #replace(UserEntity, String)};
+   * alteração autenticada e recuperação devem usar esta operação.
+   */
+  @Transactional
+  public void replaceAndInvalidateSessions(
+      UserEntity user,
+      String passwordHash,
+      Instant occurredAt,
+      UUID correlationId) {
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    Objects.requireNonNull(correlationId, "correlationId must not be null");
+    if (sessionService == null) {
+      throw new IllegalStateException("Session invalidation is unavailable");
+    }
+    if (user == null || user.getStatus() != UserStatusEnum.ACTIVE) {
+      throw new IllegalStateException("Password replacement requires an active user");
+    }
+    replaceAt(user, passwordHash, occurredAt);
+    sessionService.revokeAll(
+        user.getId(),
+        null,
+        AuthSessionRevocationReasonEnum.SECURITY_EVENT,
+        occurredAt,
+        correlationId);
+  }
+
+  private void replaceAt(UserEntity user, String passwordHash, Instant passwordChangedAt) {
     Objects.requireNonNull(user, "user must not be null");
     validateUserId(user.getId());
     validatePasswordHash(passwordHash);
 
-    Instant passwordChangedAt = clock.instant();
     LocalCredentialEntity credential = repository.findByUserIdForUpdate(user.getId())
         .orElseGet(() -> new LocalCredentialEntity(user, passwordHash, passwordChangedAt));
     credential.setPasswordHash(passwordHash);

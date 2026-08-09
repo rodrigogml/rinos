@@ -37,9 +37,12 @@ PENDING_VERIFICATION -> CANCELLED -> removido/minimizado
 PENDING_VERIFICATION -> expirado por prazo -> removido
 ACTIVE -> BLOCKED
 ACTIVE -> DEACTIVATED
+ACTIVE -> CANCELLED
 BLOCKED -> ACTIVE
 BLOCKED -> DEACTIVATED
+BLOCKED -> CANCELLED
 DEACTIVATED -> ACTIVE (somente por fluxo futuro explicitamente autorizado)
+DEACTIVATED -> CANCELLED
 ```
 
 Esta feature executa somente as transições originadas em `PENDING_VERIFICATION`. As demais existem no contrato da identidade, mas pertencem à administração/autenticação futura.

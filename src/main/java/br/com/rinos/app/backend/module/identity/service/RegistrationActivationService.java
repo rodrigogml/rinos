@@ -224,7 +224,8 @@ public class RegistrationActivationService {
         UserStatusEnum.ACTIVE,
         IdentityTransitionOriginEnum.SELF_SERVICE,
         "EMAIL_VERIFIED",
-        occurredAt);
+        occurredAt,
+        correlationId);
     IdentityTransitionVO registrationTransition = registrationLifecycleService.transition(
         registration,
         RegistrationStatusEnum.ACTIVE,

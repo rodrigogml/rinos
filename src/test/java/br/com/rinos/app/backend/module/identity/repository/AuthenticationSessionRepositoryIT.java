@@ -51,6 +51,7 @@ import br.com.rinos.app.backend.module.identity.enums.AuthSessionAccessStatusEnu
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
@@ -63,8 +64,10 @@ import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.IdentityReferenceService;
 import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
+import br.com.rinos.app.backend.module.identity.service.LocalCredentialService;
 import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
 import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
+import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
@@ -232,6 +235,48 @@ class AuthenticationSessionRepositoryIT {
       assertThatThrownBy(() -> transaction.execute(status -> firstInstance.listManaged(
           ownerId, current.publicReference(), NOW.plusSeconds(10))))
           .isInstanceOf(SecurityException.class);
+    });
+  }
+
+  @Test
+  void securityTransitions_shouldInvalidateSessionsAcrossInstances() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository users = context.getBean(UserRepository.class);
+      AuthSessionService firstInstance = sessionService(context);
+      AuthSessionService secondInstance = sessionService(context);
+
+      Long blockedUserId = activeUser(transaction, users, "blocked@example.test");
+      IssuedAuthSessionVO blockedSession = issue(transaction, firstInstance, blockedUserId);
+      UserLifecycleService lifecycle = new UserLifecycleService(firstInstance);
+      transaction.executeWithoutResult(status -> lifecycle.transition(
+          users.findByIdForUpdate(blockedUserId).orElseThrow(),
+          UserStatusEnum.BLOCKED,
+          IdentityTransitionOriginEnum.SYSTEM,
+          "RISK",
+          NOW.plusSeconds(1),
+          UUID.randomUUID()));
+
+      AuthSessionAccessStatusEnum blockedStatus = transaction.execute(status -> secondInstance.access(
+          blockedSession.cookieValue(), false, NOW.plusSeconds(2), UUID.randomUUID()).status());
+      assertThat(blockedStatus).isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+
+      Long passwordUserId = activeUser(transaction, users, "password-change@example.test");
+      LocalCredentialService credentials = new LocalCredentialService(
+          context.getBean(LocalCredentialRepository.class), firstInstance);
+      transaction.executeWithoutResult(status -> credentials.replace(
+          users.findByIdForUpdate(passwordUserId).orElseThrow(),
+          "{argon2}old-value"));
+      IssuedAuthSessionVO passwordSession = issue(transaction, firstInstance, passwordUserId);
+      transaction.executeWithoutResult(status -> credentials.replaceAndInvalidateSessions(
+          users.findByIdForUpdate(passwordUserId).orElseThrow(),
+          "{argon2}new-value",
+          NOW.plusSeconds(3),
+          UUID.randomUUID()));
+
+      AuthSessionAccessStatusEnum passwordStatus = transaction.execute(status -> secondInstance.access(
+          passwordSession.cookieValue(), false, NOW.plusSeconds(4), UUID.randomUUID()).status());
+      assertThat(passwordStatus).isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
     });
   }
 

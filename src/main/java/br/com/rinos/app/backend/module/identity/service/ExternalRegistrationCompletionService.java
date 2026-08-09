@@ -140,7 +140,8 @@ public class ExternalRegistrationCompletionService {
         UserStatusEnum.ACTIVE,
         IdentityTransitionOriginEnum.EXTERNAL_PROVIDER,
         "GOOGLE_VERIFIED",
-        occurredAt);
+        occurredAt,
+        correlationId);
     IdentityTransitionVO registrationTransition = registrationLifecycleService.transition(
         registration,
         RegistrationStatusEnum.ACTIVE,

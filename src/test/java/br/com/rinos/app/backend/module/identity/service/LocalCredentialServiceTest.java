@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import br.com.rinos.app.backend.module.identity.entity.LocalCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.LocalCredentialStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.LocalCredentialRepository;
 
@@ -28,6 +30,8 @@ class LocalCredentialServiceTest {
 
   private static final Instant INVALIDATED_AT = Instant.parse("2026-07-29T18:00:00Z");
   private static final Instant PASSWORD_CHANGED_AT = Instant.parse("2026-08-08T18:00:00Z");
+  private static final UUID CORRELATION_ID =
+      UUID.fromString("97920335-dd61-432b-b67d-0861e319362b");
 
   private LocalCredentialRepository repository;
   private LocalCredentialService service;
@@ -111,5 +115,32 @@ class LocalCredentialServiceTest {
 
     assertThat(removed).isFalse();
     verify(repository, never()).delete(any());
+  }
+
+  @Test
+  void replaceAndInvalidateSessions_shouldReplacePasswordAndRevokeAllAtomically() {
+    AuthSessionService sessions = mock(AuthSessionService.class);
+    service = new LocalCredentialService(
+        repository,
+        Clock.fixed(PASSWORD_CHANGED_AT, ZoneOffset.UTC),
+        sessions);
+    user.setStatus(UserStatusEnum.ACTIVE);
+    LocalCredentialEntity credential = new LocalCredentialEntity(user, "{argon2}old-value");
+    when(repository.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
+
+    service.replaceAndInvalidateSessions(
+        user,
+        "{argon2}new-value",
+        PASSWORD_CHANGED_AT,
+        CORRELATION_ID);
+
+    assertThat(credential.getPasswordHash()).isEqualTo("{argon2}new-value");
+    verify(repository).save(credential);
+    verify(sessions).revokeAll(
+        41L,
+        null,
+        AuthSessionRevocationReasonEnum.SECURITY_EVENT,
+        PASSWORD_CHANGED_AT,
+        CORRELATION_ID);
   }
 }

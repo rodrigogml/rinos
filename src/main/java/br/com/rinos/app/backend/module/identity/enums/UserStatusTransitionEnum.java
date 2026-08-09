@@ -16,6 +16,9 @@ public enum UserStatusTransitionEnum {
 
   VERIFY(UserStatusEnum.PENDING_VERIFICATION, UserStatusEnum.ACTIVE),
   CANCEL(UserStatusEnum.PENDING_VERIFICATION, UserStatusEnum.CANCELLED),
+  CANCEL_ACTIVE(UserStatusEnum.ACTIVE, UserStatusEnum.CANCELLED),
+  CANCEL_BLOCKED(UserStatusEnum.BLOCKED, UserStatusEnum.CANCELLED),
+  CANCEL_DEACTIVATED(UserStatusEnum.DEACTIVATED, UserStatusEnum.CANCELLED),
   BLOCK(UserStatusEnum.ACTIVE, UserStatusEnum.BLOCKED),
   DEACTIVATE_ACTIVE(UserStatusEnum.ACTIVE, UserStatusEnum.DEACTIVATED),
   REACTIVATE_BLOCKED(UserStatusEnum.BLOCKED, UserStatusEnum.ACTIVE),

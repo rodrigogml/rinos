@@ -235,7 +235,8 @@ public class RegistrationCancellationService {
         UserStatusEnum.CANCELLED,
         IdentityTransitionOriginEnum.SELF_SERVICE,
         "REGISTRATION_CANCELLED",
-        occurredAt);
+        occurredAt,
+        correlationId);
 
     auditService.minimizeForTerminalRemoval(user, registration);
     userRepository.delete(user);
