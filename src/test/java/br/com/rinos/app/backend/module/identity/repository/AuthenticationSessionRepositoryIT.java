@@ -440,6 +440,51 @@ class AuthenticationSessionRepositoryIT {
   }
 
   @Test
+  void access_shouldExpireAtAbsoluteBoundary_despitePeriodicActivity() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      AuthSessionService service = sessionService(context);
+      Long userId = activeUser(transaction, userRepository, "absolute-expiry@example.test");
+      IssuedAuthSessionVO issued = transaction.execute(status -> service.issue(
+          userId,
+          AuthenticationMethodEnum.PASSWORD,
+          AuthenticationAssuranceEnum.SINGLE_FACTOR,
+          List.of(new VerifiedAuthSessionMethodVO(
+              AuthenticationMethodEnum.PASSWORD, NOW, null)),
+          true,
+          NOW,
+          "Firefox on Linux",
+          new byte[] {127, 0, 0, 1},
+          new byte[32],
+          UUID.randomUUID()));
+
+      for (int elapsedDays : List.of(6, 12, 18, 24)) {
+        AuthSessionAccessStatusEnum active = transaction.execute(status -> service.access(
+            issued.cookieValue(),
+            false,
+            NOW.plus(Duration.ofDays(elapsedDays)),
+            UUID.randomUUID()).status());
+        assertThat(active).isEqualTo(AuthSessionAccessStatusEnum.ACTIVE);
+      }
+
+      AuthSessionAccessStatusEnum expired = transaction.execute(status -> service.access(
+          issued.cookieValue(),
+          false,
+          issued.absoluteExpiresAt(),
+          UUID.randomUUID()).status());
+
+      assertThat(expired).isEqualTo(AuthSessionAccessStatusEnum.EXPIRED);
+      assertThat(context.getBean(AuthSessionRepository.class).findAll())
+          .singleElement()
+          .satisfies(session -> {
+            assertThat(session.getIdleExpiresAt()).isEqualTo(issued.absoluteExpiresAt());
+            assertThat(session.getStatus()).isEqualTo(AuthSessionStatusEnum.EXPIRED);
+          });
+    });
+  }
+
+  @Test
   void lifecycle_shouldConsumeFlowOnlyWhenPreparedSessionIsPublished() {
     contextRunner().run(context -> {
       TransactionTemplate transaction = transaction(context);

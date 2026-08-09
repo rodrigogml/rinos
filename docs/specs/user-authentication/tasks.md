@@ -260,7 +260,12 @@ Ref: Spec FR-AUTH-SES-*; Plan §Session and Remember-me Strategy
 - [x] 3.3.3 Implementar guard por request/heartbeat com atividade amortizada e validação de estado
 - [x] 3.3.4 Implementar logout e revogação atual, remota, outras e todas cross-instance
 - [x] 3.3.5 Integrar bloqueio/desativação/cancelamento e mudança de senha à invalidação total
-- [ ] 3.3.6 Testar fixation, replay, expiração absoluta/inativa, rotação e perda da instância Vaadin
+- [x] 3.3.6 Testar fixation, replay, expiração absoluta/inativa, rotação e perda da instância Vaadin
+
+> [!NOTE]
+> A matriz reproduzível está registrada em [`evidence/3.3.6/README.md`](./evidence/3.3.6/README.md). A perda da
+> sessão local/Vaadin é recuperável somente para sessões com cookie persistente válido; sessões normais continuam
+> exigindo novo login, conforme a estratégia aprovada.
 
 ### 3.4 Implementar gate legal e reautenticação `[C]`
 
