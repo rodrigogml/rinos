@@ -271,7 +271,7 @@ Ref: Spec FR-AUTH-SES-*; Plan §Session and Remember-me Strategy
 
 Ref: Spec FR-AUTH-012..014 e FR-AUTH-SES-008; Interface INT-WEB-AUTH-003/010
 
-- [ ] 3.4.1 Criar continuação legal opaca sobre catálogo e consentimentos existentes
+- [x] 3.4.1 Criar continuação legal opaca sobre catálogo e consentimentos existentes
 - [ ] 3.4.2 Registrar aceites vigentes e consumir continuação na mesma transação da liberação
 - [ ] 3.4.3 Implementar cálculo de garantia recente e métodos compatíveis por operação
 - [ ] 3.4.4 Retomar uma única operação após prova e revalidar o estado original

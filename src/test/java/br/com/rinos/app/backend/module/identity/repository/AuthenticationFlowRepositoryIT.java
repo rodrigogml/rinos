@@ -44,6 +44,8 @@ import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationProofService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 import br.eng.rodrigogml.rfw.authentication.service.RFWOpaqueTokenService;
@@ -148,6 +150,62 @@ class AuthenticationFlowRepositoryIT {
       assertThat(flowResults).containsExactlyInAnyOrder(
           AuthenticationOperationStatusEnum.USED,
           AuthenticationOperationStatusEnum.ALREADY_USED);
+    });
+  }
+
+  @Test
+  void legalContinuation_shouldPersistOnlyDigestAndPreserveAuthenticationSnapshot() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      AuthenticationFlowRepository flowRepository =
+          context.getBean(AuthenticationFlowRepository.class);
+      RFWOpaqueTokenService tokenService = new RFWOpaqueTokenService();
+      AuthenticationFlowService flowService = new AuthenticationFlowService(
+          flowRepository,
+          context.getBean(AuthenticationFlowMethodRepository.class),
+          context.getBean(AuthenticationProofRepository.class),
+          userRepository,
+          tokenService,
+          new IdentityAuditService(context.getBean(IdentityEventRepository.class)));
+      UUID correlationId = UUID.fromString("2043560e-2bd6-4dbb-977f-f6f5a230402a");
+      Long userId = transaction.execute(status -> userRepository.saveAndFlush(new UserEntity(
+          "legal-continuation@example.test",
+          "legal-continuation@example.test",
+          UserStatusEnum.ACTIVE)).getId());
+
+      IssuedAuthenticationFlowVO issued = transaction.execute(status -> flowService.issue(
+          userId,
+          AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+          AuthenticationMethodEnum.PASSWORD,
+          AuthenticationAssuranceEnum.SINGLE_FACTOR,
+          Set.of(),
+          List.of(new AuthenticationFlowVerifiedMethodVO(
+              AuthenticationMethodEnum.PASSWORD, ISSUED_AT, null)),
+          true,
+          ISSUED_AT,
+          ISSUED_AT.plusSeconds(300),
+          correlationId));
+      AuthenticationFlowSnapshotVO snapshot = transaction.execute(status -> flowService.snapshot(
+          issued.reference(), AuthenticationFlowPurposeEnum.LEGAL_CONSENT, ISSUED_AT));
+
+      assertThat(issued.reference()).isNotBlank();
+      assertThat(flowRepository.findAll())
+          .singleElement()
+          .satisfies(flow -> assertThat(flow.getReferenceHash())
+              .containsExactly(tokenService.hash(issued.reference())));
+      assertThat(snapshot.status()).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
+      assertThat(snapshot.userId()).isEqualTo(userId);
+      assertThat(snapshot.purpose()).isEqualTo(AuthenticationFlowPurposeEnum.LEGAL_CONSENT);
+      assertThat(snapshot.primaryMethod()).isEqualTo(AuthenticationMethodEnum.PASSWORD);
+      assertThat(snapshot.requiredAssurance())
+          .isEqualTo(AuthenticationAssuranceEnum.SINGLE_FACTOR);
+      assertThat(snapshot.verifiedMethods())
+          .extracting(AuthenticationFlowVerifiedMethodVO::method)
+          .containsExactly(AuthenticationMethodEnum.PASSWORD);
+      assertThat(snapshot.persistentLoginRequested()).isTrue();
+      assertThat(snapshot.expiresAt()).isEqualTo(ISSUED_AT.plusSeconds(300));
+      assertThat(snapshot.correlationId()).isEqualTo(correlationId);
     });
   }
 
