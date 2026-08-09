@@ -136,6 +136,48 @@ class AuthenticationProofServiceTest {
     assertThat(result.status()).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
   }
 
+  @Test
+  void consumeValidated_shouldConsumeLegalMarkerOnceWithoutCandidateMaterial() {
+    flow = new AuthenticationFlowEntity(
+        null,
+        tokenService.hash(reference),
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationMethodEnum.PASSWORD,
+        AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        false,
+        ISSUED_AT,
+        ISSUED_AT.plusSeconds(300),
+        UUID.randomUUID());
+    ReflectionTestUtils.setField(flow, "id", 71L);
+    when(flowRepository.findByReferenceHashForUpdate(any(byte[].class)))
+        .thenReturn(Optional.of(flow));
+    AuthenticationProofEntity proof = new AuthenticationProofEntity(
+        flow,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        new byte[] {1, 2, 3},
+        null,
+        ISSUED_AT,
+        ISSUED_AT.plusSeconds(120));
+    when(proofRepository.findFirstByFlowIdAndTypeOrderByIssuedAtDesc(
+        71L,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT)).thenReturn(Optional.of(proof));
+
+    AuthenticationProofInspectionVO first = service.consumeValidated(
+        reference,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        ISSUED_AT.plusSeconds(30));
+    AuthenticationProofInspectionVO replay = service.consumeValidated(
+        reference,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        ISSUED_AT.plusSeconds(40));
+
+    assertThat(first.status()).isEqualTo(AuthenticationOperationStatusEnum.USED);
+    assertThat(replay.status()).isEqualTo(AuthenticationOperationStatusEnum.ALREADY_USED);
+    assertThat(proof.getStatus()).isEqualTo(AuthenticationProofStatusEnum.USED);
+  }
+
   private AuthenticationProofEntity proof(byte[] digest) {
     return new AuthenticationProofEntity(
         flow,

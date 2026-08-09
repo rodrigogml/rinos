@@ -145,6 +145,12 @@ Prova efêmera associada a um fluxo, como OTP de e-mail ou continuação legal.
 UK em `(idAuthenticationFlow, type, activeMarker)` garante no máximo uma prova aberta por tipo, usando o mesmo padrão
 de nulidade de `OriginWindow`. Nova emissão bloqueia o fluxo, encerra a prova corrente e só então insere a vencedora.
 
+Para `LEGAL_CONSENT`, `proofDigest` identifica a fotografia ordenada das versões obrigatórias do catálogo. O usuário
+continua recebendo somente a referência opaca do `AuthenticationFlow`: após reconsulta do catálogo e gravação dos
+aceites na mesma transação, o marcador é consumido, enquanto o fluxo permanece `OPEN` até o lifecycle preparar e
+publicar a sessão. Repetir o marcador não cria outra sessão; mudança de catálogo substitui o marcador sem aceite
+parcial.
+
 ## Entity: TotpFactor
 
 **Tabela proposta**: `identity_totpFactor`

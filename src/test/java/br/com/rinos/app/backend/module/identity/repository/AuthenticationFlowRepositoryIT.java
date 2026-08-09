@@ -1,6 +1,8 @@
 package br.com.rinos.app.backend.module.identity.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
@@ -35,15 +37,21 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
+import br.com.rinos.app.backend.module.identity.entity.LegalDocumentVersionEntity;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOperationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationProofTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationOrchestrationService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationProofService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
+import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
@@ -207,6 +215,108 @@ class AuthenticationFlowRepositoryIT {
       assertThat(snapshot.expiresAt()).isEqualTo(ISSUED_AT.plusSeconds(300));
       assertThat(snapshot.correlationId()).isEqualTo(correlationId);
     });
+  }
+
+  @Test
+  void legalCompletion_shouldRecordConsentsAndConsumeMarkerWhileFlowRemainsOpen() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository users = context.getBean(UserRepository.class);
+      AuthenticationFlowRepository flowsRepository =
+          context.getBean(AuthenticationFlowRepository.class);
+      AuthenticationProofRepository proofsRepository =
+          context.getBean(AuthenticationProofRepository.class);
+      RFWOpaqueTokenService tokens = new RFWOpaqueTokenService();
+      IdentityAuditService audit = new IdentityAuditService(
+          context.getBean(IdentityEventRepository.class));
+      AuthenticationFlowService flows = new AuthenticationFlowService(
+          flowsRepository,
+          context.getBean(AuthenticationFlowMethodRepository.class),
+          proofsRepository,
+          users,
+          tokens,
+          audit);
+      AuthenticationProofService proofs = new AuthenticationProofService(
+          flowsRepository, proofsRepository, tokens, audit);
+      LegalConsentService legal = new LegalConsentService(
+          context.getBean(LegalDocumentVersionRepository.class),
+          context.getBean(LegalConsentRepository.class));
+      AuthenticationMethodAvailabilityService availability =
+          mock(AuthenticationMethodAvailabilityService.class);
+      AuthenticationOrchestrationService orchestration = new AuthenticationOrchestrationService(
+          flows,
+          proofs,
+          new AuthenticationAssurancePolicyService(),
+          availability,
+          legal,
+          users);
+      Long userId = transaction.execute(status -> users.saveAndFlush(new UserEntity(
+          "legal-completion@example.test",
+          "legal-completion@example.test",
+          UserStatusEnum.ACTIVE)).getId());
+      when(availability.availableMethods(userId))
+          .thenReturn(Set.of(AuthenticationMethodEnum.PASSWORD));
+      List<Long> documentIds = transaction.execute(status -> {
+        LegalDocumentVersionRepository documents =
+            context.getBean(LegalDocumentVersionRepository.class);
+        return documents.saveAllAndFlush(List.of(
+            legalDocument(LegalDocumentTypeEnum.TERMS_OF_USE, "terms-1"),
+            legalDocument(LegalDocumentTypeEnum.PRIVACY_POLICY, "privacy-1")))
+            .stream().map(LegalDocumentVersionEntity::getId).toList();
+      });
+      IssuedAuthenticationFlowVO issued = transaction.execute(status -> flows.issue(
+          userId,
+          AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+          AuthenticationMethodEnum.PASSWORD,
+          AuthenticationAssuranceEnum.SINGLE_FACTOR,
+          Set.of(),
+          List.of(new AuthenticationFlowVerifiedMethodVO(
+              AuthenticationMethodEnum.PASSWORD, ISSUED_AT, null)),
+          false,
+          ISSUED_AT,
+          ISSUED_AT.plusSeconds(300),
+          UUID.randomUUID()));
+      transaction.executeWithoutResult(status -> proofs.issue(
+          issued.reference(),
+          AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+          AuthenticationProofTypeEnum.LEGAL_CONSENT,
+          new byte[32],
+          null,
+          ISSUED_AT,
+          ISSUED_AT.plusSeconds(300)));
+
+      var result = transaction.execute(status -> orchestration.completeLegalConsent(
+          issued.reference(), Set.copyOf(documentIds), ISSUED_AT.plusSeconds(30)));
+
+      assertThat(result.status())
+          .isEqualTo(br.com.rinos.app.backend.module.identity.enums
+              .AuthenticationOrchestrationStatusEnum.READY);
+      assertThat(context.getBean(LegalConsentRepository.class).findByUserId(userId)).hasSize(2);
+      AuthenticationOperationStatusEnum proofStatus = transaction.execute(status -> proofs.inspect(
+          issued.reference(),
+          AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+          AuthenticationProofTypeEnum.LEGAL_CONSENT,
+          ISSUED_AT.plusSeconds(31)).status());
+      AuthenticationOperationStatusEnum flowStatus = transaction.execute(status -> flows.inspect(
+          issued.reference(),
+          AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+          ISSUED_AT.plusSeconds(31)).status());
+      assertThat(proofStatus).isEqualTo(AuthenticationOperationStatusEnum.ALREADY_USED);
+      assertThat(flowStatus).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
+    });
+  }
+
+  private static LegalDocumentVersionEntity legalDocument(
+      LegalDocumentTypeEnum type,
+      String version) {
+    return new LegalDocumentVersionEntity(
+        type,
+        version,
+        true,
+        "content",
+        new byte[32],
+        ISSUED_AT.minusSeconds(60),
+        null);
   }
 
   private ApplicationContextRunner contextRunner() {

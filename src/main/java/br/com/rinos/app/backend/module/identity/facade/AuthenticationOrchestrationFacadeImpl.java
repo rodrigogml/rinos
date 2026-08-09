@@ -81,7 +81,7 @@ public class AuthenticationOrchestrationFacadeImpl implements AuthenticationOrch
     return publicView(orchestrationService.cancel(reference, occurredAt));
   }
 
-  private static AuthenticationOrchestrationResultVO publicView(
+  static AuthenticationOrchestrationResultVO publicView(
       AuthenticationOrchestrationDecisionVO decision) {
     RinosUserPrincipalVO principal = decision.userId() == null || decision.email() == null
         ? null : new RinosUserPrincipalVO(decision.userId(), decision.email());
@@ -110,6 +110,20 @@ public class AuthenticationOrchestrationFacadeImpl implements AuthenticationOrch
         decision.persistentLoginRequested(),
         decision.expiresAt(),
         decision.correlationId());
+  }
+
+  static AuthenticationOrchestrationResultVO rejected() {
+    return new AuthenticationOrchestrationResultVO(
+        br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum.REJECTED,
+        null,
+        null,
+        null,
+        java.util.Set.of(),
+        java.util.List.of(),
+        java.util.Set.of(),
+        false,
+        null,
+        null);
   }
 
   private static br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum backend(

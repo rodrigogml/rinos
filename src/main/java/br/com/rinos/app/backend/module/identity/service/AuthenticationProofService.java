@@ -161,6 +161,44 @@ public class AuthenticationProofService {
     return view(proof, AuthenticationOperationStatusEnum.USED);
   }
 
+  /**
+   * Consome uma prova cujo requisito de domínio já foi validado na mesma transação.
+   *
+   * <p>Esta operação não compara material apresentado pelo usuário. Ela se destina a marcadores
+   * de continuação, como o gate legal, cuja validade é comprovada pela reconsulta da autoridade
+   * correspondente antes desta chamada.
+   */
+  @Transactional
+  public AuthenticationProofInspectionVO consumeValidated(
+      String flowReference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      AuthenticationProofTypeEnum type,
+      Instant occurredAt) {
+    AuthenticationFlowEntity flow = requireOpenFlow(flowReference, expectedPurpose, occurredAt);
+    if (flow == null || type == null) {
+      return AuthenticationProofInspectionVO.rejected();
+    }
+    AuthenticationProofEntity proof = proofRepository
+        .findFirstByFlowIdAndTypeOrderByIssuedAtDesc(flow.getId(), type)
+        .orElse(null);
+    AuthenticationProofInspectionVO current = classify(proof, occurredAt);
+    if (current.status() != AuthenticationOperationStatusEnum.OPEN) {
+      return current;
+    }
+    proof.markUsed(occurredAt);
+    auditService.record(
+        flow.getUser(),
+        null,
+        flow.getCorrelationId(),
+        IdentityEventTypeEnum.AUTHENTICATION_CHALLENGE_CONSUMED,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        type.name(),
+        occurredAt);
+    return view(proof, AuthenticationOperationStatusEnum.USED);
+  }
+
   /** Invalida a prova aberta mais recente do tipo informado. */
   @Transactional
   public AuthenticationProofInspectionVO cancel(

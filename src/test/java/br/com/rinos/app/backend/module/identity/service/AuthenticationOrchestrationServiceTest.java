@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,12 +28,15 @@ import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeE
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOperationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOrchestrationStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationProofTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.LegalConsentDecisionEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowInspectionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationOrchestrationDecisionVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationProofInspectionVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 
@@ -46,6 +50,7 @@ class AuthenticationOrchestrationServiceTest {
   private static final String SIGN_IN_REFERENCE = "sign-in-reference";
 
   private AuthenticationFlowService flowService;
+  private AuthenticationProofService proofService;
   private AuthenticationMethodAvailabilityService methodAvailability;
   private LegalConsentService legalConsentService;
   private UserRepository userRepository;
@@ -55,11 +60,13 @@ class AuthenticationOrchestrationServiceTest {
   @BeforeEach
   void setUp() {
     flowService = mock(AuthenticationFlowService.class);
+    proofService = mock(AuthenticationProofService.class);
     methodAvailability = mock(AuthenticationMethodAvailabilityService.class);
     legalConsentService = mock(LegalConsentService.class);
     userRepository = mock(UserRepository.class);
     service = new AuthenticationOrchestrationService(
         flowService,
+        proofService,
         new AuthenticationAssurancePolicyService(),
         methodAvailability,
         legalConsentService,
@@ -68,6 +75,13 @@ class AuthenticationOrchestrationServiceTest {
     when(userRepository.findByIdForUpdate(41L)).thenReturn(Optional.of(user));
     when(methodAvailability.availableMethods(41L))
         .thenReturn(Set.of(AuthenticationMethodEnum.values()));
+    when(proofService.issue(
+        any(), any(), any(), any(byte[].class), any(), any(), any()))
+        .thenReturn(new AuthenticationProofInspectionVO(
+            AuthenticationOperationStatusEnum.OPEN,
+            AuthenticationProofTypeEnum.LEGAL_CONSENT,
+            0,
+            EXPIRES_AT));
   }
 
   @Test
@@ -122,6 +136,77 @@ class AuthenticationOrchestrationServiceTest {
     assertThat(result.userId()).isNull();
     verify(flowService).cancel(
         SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW);
+    verify(proofService).issue(
+        eq("legal-reference"),
+        eq(AuthenticationFlowPurposeEnum.LEGAL_CONSENT),
+        eq(AuthenticationProofTypeEnum.LEGAL_CONSENT),
+        any(byte[].class),
+        isNull(),
+        eq(NOW),
+        eq(EXPIRES_AT));
+  }
+
+  @Test
+  void completeLegalConsent_shouldRecordAllCurrentRequiredAndConsumeMarkerAtomically() {
+    String reference = "legal-reference";
+    when(flowService.resolveUserId(reference)).thenReturn(Optional.of(41L));
+    when(flowService.snapshot(reference, AuthenticationFlowPurposeEnum.LEGAL_CONSENT, NOW))
+        .thenReturn(legalSnapshot());
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenReturn(new LegalRequirementStatusVO(List.of(7L, 8L), List.of(8L)));
+    when(proofService.consumeValidated(
+        reference,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        NOW))
+        .thenReturn(new AuthenticationProofInspectionVO(
+            AuthenticationOperationStatusEnum.USED,
+            AuthenticationProofTypeEnum.LEGAL_CONSENT,
+            0,
+            EXPIRES_AT));
+
+    AuthenticationOrchestrationDecisionVO result = service.completeLegalConsent(
+        reference, Set.of(8L), NOW);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.READY);
+    assertThat(result.continuationReference()).isEqualTo(reference);
+    assertThat(result.userId()).isEqualTo(41L);
+    verify(legalConsentService).recordCurrentDecisions(
+        eq(user),
+        isNull(),
+        eq(java.util.Map.of(
+            7L, LegalConsentDecisionEnum.ACCEPTED,
+            8L, LegalConsentDecisionEnum.ACCEPTED)),
+        eq(NOW));
+    verify(flowService, never()).consume(
+        reference, AuthenticationFlowPurposeEnum.LEGAL_CONSENT, NOW);
+  }
+
+  @Test
+  void completeLegalConsent_shouldRefreshChallengeWithoutRecording_whenCatalogSelectionIsStale() {
+    String reference = "legal-reference";
+    when(flowService.resolveUserId(reference)).thenReturn(Optional.of(41L));
+    when(flowService.snapshot(reference, AuthenticationFlowPurposeEnum.LEGAL_CONSENT, NOW))
+        .thenReturn(legalSnapshot());
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenReturn(new LegalRequirementStatusVO(List.of(7L, 9L), List.of(9L)));
+
+    AuthenticationOrchestrationDecisionVO result = service.completeLegalConsent(
+        reference, Set.of(8L), NOW);
+
+    assertThat(result.status())
+        .isEqualTo(AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED);
+    assertThat(result.missingLegalDocumentIds()).containsExactly(9L);
+    verify(proofService).issue(
+        eq(reference),
+        eq(AuthenticationFlowPurposeEnum.LEGAL_CONSENT),
+        eq(AuthenticationProofTypeEnum.LEGAL_CONSENT),
+        any(byte[].class),
+        isNull(),
+        eq(NOW),
+        eq(EXPIRES_AT));
+    verify(proofService, never()).consumeValidated(any(), any(), any(), any());
+    verify(legalConsentService, never()).recordCurrentDecisions(any(), any(), any(), any());
   }
 
   @Test
@@ -361,6 +446,21 @@ class AuthenticationOrchestrationServiceTest {
         requiredAssurance,
         permittedMethods,
         verifiedMethods,
+        false,
+        EXPIRES_AT,
+        CORRELATION_ID);
+  }
+
+  private static AuthenticationFlowSnapshotVO legalSnapshot() {
+    return new AuthenticationFlowSnapshotVO(
+        AuthenticationOperationStatusEnum.OPEN,
+        92L,
+        41L,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationMethodEnum.PASSWORD,
+        AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        Set.of(),
+        List.of(verified(AuthenticationMethodEnum.PASSWORD)),
         false,
         EXPIRES_AT,
         CORRELATION_ID);

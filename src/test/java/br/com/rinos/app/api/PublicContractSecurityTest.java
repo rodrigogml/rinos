@@ -19,6 +19,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import br.com.rinos.app.api.dto.ActivationConsentRequestDTO;
+import br.com.rinos.app.api.dto.AuthenticationConsentRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationFlowIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationProofIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationSessionPreparationRequestDTO;
@@ -80,6 +81,7 @@ class PublicContractSecurityTest {
 
   private static final List<Class<?>> PUBLIC_CONTRACT_TYPES = List.of(
       ActivationConsentRequestDTO.class,
+      AuthenticationConsentRequestDTO.class,
       AuthenticationFlowIssueRequestDTO.class,
       AuthenticationProofIssueRequestDTO.class,
       AuthenticationSessionPreparationRequestDTO.class,
@@ -222,6 +224,7 @@ class PublicContractSecurityTest {
         new RegistrationResendRequestDTO(email, Locale.of("pt", "BR"), CORRELATION_ID),
         new RegistrationActivationRequestDTO(email, proof, CORRELATION_ID),
         new ActivationConsentRequestDTO(reference, List.of("terms-v2"), CORRELATION_ID),
+        new AuthenticationConsentRequestDTO(reference, List.of("terms-v2"), EXPIRES_AT),
         new ExternalRegistrationCompletionRequestDTO(
             reference,
             List.of("terms-v1"),

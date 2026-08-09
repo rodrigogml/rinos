@@ -158,8 +158,10 @@ ID token sobrevive à chamada que a consumiu.
 | `continuationReference` | yes | hash corresponde a fluxo `OPEN`, finalidade legal, usuário ativo e validade vigente |
 | `acceptedLegalDocumentIds` | yes | conjunto sem duplicidade e exatamente compatível com todas as versões obrigatórias correntes |
 
-Na mesma fronteira transacional, a facade bloqueia o fluxo, reconsulta `LegalDocumentFacade`, insere apenas as novas
-evidências imutáveis, consome a continuação e prepara a conclusão da autenticação. Se o catálogo mudou, nenhuma
+Na mesma fronteira transacional, a facade bloqueia o fluxo, reconsulta `LegalDocumentFacade`, consome o marcador
+`AuthenticationProof.LEGAL_CONSENT`, insere apenas as novas evidências imutáveis e prepara a conclusão da autenticação.
+O `AuthenticationFlow` permanece aberto somente até o lifecycle oficial preparar/publicar a sessão e então consumi-lo.
+Se o catálogo mudou, nenhuma
 evidência parcial é gravada: a resposta contém uma nova continuação e a UI descarta as seleções anteriores. Somente
 `AUTHENTICATED` permite ao RFW preparar e publicar a sessão global/local conforme o lifecycle oficial.
 

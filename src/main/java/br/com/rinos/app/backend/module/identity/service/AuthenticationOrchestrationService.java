@@ -1,10 +1,14 @@
 package br.com.rinos.app.backend.module.identity.service;
 
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,8 @@ import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeE
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOperationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOrchestrationStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationProofTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.LegalConsentDecisionEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
@@ -39,6 +45,7 @@ import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 public class AuthenticationOrchestrationService {
 
   private final AuthenticationFlowService flowService;
+  private final AuthenticationProofService proofService;
   private final AuthenticationAssurancePolicyService assurancePolicy;
   private final AuthenticationMethodAvailabilityService methodAvailability;
   private final LegalConsentService legalConsentService;
@@ -47,11 +54,13 @@ public class AuthenticationOrchestrationService {
   /** Cria o orquestrador sobre serviços persistentes e políticas puras. */
   public AuthenticationOrchestrationService(
       AuthenticationFlowService flowService,
+      AuthenticationProofService proofService,
       AuthenticationAssurancePolicyService assurancePolicy,
       AuthenticationMethodAvailabilityService methodAvailability,
       LegalConsentService legalConsentService,
       UserRepository userRepository) {
     this.flowService = flowService;
+    this.proofService = proofService;
     this.assurancePolicy = assurancePolicy;
     this.methodAvailability = methodAvailability;
     this.legalConsentService = legalConsentService;
@@ -151,6 +160,89 @@ public class AuthenticationOrchestrationService {
     };
   }
 
+  /**
+   * Registra os aceites vigentes e consome o marcador legal na mesma transação.
+   *
+   * <p>O fluxo permanece aberto para que o lifecycle oficial ainda possa preparar e publicar a
+   * sessão. Uma submissão baseada em catálogo anterior recebe a fotografia atual sem gravação
+   * parcial.
+   */
+  @Transactional
+  public AuthenticationOrchestrationDecisionVO completeLegalConsent(
+      String reference,
+      Set<Long> acceptedDocumentIds,
+      Instant occurredAt) {
+    Objects.requireNonNull(acceptedDocumentIds, "acceptedDocumentIds must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    if (acceptedDocumentIds.stream().anyMatch(id -> id == null || id <= 0)) {
+      return rejected();
+    }
+    UserEntity user = lockActiveOwner(reference);
+    if (user == null) {
+      return rejected();
+    }
+    AuthenticationFlowSnapshotVO snapshot = flowService.snapshot(
+        reference, AuthenticationFlowPurposeEnum.LEGAL_CONSENT, occurredAt);
+    if (snapshot.status() != AuthenticationOperationStatusEnum.OPEN
+        || !Objects.equals(snapshot.userId(), user.getId())
+        || snapshot.verifiedMethods().isEmpty()) {
+      return mapTerminal(snapshot.status());
+    }
+    Set<AuthenticationMethodEnum> availableMethods = methodAvailability.availableMethods(user.getId());
+    if (snapshot.verifiedMethods().stream()
+        .map(AuthenticationFlowVerifiedMethodVO::method)
+        .anyMatch(method -> !availableMethods.contains(method))) {
+      return rejected();
+    }
+    AuthenticationAssuranceEnum achieved = assurancePolicy.calculate(snapshot.verifiedMethods());
+    if (!assurancePolicy.satisfies(achieved, snapshot.requiredAssurance())) {
+      return rejected();
+    }
+    LegalRequirementStatusVO legalStatus;
+    try {
+      legalStatus = legalConsentService.evaluateRequiredConsents(user.getId(), occurredAt);
+    } catch (RuntimeException unavailableCatalog) {
+      return legalResult(
+          AuthenticationOrchestrationStatusEnum.UNAVAILABLE,
+          null,
+          null,
+          achieved,
+          snapshot,
+          Set.of());
+    }
+    Set<Long> missingIds = Set.copyOf(legalStatus.missingRequiredVersionIds());
+    if (!missingIds.isEmpty() && !missingIds.equals(acceptedDocumentIds)) {
+      issueLegalMarker(reference, legalStatus, occurredAt, snapshot.expiresAt());
+      return legalResult(
+          AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED,
+          reference,
+          null,
+          achieved,
+          snapshot,
+          missingIds);
+    }
+    AuthenticationOperationStatusEnum markerStatus = proofService.consumeValidated(
+        reference,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        occurredAt).status();
+    if (markerStatus != AuthenticationOperationStatusEnum.USED) {
+      return mapTerminal(markerStatus);
+    }
+    Map<Long, LegalConsentDecisionEnum> decisions = legalStatus.currentRequiredVersionIds().stream()
+        .collect(Collectors.toUnmodifiableMap(
+            id -> id,
+            ignored -> LegalConsentDecisionEnum.ACCEPTED));
+    legalConsentService.recordCurrentDecisions(user, null, decisions, occurredAt);
+    return legalResult(
+        AuthenticationOrchestrationStatusEnum.READY,
+        reference,
+        user,
+        achieved,
+        snapshot,
+        Set.of());
+  }
+
   private AuthenticationOrchestrationDecisionVO decide(
       UserEntity user,
       String reference,
@@ -245,6 +337,7 @@ public class AuthenticationOrchestrationService {
         occurredAt,
         source.expiresAt(),
         source.correlationId());
+    issueLegalMarker(legalFlow.reference(), legalStatus, occurredAt, legalFlow.expiresAt());
     return result(
         AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED,
         legalFlow.reference(),
@@ -256,6 +349,63 @@ public class AuthenticationOrchestrationService {
         source.persistentLoginRequested(),
         legalFlow.expiresAt(),
         source.correlationId());
+  }
+
+  private void issueLegalMarker(
+      String reference,
+      LegalRequirementStatusVO legalStatus,
+      Instant issuedAt,
+      Instant expiresAt) {
+    AuthenticationOperationStatusEnum status = proofService.issue(
+        reference,
+        AuthenticationFlowPurposeEnum.LEGAL_CONSENT,
+        AuthenticationProofTypeEnum.LEGAL_CONSENT,
+        legalCatalogDigest(legalStatus.currentRequiredVersionIds()),
+        null,
+        issuedAt,
+        expiresAt).status();
+    if (status != AuthenticationOperationStatusEnum.OPEN) {
+      throw new IllegalStateException("Legal consent marker could not be issued");
+    }
+  }
+
+  private static byte[] legalCatalogDigest(List<Long> currentRequiredVersionIds) {
+    MessageDigest digest = sha256();
+    currentRequiredVersionIds.stream().sorted().forEach(id -> {
+      if (id == null || id <= 0) {
+        throw new IllegalStateException("Legal catalog contains an invalid required version");
+      }
+      digest.update(ByteBuffer.allocate(Long.BYTES).putLong(id).array());
+    });
+    return digest.digest();
+  }
+
+  private static MessageDigest sha256() {
+    try {
+      return MessageDigest.getInstance("SHA-256");
+    } catch (java.security.NoSuchAlgorithmException impossible) {
+      throw new IllegalStateException("SHA-256 is unavailable", impossible);
+    }
+  }
+
+  private static AuthenticationOrchestrationDecisionVO legalResult(
+      AuthenticationOrchestrationStatusEnum status,
+      String reference,
+      UserEntity user,
+      AuthenticationAssuranceEnum achieved,
+      AuthenticationFlowSnapshotVO snapshot,
+      Set<Long> missingLegalDocumentIds) {
+    return result(
+        status,
+        reference,
+        user,
+        achieved,
+        Set.of(),
+        snapshot.verifiedMethods(),
+        missingLegalDocumentIds,
+        snapshot.persistentLoginRequested(),
+        snapshot.expiresAt(),
+        snapshot.correlationId());
   }
 
   private UserEntity lockActiveOwner(String reference) {
