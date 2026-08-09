@@ -201,6 +201,117 @@ class AuthenticationOrchestrationServiceTest {
     assertThat(result.permittedMethods()).isEmpty();
   }
 
+  @Test
+  void advance_shouldReachReadyAfterIndependentSecondFactor() {
+    when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
+    when(flowService.verifyMethod(
+        SIGN_IN_REFERENCE,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationMethodEnum.TOTP,
+        NOW,
+        null,
+        NOW))
+        .thenReturn(snapshot(
+            AuthenticationAssuranceEnum.MULTI_FACTOR,
+            Set.of(AuthenticationMethodEnum.TOTP),
+            List.of(
+                verified(AuthenticationMethodEnum.PASSWORD),
+                verified(AuthenticationMethodEnum.TOTP))));
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenReturn(new LegalRequirementStatusVO(List.of(), List.of()));
+
+    AuthenticationOrchestrationDecisionVO result = service.advance(
+        SIGN_IN_REFERENCE,
+        AuthenticationMethodEnum.TOTP,
+        NOW,
+        null,
+        NOW);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.READY);
+    assertThat(result.verifiedMethods())
+        .extracting(AuthenticationFlowVerifiedMethodVO::method)
+        .containsExactly(
+            AuthenticationMethodEnum.PASSWORD,
+            AuthenticationMethodEnum.TOTP);
+  }
+
+  @Test
+  void complete_shouldFailClosedWhenLegalCatalogIsUnavailable() {
+    when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
+    when(flowService.snapshot(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(snapshot(
+            AuthenticationAssuranceEnum.SINGLE_FACTOR,
+            Set.of(),
+            List.of(verified(AuthenticationMethodEnum.PASSWORD))));
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenThrow(new IllegalStateException("catalog unavailable"));
+
+    AuthenticationOrchestrationDecisionVO result = service.complete(SIGN_IN_REFERENCE, NOW);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.UNAVAILABLE);
+    assertThat(result.userId()).isNull();
+    assertThat(result.continuationReference()).isEqualTo(SIGN_IN_REFERENCE);
+  }
+
+  @Test
+  void complete_shouldMapExpiredAndConsumedFlowsWithoutPartialPrincipal() {
+    when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
+    when(flowService.snapshot(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(terminalSnapshot(AuthenticationOperationStatusEnum.EXPIRED))
+        .thenReturn(terminalSnapshot(AuthenticationOperationStatusEnum.ALREADY_USED));
+
+    AuthenticationOrchestrationDecisionVO expired = service.complete(SIGN_IN_REFERENCE, NOW);
+    AuthenticationOrchestrationDecisionVO repeated = service.complete(SIGN_IN_REFERENCE, NOW);
+
+    assertThat(expired.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.EXPIRED);
+    assertThat(expired.userId()).isNull();
+    assertThat(repeated.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.CONFLICT);
+    assertThat(repeated.userId()).isNull();
+    verify(legalConsentService, never()).evaluateRequiredConsents(41L, NOW);
+  }
+
+  @Test
+  void cancel_shouldFallbackToLegalFlowAndRemainIdempotent() {
+    when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
+    when(flowService.cancel(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(flowResult(AuthenticationOperationStatusEnum.REJECTED));
+    when(flowService.cancel(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.LEGAL_CONSENT, NOW))
+        .thenReturn(flowResult(AuthenticationOperationStatusEnum.INVALIDATED))
+        .thenReturn(flowResult(AuthenticationOperationStatusEnum.ALREADY_USED));
+
+    AuthenticationOrchestrationDecisionVO first = service.cancel(SIGN_IN_REFERENCE, NOW);
+    AuthenticationOrchestrationDecisionVO repeated = service.cancel(SIGN_IN_REFERENCE, NOW);
+
+    assertThat(first.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.CANCELLED);
+    assertThat(repeated.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.CANCELLED);
+  }
+
+  @Test
+  void start_shouldRejectInactiveUserWithoutCreatingFlow() {
+    when(userRepository.findByIdForUpdate(41L))
+        .thenReturn(Optional.of(user(UserStatusEnum.BLOCKED)));
+
+    AuthenticationOrchestrationDecisionVO result = start(
+        AuthenticationAssuranceEnum.SINGLE_FACTOR);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
+    verify(flowService, never()).issue(
+        eq(41L),
+        eq(AuthenticationFlowPurposeEnum.SIGN_IN),
+        eq(AuthenticationMethodEnum.PASSWORD),
+        eq(AuthenticationAssuranceEnum.SINGLE_FACTOR),
+        anySet(),
+        anyList(),
+        eq(false),
+        eq(NOW),
+        eq(EXPIRES_AT),
+        eq(CORRELATION_ID));
+  }
+
   private AuthenticationOrchestrationDecisionVO start(
       AuthenticationAssuranceEnum requiredAssurance) {
     return service.start(
@@ -257,6 +368,22 @@ class AuthenticationOrchestrationServiceTest {
 
   private static AuthenticationFlowVerifiedMethodVO verified(AuthenticationMethodEnum method) {
     return new AuthenticationFlowVerifiedMethodVO(method, NOW, null);
+  }
+
+  private static AuthenticationFlowSnapshotVO terminalSnapshot(
+      AuthenticationOperationStatusEnum status) {
+    return new AuthenticationFlowSnapshotVO(
+        status,
+        91L,
+        41L,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationMethodEnum.PASSWORD,
+        AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        Set.of(),
+        List.of(),
+        false,
+        EXPIRES_AT,
+        CORRELATION_ID);
   }
 
   private static AuthenticationFlowInspectionVO flowResult(

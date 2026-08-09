@@ -219,7 +219,13 @@ Ref: Plan §Authentication Flow; Contract Authentication Providers §General Rul
 - [x] 3.1.3 Revalidar usuário, métodos, fatores e documentos em cada transição crítica
 - [x] 3.1.4 Garantir idempotência e compensação na criação de sessão/evento
 - [x] 3.1.5 Implementar adapters RFW para outcomes e erros públicos estáveis
-- [ ] 3.1.6 Testar todos os caminhos, expiração, repetição, bloqueio concorrente e falha parcial
+- [x] 3.1.6 Testar todos os caminhos, expiração, repetição, bloqueio concorrente e falha parcial
+
+> [!NOTE]
+> A matriz do orquestrador cobre primeiro fator, MFA, gate legal, catálogo indisponível, usuário ou método
+> bloqueado, expiração, repetição, cancelamento idempotente e ausência de principal parcial. Os testes MySQL de
+> fluxo e lifecycle complementam a unidade com consumo concorrente, preparação convergente e rollback integral
+> quando a auditoria falha.
 
 ### 3.2 Implementar login por senha e proteção contra abuso `[C]`
 
