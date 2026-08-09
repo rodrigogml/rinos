@@ -22,15 +22,18 @@ import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.facade.AuthenticationOrchestrationFacade;
 import br.com.rinos.app.api.facade.PasswordAuthenticationFacade;
 import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
+import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.PasswordCredentialAuthenticationService;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 
 /**
  * Mantém a prova de senha e a abertura do fluxo na mesma transação bloqueada.
  *
- * <p>Proteção por origem, Turnstile e espera progressiva serão aplicados nas tarefas específicas
- * sem alterar o contrato efêmero já recebido por esta fachada.
+ * <p>Falhas são contabilizadas nas dimensões independentes de identificador e origem. A validação
+ * server-side do token Turnstile pertence ao ciclo seguinte e reutiliza esta decisão persistente.
  *
  * @author Rodrigo Leitão
  * @since 2026-08-09
@@ -46,6 +49,7 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
           br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.RECOVERY_CODE);
 
   private final PasswordCredentialAuthenticationService credentialAuthenticationService;
+  private final AuthenticationAbuseProtectionService abuseProtectionService;
   private final AuthenticationMethodAvailabilityService methodAvailabilityService;
   private final AuthenticationOrchestrationFacade orchestrationFacade;
   private final AuthenticationMfaPropertiesConfig mfaProperties;
@@ -55,21 +59,25 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
   @Autowired
   public PasswordAuthenticationFacadeImpl(
       PasswordCredentialAuthenticationService credentialAuthenticationService,
+      AuthenticationAbuseProtectionService abuseProtectionService,
       AuthenticationMethodAvailabilityService methodAvailabilityService,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties) {
-    this(credentialAuthenticationService, methodAvailabilityService, orchestrationFacade,
+    this(credentialAuthenticationService, abuseProtectionService, methodAvailabilityService,
+        orchestrationFacade,
         mfaProperties, Clock.systemUTC());
   }
 
   /** Cria uma instância com relógio controlável para testes. */
   PasswordAuthenticationFacadeImpl(
       PasswordCredentialAuthenticationService credentialAuthenticationService,
+      AuthenticationAbuseProtectionService abuseProtectionService,
       AuthenticationMethodAvailabilityService methodAvailabilityService,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties,
       Clock clock) {
     this.credentialAuthenticationService = credentialAuthenticationService;
+    this.abuseProtectionService = abuseProtectionService;
     this.methodAvailabilityService = methodAvailabilityService;
     this.orchestrationFacade = orchestrationFacade;
     this.mfaProperties = mfaProperties;
@@ -79,7 +87,7 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
   /** {@inheritDoc} */
   @Override
   @Transactional
-  public CompletionStage<AuthenticationOrchestrationResultVO> authenticate(
+  public CompletionStage<PasswordAuthenticationResultVO> authenticate(
       PasswordAuthenticationRequestDTO request) {
     if (request == null) {
       throw new NullPointerException("request must not be null");
@@ -89,7 +97,12 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       OptionalLong verifiedUser = credentialAuthenticationService.verify(
           request.identifier(), request.consumePassword(), now);
       if (verifiedUser.isEmpty()) {
-        return completed(terminal(AuthenticationOrchestrationStatusEnum.REJECTED));
+        AuthenticationAbuseDecisionVO abuse = abuseProtectionService.registerFailure(
+            request.identifier(), request.canonicalOrigin(), now);
+        return completed(new PasswordAuthenticationResultVO(
+            terminal(AuthenticationOrchestrationStatusEnum.REJECTED),
+            abuse.turnstileRequired(),
+            abuse.retryAfter()));
       }
       long userId = verifiedUser.getAsLong();
       Set<br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum> available =
@@ -106,7 +119,8 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
           .anyMatch(MFA_ACTIVATION_METHODS::contains)
               ? AuthenticationAssuranceEnum.MULTI_FACTOR
               : AuthenticationAssuranceEnum.SINGLE_FACTOR;
-      return completed(orchestrationFacade.start(new AuthenticationOrchestrationStartDTO(
+      return completed(new PasswordAuthenticationResultVO(
+          orchestrationFacade.start(new AuthenticationOrchestrationStartDTO(
           userId,
           AuthenticationMethodEnum.PASSWORD,
           requiredAssurance,
@@ -116,9 +130,14 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
           null,
           now,
           now.plus(mfaProperties.challengeValidity()),
-          request.correlationId())));
+          request.correlationId())),
+          false,
+          java.time.Duration.ZERO));
     } catch (RuntimeException unavailable) {
-      return completed(terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE));
+      return completed(new PasswordAuthenticationResultVO(
+          terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE),
+          false,
+          java.time.Duration.ZERO));
     }
   }
 
@@ -128,8 +147,8 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
         status, null, null, null, Set.of(), List.of(), Set.of(), false, null, null);
   }
 
-  private static CompletionStage<AuthenticationOrchestrationResultVO> completed(
-      AuthenticationOrchestrationResultVO result) {
+  private static CompletionStage<PasswordAuthenticationResultVO> completed(
+      PasswordAuthenticationResultVO result) {
     return CompletableFuture.completedFuture(result);
   }
 }

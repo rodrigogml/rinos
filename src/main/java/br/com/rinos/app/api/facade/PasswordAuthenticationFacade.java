@@ -3,7 +3,7 @@ package br.com.rinos.app.api.facade;
 import java.util.concurrent.CompletionStage;
 
 import br.com.rinos.app.api.dto.PasswordAuthenticationRequestDTO;
-import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
+import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
 
 /**
  * Autentica a credencial local e entrega seu primeiro fator ao orquestrador único.
@@ -19,6 +19,6 @@ public interface PasswordAuthenticationFacade {
    * @param request tentativa efêmera
    * @return decisão pública do orquestrador
    */
-  CompletionStage<AuthenticationOrchestrationResultVO> authenticate(
+  CompletionStage<PasswordAuthenticationResultVO> authenticate(
       PasswordAuthenticationRequestDTO request);
 }

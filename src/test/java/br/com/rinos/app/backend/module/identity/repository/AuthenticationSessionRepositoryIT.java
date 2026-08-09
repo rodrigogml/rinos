@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Base64;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -51,7 +53,9 @@ import br.com.rinos.app.backend.module.identity.enums.AuthSessionStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationKeyringMacService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationSessionLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationWindowService;
@@ -59,6 +63,8 @@ import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.IdentityReferenceService;
 import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
+import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
+import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationSessionLifecycleVO;
@@ -67,6 +73,7 @@ import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
 import br.com.rinos.app.config.AuthenticationAbusePropertiesConfig;
+import br.com.rinos.app.config.AuthenticationKeyringPropertiesConfig;
 import br.com.rinos.app.config.AuthenticationRetentionPropertiesConfig;
 import br.com.rinos.app.config.AuthenticationSessionPropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
@@ -166,6 +173,45 @@ class AuthenticationSessionRepositoryIT {
       assertThat(results).containsExactlyInAnyOrder(1, 2);
       assertThat(finalDecision.failureCount()).isEqualTo(2);
       assertThat(finalDecision.turnstileRequired()).isFalse();
+    });
+  }
+
+  @Test
+  void registerFailure_shouldRollbackIdentifierAndOriginTogether() {
+    contextRunner().run(context -> {
+      AuthenticationWindowRepository repository =
+          context.getBean(AuthenticationWindowRepository.class);
+      AuthenticationWindowService failingSecondWindow = new AuthenticationWindowService(
+          repository, abuseProperties()) {
+        private int invocation;
+
+        @Override
+        public AuthenticationWindowDecisionVO registerFailure(
+            byte[] digest,
+            String keyVersion,
+            AuthenticationWindowOperationEnum operation,
+            Instant occurredAt) {
+          AuthenticationWindowDecisionVO result = super.registerFailure(
+              digest, keyVersion, operation, occurredAt);
+          if (++invocation == 2) {
+            throw new IllegalStateException("simulated second dimension failure");
+          }
+          return result;
+        }
+      };
+      String key = Base64.getEncoder().encodeToString(new byte[32]);
+      AuthenticationAbuseProtectionService service = new AuthenticationAbuseProtectionService(
+          new EmailNormalizationService(),
+          new OriginAddressService(),
+          new AuthenticationKeyringMacService(new AuthenticationKeyringPropertiesConfig(
+              true, "v1", Map.of("v1", key))),
+          failingSecondWindow);
+
+      assertThatThrownBy(() -> transaction(context).execute(status ->
+          service.registerFailure("person@example.test", "198.51.100.12", NOW)))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("second dimension");
+      assertThat(repository.count()).isZero();
     });
   }
 

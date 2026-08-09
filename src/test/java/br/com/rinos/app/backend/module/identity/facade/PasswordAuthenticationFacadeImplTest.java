@@ -29,8 +29,11 @@ import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.facade.AuthenticationOrchestrationFacade;
 import br.com.rinos.app.api.vo.AuthenticationMethodEvidenceVO;
 import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
+import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.PasswordCredentialAuthenticationService;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 
 @DisplayName("Fachada de autenticação por senha")
@@ -40,6 +43,7 @@ class PasswordAuthenticationFacadeImplTest {
   private static final UUID CORRELATION_ID =
       UUID.fromString("d9b36467-3bee-43d6-9619-86728ca5863a");
   private PasswordCredentialAuthenticationService credentials;
+  private AuthenticationAbuseProtectionService abuseProtection;
   private AuthenticationMethodAvailabilityService availability;
   private AuthenticationOrchestrationFacade orchestration;
   private PasswordAuthenticationFacadeImpl facade;
@@ -47,10 +51,12 @@ class PasswordAuthenticationFacadeImplTest {
   @BeforeEach
   void setUp() {
     credentials = mock(PasswordCredentialAuthenticationService.class);
+    abuseProtection = mock(AuthenticationAbuseProtectionService.class);
     availability = mock(AuthenticationMethodAvailabilityService.class);
     orchestration = mock(AuthenticationOrchestrationFacade.class);
     facade = new PasswordAuthenticationFacadeImpl(
         credentials,
+        abuseProtection,
         availability,
         orchestration,
         new AuthenticationMfaPropertiesConfig(Duration.ofMinutes(5), 5, 6,
@@ -61,12 +67,31 @@ class PasswordAuthenticationFacadeImplTest {
   @Test
   void authenticate_shouldRejectInvalidCredentialWithoutOpeningFlow() {
     when(credentials.verify(any(), any(), any())).thenReturn(OptionalLong.empty());
+    when(abuseProtection.registerFailure(any(), any(), any()))
+        .thenReturn(AuthenticationAbuseDecisionVO.clear());
 
-    AuthenticationOrchestrationResultVO result = facade.authenticate(request()).toCompletableFuture().join();
+    PasswordAuthenticationResultVO result = facade.authenticate(request()).toCompletableFuture().join();
 
-    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
+    assertThat(result.orchestration().status())
+        .isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
     verify(availability, never()).availableMethods(any());
     verify(orchestration, never()).start(any());
+  }
+
+  @Test
+  void authenticate_shouldExposeMostRestrictiveDecisionAfterCredentialFailure() {
+    when(credentials.verify(any(), any(), any())).thenReturn(OptionalLong.empty());
+    when(abuseProtection.registerFailure(
+        "person@example.test", "198.51.100.12", NOW))
+        .thenReturn(new AuthenticationAbuseDecisionVO(
+            3, true, Duration.ofSeconds(4), NOW.plusSeconds(900)));
+
+    PasswordAuthenticationResultVO result = facade.authenticate(request()).toCompletableFuture().join();
+
+    assertThat(result.orchestration().status())
+        .isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
+    assertThat(result.turnstileRequired()).isTrue();
+    assertThat(result.retryAfter()).isEqualTo(Duration.ofSeconds(4));
   }
 
   @Test

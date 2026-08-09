@@ -84,6 +84,18 @@ método alternativo não ativa implicitamente o 2FA voluntário.
 | Turnstile necessário/inválido | desafio renovável conforme protocolo RFW |
 | Dependência crítica indisponível | erro público temporário; nenhuma sessão |
 
+Falhas de senha atualizam, na mesma transação, duas janelas deslizantes independentes: e-mail normalizado informado
+e IP canônico resolvido pela política de proxy. Ambos são persistidos somente como HMAC-SHA-256 versionado e com
+separação de domínio; a ordem de lock é sempre identificador → origem. A resposta combina a política mais restritiva:
+maior contador, maior espera progressiva e exigência de Turnstile em qualquer dimensão. Cada nova falha estende a
+janela, portanto a exigência só termina depois do intervalo configurado sem outra falha.
+
+O `PasswordAuthenticationResultVO` transporta a decisão sem expor contador, digest, e-mail ou IP: entrega apenas o
+outcome do orquestrador, `turnstileRequired` e `retryAfter`. A consulta prévia atualmente oferecida pelo RFW recebe a
+origem e já usa a janela de IP. Para cumprir também o limiar distribuído por identificador antes da submissão, a
+integração da tarefa 3.2.4 deverá entregar o identificador ao protocolo de requisito humano ou receber um outcome
+equivalente do RFW; essa evolução compartilhável exige o ciclo RFW autorizado antes da UI real.
+
 ## Second Factor
 
 **RFW contracts**: `RFWSecondFactorProvider`, `RFWSecondFactorEmissionRequestDTO`,

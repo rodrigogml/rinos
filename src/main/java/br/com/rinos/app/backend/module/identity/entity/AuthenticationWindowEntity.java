@@ -159,6 +159,9 @@ public class AuthenticationWindowEntity {
       throw new IllegalArgumentException("threshold must be positive");
     }
     failureCount++;
+    if (requiredUntil.isAfter(windowEndsAt)) {
+      windowEndsAt = requiredUntil;
+    }
     if (failureCount >= threshold) {
       turnstileRequiredUntil = Objects.requireNonNull(
           requiredUntil, "requiredUntil must not be null");
