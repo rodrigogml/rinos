@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.identity.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -250,15 +251,20 @@ class AuthenticationSessionRepositoryIT {
           NOW.plusSeconds(300),
           UUID.randomUUID()));
 
-      AuthenticationSessionLifecycleVO prepared = transaction.execute(status -> lifecycle.prepare(
-          issued.reference(),
-          AuthenticationFlowPurposeEnum.SIGN_IN,
-          userId,
-          false,
-          new byte[] {127, 0, 0, 1},
-          "Browser/1.0",
-          NOW));
+      List<AuthenticationSessionLifecycleVO> preparations = compete(() ->
+          transaction(context).execute(status -> lifecycle.prepare(
+              issued.reference(),
+              AuthenticationFlowPurposeEnum.SIGN_IN,
+              userId,
+              false,
+              new byte[] {127, 0, 0, 1},
+              "Browser/1.0",
+              NOW)));
+      AuthenticationSessionLifecycleVO prepared = preparations.getFirst();
 
+      assertThat(preparations)
+          .extracting(AuthenticationSessionLifecycleVO::sessionReference)
+          .containsOnly(prepared.sessionReference());
       assertThat(context.getBean(AuthSessionRepository.class).findAll())
           .singleElement()
           .satisfies(session -> assertThat(session.getStatus())
@@ -272,6 +278,37 @@ class AuthenticationSessionRepositoryIT {
           .doesNotContain(
               IdentityEventTypeEnum.AUTHENTICATION_SUCCEEDED,
               IdentityEventTypeEnum.AUTHENTICATION_SESSION_CREATED);
+
+      IdentityAuditService failingAudit = mock(IdentityAuditService.class, invocation -> {
+        throw new IllegalStateException("simulated audit failure");
+      });
+      AuthenticationSessionLifecycleService failingLifecycle =
+          new AuthenticationSessionLifecycleService(
+              context.getBean(AuthSessionRepository.class),
+              context.getBean(AuthSessionMethodRepository.class),
+              context.getBean(AuthenticationFlowRepository.class),
+              userRepository,
+              flows,
+              new AuthenticationAssurancePolicyService(),
+              availability,
+              legal,
+              tokens,
+              new IdentityReferenceService(),
+              failingAudit,
+              sessionProperties());
+
+      assertThatThrownBy(() -> transaction(context).execute(status ->
+          failingLifecycle.publish(prepared.sessionReference(), NOW)))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("simulated audit failure");
+      assertThat(context.getBean(AuthSessionRepository.class).findAll())
+          .singleElement()
+          .satisfies(session -> assertThat(session.getStatus())
+              .isEqualTo(AuthSessionStatusEnum.PREPARED));
+      assertThat(context.getBean(AuthenticationFlowRepository.class).findAll())
+          .singleElement()
+          .satisfies(flow -> assertThat(flow.getStatus())
+              .isEqualTo(AuthenticationFlowStatusEnum.OPEN));
 
       transaction.executeWithoutResult(status -> lifecycle.publish(
           prepared.sessionReference(), NOW));

@@ -202,6 +202,10 @@ Uma preparação abortada é revogada e perde o vínculo exclusivo com o fluxo a
 Se a falha ocorrer depois da publicação, `abort(...)` revoga a sessão ativa. Em ambos os casos, repetir a compensação
 não produz transição ou evento adicional.
 
+Chamadas concorrentes de `prepare(...)` são serializadas pela ordem usuário → fluxo → sessão e devolvem a mesma
+preparação persistida. Falha ao consumir o fluxo, ativar a sessão ou gravar qualquer evento reverte toda a publicação:
+o fluxo permanece `OPEN`, a sessão permanece `PREPARED` e uma repetição segura continua possível.
+
 O guard consulta `validate(...)` antes de liberar toda requisição autenticada. `INVALID`, `EXPIRED`, `REVOKED` e
 `BLOCKED` encerram estado remoto, contexto e cookie; `UNAVAILABLE` bloqueia com HTTP 503 sem revogar a credencial.
 `close(...)` participa do logout programático e HTTP e deve ser idempotente. Aplicações sem o provider mantêm o
