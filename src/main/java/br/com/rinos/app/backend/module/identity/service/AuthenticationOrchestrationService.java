@@ -27,8 +27,9 @@ import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 /**
  * Orquestra fatores, garantia e gate legal sem publicar {@code SecurityContext}.
  *
- * <p>A ordem de lock é sempre usuário → fluxo → método/prova. Apenas {@link #complete}
- * consome o fluxo como autenticação bem-sucedida; resultados READY ainda não autenticam.
+ * <p>A ordem de lock é sempre usuário → fluxo → método/prova. Nem mesmo
+ * {@link #complete} consome o fluxo: resultados {@code READY} ainda dependem do lifecycle da
+ * sessão para se tornarem autenticação publicada.
  *
  * @author Rodrigo Leitão
  * @since 2026-08-08
@@ -111,9 +112,7 @@ public class AuthenticationOrchestrationService {
     return decide(user, reference, snapshot, occurredAt);
   }
 
-  /**
-   * Consome uma conclusão pronta uma única vez, imediatamente antes do lifecycle RFW.
-   */
+  /** Revalida e entrega ao lifecycle RFW uma conclusão ainda não consumida. */
   @Transactional
   public AuthenticationOrchestrationDecisionVO complete(
       String reference,
@@ -124,27 +123,7 @@ public class AuthenticationOrchestrationService {
     }
     AuthenticationFlowSnapshotVO snapshot = flowService.snapshot(
         reference, AuthenticationFlowPurposeEnum.SIGN_IN, occurredAt);
-    AuthenticationOrchestrationDecisionVO decision = decide(
-        user, reference, snapshot, occurredAt);
-    if (decision.status() != AuthenticationOrchestrationStatusEnum.READY) {
-      return decision;
-    }
-    AuthenticationOperationStatusEnum consumed = flowService.consume(
-        reference, AuthenticationFlowPurposeEnum.SIGN_IN, occurredAt).status();
-    if (consumed != AuthenticationOperationStatusEnum.USED) {
-      return mapTerminal(consumed);
-    }
-    return result(
-        AuthenticationOrchestrationStatusEnum.COMPLETED,
-        null,
-        user,
-        decision.achievedAssurance(),
-        Set.of(),
-        decision.verifiedMethods(),
-        Set.of(),
-        decision.persistentLoginRequested(),
-        decision.expiresAt(),
-        decision.correlationId());
+    return decide(user, reference, snapshot, occurredAt);
   }
 
   /** Cancela idempotentemente um fluxo de login sem produzir evento de sucesso. */

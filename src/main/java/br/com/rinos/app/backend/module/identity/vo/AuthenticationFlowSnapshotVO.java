@@ -18,6 +18,7 @@ import br.com.rinos.app.backend.module.identity.enums.AuthenticationOperationSta
  */
 public record AuthenticationFlowSnapshotVO(
     AuthenticationOperationStatusEnum status,
+    Long flowId,
     Long userId,
     AuthenticationFlowPurposeEnum purpose,
     AuthenticationMethodEnum primaryMethod,

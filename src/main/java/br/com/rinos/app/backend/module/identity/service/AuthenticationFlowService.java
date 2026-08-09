@@ -212,6 +212,23 @@ public class AuthenticationFlowService {
         : snapshot(flow, terminal.status());
   }
 
+  /** Inspeciona um fluxo já resolvido sem reintroduzir sua referência bruta. */
+  @Transactional
+  public AuthenticationFlowSnapshotVO snapshotById(
+      Long flowId,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      Instant occurredAt) {
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    AuthenticationFlowEntity flow = findLocked(flowId);
+    if (flow == null || expectedPurpose == null || flow.getPurpose() != expectedPurpose) {
+      return rejectedSnapshot();
+    }
+    AuthenticationFlowInspectionVO terminal = terminalOrExpire(flow, occurredAt);
+    return terminal == null
+        ? snapshot(flow, AuthenticationOperationStatusEnum.OPEN)
+        : snapshot(flow, terminal.status());
+  }
+
   /**
    * Resolve somente o usuário proprietário para que a camada superior respeite a ordem de locks.
    */
@@ -241,6 +258,20 @@ public class AuthenticationFlowService {
       AuthenticationFlowPurposeEnum expectedPurpose,
       Instant occurredAt) {
     return access(reference, expectedPurpose, occurredAt, true);
+  }
+
+  /** Consome por ID um fluxo previamente resolvido pelo lifecycle da sessão. */
+  @Transactional
+  public AuthenticationFlowInspectionVO consumeById(
+      Long flowId,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      Instant occurredAt) {
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    AuthenticationFlowEntity flow = findLocked(flowId);
+    if (flow == null || expectedPurpose == null || flow.getPurpose() != expectedPurpose) {
+      return AuthenticationFlowInspectionVO.rejected();
+    }
+    return access(flow, expectedPurpose, occurredAt, true);
   }
 
   /** Cancela uma continuação aberta e todas as suas provas abertas. */
@@ -291,6 +322,14 @@ public class AuthenticationFlowService {
       boolean consume) {
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
     AuthenticationFlowEntity flow = findLocked(reference);
+    return access(flow, expectedPurpose, occurredAt, consume);
+  }
+
+  private AuthenticationFlowInspectionVO access(
+      AuthenticationFlowEntity flow,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      Instant occurredAt,
+      boolean consume) {
     if (flow == null || expectedPurpose == null) {
       return AuthenticationFlowInspectionVO.rejected();
     }
@@ -313,16 +352,6 @@ public class AuthenticationFlowService {
     }
     invalidateOpenProofs(flow, occurredAt);
     flow.markUsed(occurredAt);
-    auditService.record(
-        flow.getUser(),
-        null,
-        flow.getCorrelationId(),
-        IdentityEventTypeEnum.AUTHENTICATION_SUCCEEDED,
-        null,
-        null,
-        IdentityTransitionOriginEnum.SELF_SERVICE,
-        flow.getPurpose().name(),
-        occurredAt);
     return view(flow, AuthenticationOperationStatusEnum.USED);
   }
 
@@ -389,6 +418,7 @@ public class AuthenticationFlowService {
         .toList();
     return new AuthenticationFlowSnapshotVO(
         status,
+        flow.getId(),
         flow.getUser() == null ? null : flow.getUser().getId(),
         flow.getPurpose(),
         flow.getPrimaryMethod(),
@@ -407,6 +437,7 @@ public class AuthenticationFlowService {
         null,
         null,
         null,
+        null,
         Set.of(),
         List.of(),
         false,
@@ -420,6 +451,11 @@ public class AuthenticationFlowService {
     }
     return flowRepository.findByReferenceHashForUpdate(opaqueTokenService.hash(reference))
         .orElse(null);
+  }
+
+  private AuthenticationFlowEntity findLocked(Long flowId) {
+    return flowId == null || flowId <= 0
+        ? null : flowRepository.findByIdForUpdate(flowId).orElse(null);
   }
 
   private UserEntity resolveUser(Long userId) {

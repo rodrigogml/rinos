@@ -19,8 +19,8 @@ repositories ou services diretamente.
 
 O núcleo recebe somente fatores que o serviço especializado já comprovou e conserva no banco a fotografia dos
 métodos verificados. `start(...)` abre o fluxo depois do primeiro fator, `advance(...)` acrescenta uma evidência
-permitida, `complete(...)` consome uma conclusão pronta uma única vez e `cancel(...)` invalida a continuação
-idempotentemente. Nenhum desses métodos publica `SecurityContext`.
+permitida, `complete(...)` revalida e devolve uma conclusão `READY` ainda aberta, e `cancel(...)` invalida a
+continuação idempotentemente. Nenhum desses métodos publica `SecurityContext` nem consome o fluxo.
 
 A garantia é calculada sobre os métodos comprovados. Passkey com user verification satisfaz garantia resistente a
 phishing; dois canais independentes satisfazem MFA; Google e código enviado ao mesmo e-mail não contam como canais
@@ -175,7 +175,8 @@ sessões alvo na mesma transação. Revogar a sessão corrente limpa também o c
 **RFW contracts**: `RFWAuthenticationSessionLifecycleProvider`,
 `RFWAuthenticationSessionPreparationVO`, `RFWAuthenticationSessionValidationVO`,
 `RFWAuthenticationSessionStatusEnum` e `RFWAuthenticationSessionPrincipal`<br>
-**Rinos facade proposta**: `AuthenticationSessionLifecycleFacade`
+**Rinos facade**: `AuthenticationSessionLifecycleFacade`<br>
+**Rinos adapter**: `RFWAuthenticationSessionLifecycleProviderAdapter`
 
 O lifecycle da sessão global segue uma ordem fechada:
 
@@ -184,6 +185,17 @@ O lifecycle da sessão global segue uma ordem fechada:
 3. `publish(...)` ativa a sessão global;
 4. o cookie persistente, quando solicitado, é criado somente depois da publicação global;
 5. falha em qualquer etapa posterior à preparação limpa contexto/cookie e chama `abort(...)` de forma idempotente.
+
+`prepare(...)` revalida propriedade do fluxo, usuário `ACTIVE`, garantia, evidências, escolha persistente e
+documentos legais vigentes. Ela grava `AuthSession.PREPARED` ligada de forma única ao fluxo, mas não consome o fluxo
+nem registra sucesso. `publish(...)` repete as validações críticas e, numa única transação, consome o fluxo, muda a
+sessão para `ACTIVE` e registra `AUTHENTICATION_SUCCEEDED` e `AUTHENTICATION_SESSION_CREATED`. A continuação efêmera
+fica em `Authentication.details` apenas até a preparação; o principal final conserva somente identidade e referência
+opaca não autenticadora.
+
+Uma preparação abortada é revogada e perde o vínculo exclusivo com o fluxo aberto, permitindo nova preparação.
+Se a falha ocorrer depois da publicação, `abort(...)` revoga a sessão ativa. Em ambos os casos, repetir a compensação
+não produz transição ou evento adicional.
 
 O guard consulta `validate(...)` antes de liberar toda requisição autenticada. `INVALID`, `EXPIRED`, `REVOKED` e
 `BLOCKED` encerram estado remoto, contexto e cookie; `UNAVAILABLE` bloqueia com HTTP 503 sem revogar a credencial.
@@ -213,9 +225,9 @@ O filtro RFW não substitui autenticação existente. `INVALID`, `EXPIRED`, `REV
 cookie sem autenticar a requisição. Logout pelo serviço RFW ou pela cadeia HTTP aciona revogação e limpeza. O callback
 `RFWRememberMeProvider` continua compatível apenas para criação e nunca ativa restauração automática.
 
-O contrato público não expõe hash, selector interno, validator, token bruto ou `HttpSession` ID. O Rinos só registra
-os providers reais de sessão e login persistente depois que as tarefas 2.4 e 3.3 implementarem o modelo e o núcleo
-persistente; até lá, não anuncia essas capabilities.
+O contrato público não expõe hash, selector interno, validator, token bruto ou `HttpSession` ID. O lifecycle global
+já é registrado sobre o modelo persistente; o provider de login persistente somente será registrado quando a emissão,
+leitura e rotação do cookie estiverem completas, sem capability provisória.
 
 ## Reauthentication
 

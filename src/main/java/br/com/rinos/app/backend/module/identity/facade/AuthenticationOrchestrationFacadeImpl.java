@@ -20,7 +20,7 @@ import br.com.rinos.app.backend.module.identity.vo.AuthenticationOrchestrationDe
  * Mapeia o contrato público do orquestrador para o núcleo transacional de identidade.
  *
  * <p>A fachada não publica contexto de segurança nem sessão. Um principal somente atravessa esta
- * fronteira nos resultados {@code READY} e {@code COMPLETED}.
+ * fronteira somente no resultado {@code READY}; o lifecycle ainda precisa publicar a sessão.
  *
  * @author Rodrigo Leitão
  * @since 2026-08-08

@@ -101,7 +101,9 @@ sessão, alteração de método, vínculo externo, rotação de recuperação e 
 
 Operações externas que produzem mensagem executam após o commit. Falha SMTP deixa a prova válida somente quando o
 contrato funcional permitir reenvio; a UI não afirma entrega. Assinaturas Google e WebAuthn são validadas antes de o
-resultado virar VO de domínio, mas a conclusão e a criação de sessão ocorrem somente depois do commit do estado local.
+resultado virar VO de domínio. O lifecycle persiste uma sessão `PREPARED`, o RFW renova a sessão HTTP e salva o
+contexto local e, somente depois, o backend consome o fluxo e publica a sessão global como `ACTIVE`. Falha intermediária
+limpa o estado local e compensa a preparação ou publicação.
 
 ## Authentication Flow
 
@@ -113,9 +115,10 @@ resultado virar VO de domínio, mas a conclusão e a criação de sessão ocorre
    senha ou Google podem exigir TOTP, e-mail, passkey ou recuperação conforme contexto e configuração.
 5. Antes de publicar a sessão, o backend revalida usuário ativo e versões legais obrigatórias. Aceite pendente abre
    continuação própria sem conservar credenciais na UI.
-6. A conclusão atômica consome a prova, cria `AuthSession`, registra evento, renova o identificador HTTP e só então o
-   RFW publica o `SecurityContext`.
-7. Cada uso posterior passa pelo guard global. Revogação, bloqueio ou expiração remove o contexto local e encerra a
+6. O lifecycle cria `AuthSession.PREPARED`; o RFW renova o identificador HTTP e salva o `SecurityContext` local.
+7. A publicação global revalida as invariants e, numa transação, consome o fluxo, ativa a sessão e registra os
+   eventos. Qualquer falha limpa o contexto local e chama a compensação idempotente.
+8. Cada uso posterior passa pelo guard global. Revogação, bloqueio ou expiração remove o contexto local e encerra a
    UI protegida.
 
 ## Method-specific Decisions

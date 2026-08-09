@@ -314,6 +314,12 @@ biométrico chega ao Rinos.
   a sessão para `ACTIVE`; `abort(...)` encerra a preparação ou compensa uma publicação parcial.
 - O vínculo único com `AuthenticationFlow` torna a preparação idempotente. A remoção posterior do fluxo por
   retenção usa `ON DELETE SET NULL` e não invalida a sessão ativa.
+- O aborto anterior à publicação revoga a preparação e remove seu vínculo com o fluxo ainda aberto, permitindo nova
+  tentativa sem apagar a evidência terminal. O aborto posterior revoga a sessão publicada.
+- Preparações abandonadas expiram pelos mesmos limites absoluto e de inatividade escolhidos no fluxo. A manutenção
+  não registra evento de sessão expirada para um estado que nunca chegou a ser publicado.
+- `AUTHENTICATION_SUCCEEDED` e `AUTHENTICATION_SESSION_CREATED` pertencem à mesma transação que consome o fluxo e
+  ativa a sessão; uma linha `PREPARED` jamais produz esses eventos.
 - Sessão é válida somente quando `status=ACTIVE`, usuário permanece `ACTIVE`, `now < absoluteExpiresAt` e
   `now < idleExpiresAt`.
 - Atualização da atividade usa `min(now + idleTimeout, absoluteExpiresAt)` e ocorre no máximo no intervalo técnico

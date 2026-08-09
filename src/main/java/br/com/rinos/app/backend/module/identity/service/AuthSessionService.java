@@ -264,16 +264,20 @@ public class AuthSessionService {
   @Transactional
   public AuthenticationCleanupResultVO cleanup(Instant occurredAt) {
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
-    List<AuthSessionEntity> expired = sessionRepository.findExpiredByStatusForUpdate(
+    List<AuthSessionEntity> expiredActive = sessionRepository.findExpiredByStatusForUpdate(
         AuthSessionStatusEnum.ACTIVE, occurredAt);
-    for (AuthSessionEntity session : expired) {
+    for (AuthSessionEntity session : expiredActive) {
       expire(session, occurredAt, UUID.randomUUID());
     }
+    List<AuthSessionEntity> expiredPrepared = sessionRepository.findExpiredByStatusForUpdate(
+        AuthSessionStatusEnum.PREPARED, occurredAt);
+    expiredPrepared.forEach(session -> session.expire(occurredAt));
     sessionRepository.flush();
     int deleted = sessionRepository.deleteTerminalBefore(
         AuthSessionStatusEnum.ACTIVE,
         occurredAt.minus(retentionProperties.terminalSessions()));
-    return new AuthenticationCleanupResultVO(expired.size(), deleted);
+    return new AuthenticationCleanupResultVO(
+        expiredActive.size() + expiredPrepared.size(), deleted);
   }
 
   private void revoke(

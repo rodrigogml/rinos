@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import br.com.rinos.app.api.dto.ActivationConsentRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationFlowIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationProofIssueRequestDTO;
+import br.com.rinos.app.api.dto.AuthenticationSessionPreparationRequestDTO;
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationActivationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
@@ -33,6 +34,7 @@ import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.api.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.api.enums.AuthenticationOperationStatusEnum;
 import br.com.rinos.app.api.enums.AuthenticationProofTypeEnum;
+import br.com.rinos.app.api.enums.AuthenticationSessionLifecycleStatusEnum;
 import br.com.rinos.app.api.enums.GoogleIdentityResolutionStatusEnum;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
@@ -43,6 +45,7 @@ import br.com.rinos.app.api.enums.RegistrationStartStatusEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
 import br.com.rinos.app.api.vo.AuthenticationProofResultVO;
+import br.com.rinos.app.api.vo.AuthenticationSessionLifecycleResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
@@ -53,6 +56,7 @@ import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.com.rinos.app.api.vo.RegistrationResendResultVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
 import br.com.rinos.app.api.vo.RemoteOriginRequestVO;
+import br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 
 /**
@@ -71,6 +75,7 @@ class PublicContractSecurityTest {
       ActivationConsentRequestDTO.class,
       AuthenticationFlowIssueRequestDTO.class,
       AuthenticationProofIssueRequestDTO.class,
+      AuthenticationSessionPreparationRequestDTO.class,
       ExternalRegistrationCompletionRequestDTO.class,
       RegistrationActivationRequestDTO.class,
       RegistrationCancellationConfirmationDTO.class,
@@ -80,6 +85,7 @@ class PublicContractSecurityTest {
       ExternalRegistrationCompletionResultVO.class,
       AuthenticationFlowResultVO.class,
       AuthenticationProofResultVO.class,
+      AuthenticationSessionLifecycleResultVO.class,
       GoogleIdentityResolutionRequestVO.class,
       GoogleIdentityResolutionResultVO.class,
       LegalDocumentContentVO.class,
@@ -90,6 +96,7 @@ class PublicContractSecurityTest {
       RegistrationResendResultVO.class,
       RegistrationStartResultVO.class,
       RemoteOriginRequestVO.class,
+      RinosAuthenticationCompletionVO.class,
       RinosUserPrincipalVO.class);
 
   @Test
@@ -206,6 +213,23 @@ class PublicContractSecurityTest {
             reference,
             List.of("terms-v1"),
             CORRELATION_ID),
+        new AuthenticationSessionPreparationRequestDTO(
+            reference,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            42L,
+            false,
+            address,
+            "Secret Browser",
+            EXPIRES_AT),
+        new RinosAuthenticationCompletionVO(
+            reference,
+            AuthenticationFlowPurposeEnum.SIGN_IN),
+        new AuthenticationSessionLifecycleResultVO(
+            AuthenticationSessionLifecycleStatusEnum.PREPARED,
+            reference,
+            new RinosUserPrincipalVO(42L, email),
+            false,
+            EXPIRES_AT),
         new RegistrationCancellationRequestDTO(
             email,
             Locale.of("pt", "BR"),
@@ -250,6 +274,7 @@ class PublicContractSecurityTest {
                 address,
                 forwarded,
                 "198.51.100.20",
+                "Secret Browser",
                 "Sensitive1!"));
   }
 

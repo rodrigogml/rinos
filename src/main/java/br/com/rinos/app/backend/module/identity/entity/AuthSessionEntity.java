@@ -416,6 +416,14 @@ public class AuthSessionEntity {
     activatedAt = at;
   }
 
+  /** Desvincula uma preparação abortada para permitir uma nova tentativa do mesmo fluxo. */
+  public void detachAuthenticationFlow() {
+    if (status != AuthSessionStatusEnum.REVOKED || activatedAt != null) {
+      throw new IllegalStateException("only an aborted preparation can detach its flow");
+    }
+    authenticationFlow = null;
+  }
+
   /** Encerra a sessão por motivo fechado previamente validado. */
   public void revoke(Instant at, String reason) {
     if (status != AuthSessionStatusEnum.PREPARED && status != AuthSessionStatusEnum.ACTIVE) {

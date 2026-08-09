@@ -120,7 +120,7 @@ class AuthenticationOrchestrationServiceTest {
   }
 
   @Test
-  void complete_shouldConsumeReadyFlowOnceAndClassifyReplayAsConflict() {
+  void complete_shouldLeaveReadyFlowOpenForSessionLifecycle() {
     when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
     when(flowService.snapshot(
         SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
@@ -130,19 +130,14 @@ class AuthenticationOrchestrationServiceTest {
             List.of(verified(AuthenticationMethodEnum.PASSWORD))));
     when(legalConsentService.evaluateRequiredConsents(41L, NOW))
         .thenReturn(new LegalRequirementStatusVO(List.of(7L, 8L), List.of()));
-    when(flowService.consume(
-        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
-        .thenReturn(flowResult(AuthenticationOperationStatusEnum.USED))
-        .thenReturn(flowResult(AuthenticationOperationStatusEnum.ALREADY_USED));
+    AuthenticationOrchestrationDecisionVO result = service.complete(SIGN_IN_REFERENCE, NOW);
 
-    AuthenticationOrchestrationDecisionVO first = service.complete(SIGN_IN_REFERENCE, NOW);
-    AuthenticationOrchestrationDecisionVO replay = service.complete(SIGN_IN_REFERENCE, NOW);
-
-    assertThat(first.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.COMPLETED);
-    assertThat(first.userId()).isEqualTo(41L);
-    assertThat(first.email()).isEqualTo("person@example.test");
-    assertThat(replay.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.CONFLICT);
-    assertThat(replay.userId()).isNull();
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.READY);
+    assertThat(result.continuationReference()).isEqualTo(SIGN_IN_REFERENCE);
+    assertThat(result.userId()).isEqualTo(41L);
+    assertThat(result.email()).isEqualTo("person@example.test");
+    verify(flowService, never()).consume(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW);
   }
 
   @Test
@@ -210,6 +205,7 @@ class AuthenticationOrchestrationServiceTest {
       List<AuthenticationFlowVerifiedMethodVO> verifiedMethods) {
     return new AuthenticationFlowSnapshotVO(
         AuthenticationOperationStatusEnum.OPEN,
+        91L,
         41L,
         AuthenticationFlowPurposeEnum.SIGN_IN,
         AuthenticationMethodEnum.PASSWORD,

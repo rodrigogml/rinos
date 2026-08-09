@@ -7,6 +7,8 @@ package br.com.rinos.app.backend.module.identity.enums;
  * @since 2026-08-08
  */
 public enum AuthSessionRevocationReasonEnum {
+  PREPARATION_ABORTED,
+  PUBLICATION_ABORTED,
   USER_REQUEST,
   OTHER_SESSIONS,
   USER_NOT_ACTIVE,

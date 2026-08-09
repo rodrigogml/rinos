@@ -1,10 +1,13 @@
 package br.com.rinos.app.backend.module.identity.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -37,17 +40,29 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationAssuranceEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationWindowOperationEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionAccessStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthSessionStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationSessionLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationWindowService;
 import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.IdentityReferenceService;
+import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationSessionLifecycleVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthSessionVO;
+import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
+import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
 import br.com.rinos.app.config.AuthenticationAbusePropertiesConfig;
 import br.com.rinos.app.config.AuthenticationRetentionPropertiesConfig;
@@ -181,6 +196,93 @@ class AuthenticationSessionRepositoryIT {
           replayed.cookieValue(), false, NOW.plusSeconds(2), UUID.randomUUID()).status());
       assertThat(persistedStatus)
           .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+    });
+  }
+
+  @Test
+  void lifecycle_shouldConsumeFlowOnlyWhenPreparedSessionIsPublished() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository userRepository = context.getBean(UserRepository.class);
+      Long userId = activeUser(transaction, userRepository, "lifecycle@example.test");
+      RFWOpaqueTokenService tokens = new RFWOpaqueTokenService();
+      IdentityAuditService audit = new IdentityAuditService(
+          context.getBean(IdentityEventRepository.class));
+      AuthenticationFlowService flows = new AuthenticationFlowService(
+          context.getBean(AuthenticationFlowRepository.class),
+          context.getBean(AuthenticationFlowMethodRepository.class),
+          context.getBean(AuthenticationProofRepository.class),
+          userRepository,
+          tokens,
+          audit);
+      LegalConsentService legal = mock(LegalConsentService.class);
+      when(legal.evaluateRequiredConsents(userId, NOW))
+          .thenReturn(new LegalRequirementStatusVO(List.of(1L, 2L), List.of()));
+      AuthenticationSessionLifecycleService lifecycle =
+          new AuthenticationSessionLifecycleService(
+              context.getBean(AuthSessionRepository.class),
+              context.getBean(AuthSessionMethodRepository.class),
+              context.getBean(AuthenticationFlowRepository.class),
+              userRepository,
+              flows,
+              new AuthenticationAssurancePolicyService(),
+              legal,
+              tokens,
+              new IdentityReferenceService(),
+              audit,
+              sessionProperties());
+      IssuedAuthenticationFlowVO issued = transaction.execute(status -> flows.issue(
+          userId,
+          AuthenticationFlowPurposeEnum.SIGN_IN,
+          AuthenticationMethodEnum.PASSWORD,
+          AuthenticationAssuranceEnum.SINGLE_FACTOR,
+          Set.of(),
+          List.of(new AuthenticationFlowVerifiedMethodVO(
+              AuthenticationMethodEnum.PASSWORD, NOW.minusSeconds(1), null)),
+          false,
+          NOW.minusSeconds(10),
+          NOW.plusSeconds(300),
+          UUID.randomUUID()));
+
+      AuthenticationSessionLifecycleVO prepared = transaction.execute(status -> lifecycle.prepare(
+          issued.reference(),
+          AuthenticationFlowPurposeEnum.SIGN_IN,
+          userId,
+          false,
+          new byte[] {127, 0, 0, 1},
+          "Browser/1.0",
+          NOW));
+
+      assertThat(context.getBean(AuthSessionRepository.class).findAll())
+          .singleElement()
+          .satisfies(session -> assertThat(session.getStatus())
+              .isEqualTo(AuthSessionStatusEnum.PREPARED));
+      assertThat(context.getBean(AuthenticationFlowRepository.class).findAll())
+          .singleElement()
+          .satisfies(flow -> assertThat(flow.getStatus())
+              .isEqualTo(AuthenticationFlowStatusEnum.OPEN));
+      assertThat(context.getBean(IdentityEventRepository.class).findAll())
+          .extracting(event -> event.getEventType())
+          .doesNotContain(
+              IdentityEventTypeEnum.AUTHENTICATION_SUCCEEDED,
+              IdentityEventTypeEnum.AUTHENTICATION_SESSION_CREATED);
+
+      transaction.executeWithoutResult(status -> lifecycle.publish(
+          prepared.sessionReference(), NOW));
+
+      assertThat(context.getBean(AuthSessionRepository.class).findAll())
+          .singleElement()
+          .satisfies(session -> assertThat(session.getStatus())
+              .isEqualTo(AuthSessionStatusEnum.ACTIVE));
+      assertThat(context.getBean(AuthenticationFlowRepository.class).findAll())
+          .singleElement()
+          .satisfies(flow -> assertThat(flow.getStatus())
+              .isEqualTo(AuthenticationFlowStatusEnum.USED));
+      assertThat(context.getBean(IdentityEventRepository.class).findAll())
+          .extracting(event -> event.getEventType())
+          .contains(
+              IdentityEventTypeEnum.AUTHENTICATION_SUCCEEDED,
+              IdentityEventTypeEnum.AUTHENTICATION_SESSION_CREATED);
     });
   }
 
