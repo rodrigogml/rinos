@@ -56,6 +56,9 @@ conta e nunca é persistido.
 Depois de uma correspondência válida, `PasswordEncoder.upgradeEncoding` decide se o hash precisa ser recalculado
 com os parâmetros atuais. O upgrade ocorre ainda sob o lock da credencial, antes de apagar a senha, e não modifica
 `passwordChangedAt`, pois o segredo escolhido pelo usuário não mudou. Hash vigente não produz escrita adicional.
+Uma credencial com `compromisedAt` preenchido continua pagando a comparação do hash real, mas produz a mesma rejeição
+pública de qualquer credencial inválida e não sofre upgrade. Somente uma substituição validada da senha limpa a marca
+de comprometimento e torna o método local utilizável novamente.
 
 Quando TOTP, fator de e-mail ou conjunto de recovery codes estiver ativo, a fachada exige
 `MULTI_FACTOR`; métodos adicionais utilizáveis, inclusive passkey, são entregues como alternativas ao orquestrador.

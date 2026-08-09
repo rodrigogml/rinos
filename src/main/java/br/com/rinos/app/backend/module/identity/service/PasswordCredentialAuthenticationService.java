@@ -76,7 +76,8 @@ public class PasswordCredentialAuthenticationService {
       String comparedHash = credential == null ? sentinelHash : credential.getPasswordHash();
       boolean matches = passwordEncoder.matches(CharBuffer.wrap(password), comparedHash);
       if (!matches || user == null || user.getStatus() != UserStatusEnum.ACTIVE
-          || credential == null || credential.getStatus() != LocalCredentialStatusEnum.ACTIVE) {
+          || credential == null || credential.getStatus() != LocalCredentialStatusEnum.ACTIVE
+          || credential.getCompromisedAt() != null) {
         return OptionalLong.empty();
       }
       upgradeHashIfRequired(credential, password);

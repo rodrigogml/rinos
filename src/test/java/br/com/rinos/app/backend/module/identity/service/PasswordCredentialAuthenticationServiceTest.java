@@ -104,6 +104,28 @@ class PasswordCredentialAuthenticationServiceTest {
   }
 
   @Test
+  void verify_shouldCompareRealHashButRejectCompromisedCredentialUntilReplacement() {
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    LocalCredentialEntity credential = new LocalCredentialEntity(
+        user, "{argon2id}real-hash", NOW.minusSeconds(60));
+    credential.setCompromisedAt(NOW.minusSeconds(30));
+    when(users.findByNormalizedEmailForUpdate("person@example.test"))
+        .thenReturn(Optional.of(user));
+    when(credentials.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
+    when(encoder.matches(any(CharSequence.class), eq("{argon2id}real-hash")))
+        .thenReturn(true);
+    char[] password = "CorrectPassword1!".toCharArray();
+
+    OptionalLong result = service.verify("Person@Example.test", password, NOW);
+
+    assertThat(result).isEmpty();
+    assertThat(password).containsOnly('\0');
+    verify(encoder).matches(any(CharSequence.class), eq("{argon2id}real-hash"));
+    verify(encoder, never()).upgradeEncoding(any());
+    verify(credentials, never()).save(any());
+  }
+
+  @Test
   void verify_shouldStillPaySentinelCostForMalformedIdentifier() {
     when(normalization.normalize("invalid"))
         .thenThrow(new IllegalArgumentException("invalid email"));

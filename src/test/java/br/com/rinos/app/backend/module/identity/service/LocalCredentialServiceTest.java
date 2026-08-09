@@ -68,6 +68,7 @@ class LocalCredentialServiceTest {
   void replace_shouldUpdateExistingCredential_whenUserAlreadyHasCredential() {
     LocalCredentialEntity credential =
         new LocalCredentialEntity(user, "{argon2}old-value");
+    credential.setCompromisedAt(INVALIDATED_AT);
     when(repository.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
 
     service.replace(user, "{argon2}new-value");
