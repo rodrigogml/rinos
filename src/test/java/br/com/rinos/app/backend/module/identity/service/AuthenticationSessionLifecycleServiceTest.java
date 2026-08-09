@@ -224,6 +224,41 @@ class AuthenticationSessionLifecycleServiceTest {
     verify(sessionRepository, never()).saveAndFlush(any());
   }
 
+  @Test
+  void validate_shouldRefreshActivityOnlyAtConfiguredInterval() {
+    AuthenticationSessionLifecycleVO prepared = prepare();
+    stubSessionLookup(prepared.sessionReference());
+    service.publish(prepared.sessionReference(), NOW);
+
+    AuthenticationSessionLifecycleVO beforeInterval = service.validate(
+        prepared.sessionReference(), NOW.plus(Duration.ofMinutes(4)));
+
+    assertThat(beforeInterval.status()).isEqualTo(AuthenticationSessionLifecycleStatusEnum.ACTIVE);
+    assertThat(persistedSession.getLastActivityAt()).isEqualTo(NOW);
+    assertThat(persistedSession.getIdleExpiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(30)));
+
+    AuthenticationSessionLifecycleVO atInterval = service.validate(
+        prepared.sessionReference(), NOW.plus(Duration.ofMinutes(5)));
+
+    assertThat(atInterval.status()).isEqualTo(AuthenticationSessionLifecycleStatusEnum.ACTIVE);
+    assertThat(persistedSession.getLastActivityAt()).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
+    assertThat(persistedSession.getIdleExpiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(35)));
+  }
+
+  @Test
+  void validate_shouldExpireSessionAtIdleBoundaryWithoutRefreshingIt() {
+    AuthenticationSessionLifecycleVO prepared = prepare();
+    stubSessionLookup(prepared.sessionReference());
+    service.publish(prepared.sessionReference(), NOW);
+
+    AuthenticationSessionLifecycleVO result = service.validate(
+        prepared.sessionReference(), NOW.plus(Duration.ofMinutes(30)));
+
+    assertThat(result.status()).isEqualTo(AuthenticationSessionLifecycleStatusEnum.EXPIRED);
+    assertThat(persistedSession.getStatus()).isEqualTo(AuthSessionStatusEnum.EXPIRED);
+    assertThat(persistedSession.getLastActivityAt()).isEqualTo(NOW);
+  }
+
   private AuthenticationSessionLifecycleVO prepare() {
     return service.prepare(
         FLOW_REFERENCE,

@@ -246,6 +246,12 @@ public class AuthenticationSessionLifecycleService {
           "EXPIRY", occurredAt);
       return terminal(AuthenticationSessionLifecycleStatusEnum.EXPIRED);
     }
+    if (!occurredAt.isBefore(
+        session.getLastActivityAt().plus(sessionProperties.activityRefreshInterval()))) {
+      Duration idleDuration = session.isRemembered()
+          ? sessionProperties.rememberedIdle() : sessionProperties.normalIdle();
+      session.refreshActivity(occurredAt, idleDuration);
+    }
     return view(session, coordinates.correlationId());
   }
 

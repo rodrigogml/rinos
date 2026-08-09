@@ -259,6 +259,12 @@ O guard consulta `validate(...)` antes de liberar toda requisição autenticada.
 `close(...)` participa do logout programático e HTTP e deve ser idempotente. Aplicações sem o provider mantêm o
 comportamento local anterior.
 
+O filtro cobre requests normais, chamadas protegidas e heartbeats autenticados do Vaadin. Cada passagem consulta a
+autoridade global para observar revogação cross-instance imediatamente, mas somente atualiza `lastActivityAt` e
+`idleExpiresAt` quando os cinco minutos configurados desde a última gravação tiverem transcorrido. O limite de
+inatividade é sempre `min(now + idleTimeout, absoluteExpiresAt)`; alcançar exatamente qualquer limite expira antes
+de tentar renovar atividade.
+
 A referência implementada por `RFWAuthenticationSessionPrincipal` não é segredo nem credencial, não equivale ao ID
 sequencial do banco e não aparece em URL, mensagem ou log. Preparações abandonadas por queda do processo devem
 expirar pela política da hospedeira.

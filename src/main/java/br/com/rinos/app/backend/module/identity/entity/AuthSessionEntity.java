@@ -433,6 +433,9 @@ public class AuthSessionEntity {
     }
     status = AuthSessionStatusEnum.ACTIVE;
     activatedAt = at;
+    if (at.isAfter(lastActivityAt)) {
+      lastActivityAt = at;
+    }
   }
 
   /** Desvincula uma preparação abortada para permitir uma nova tentativa do mesmo fluxo. */
