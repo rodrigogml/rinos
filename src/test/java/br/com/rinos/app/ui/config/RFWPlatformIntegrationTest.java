@@ -63,6 +63,7 @@ import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
+import br.com.rinos.app.api.facade.AuthenticationConsentFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.facade.PasswordAuthenticationFacade;
@@ -70,6 +71,7 @@ import br.com.rinos.app.api.facade.RegistrationActivationFacade;
 import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
+import br.com.rinos.app.api.facade.ReauthenticationFacade;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
@@ -256,6 +258,41 @@ class RFWPlatformIntegrationTest {
               .contains(activationConsent);
           assertThat(capabilities.registrationCancellationProvider())
               .contains(cancellation);
+        });
+  }
+
+  /**
+   * Comprova a descoberta dos providers reais dos gates posteriores aos fatores de acesso.
+   */
+  @Test
+  void context_shouldDiscoverLegalConsentAndReauthenticationCapabilities() {
+    RFWAuthenticationConsentProviderAdapter authenticationConsent =
+        new RFWAuthenticationConsentProviderAdapter(
+            mock(AuthenticationConsentFacade.class),
+            new RFWAuthenticationOutcomeAdapter());
+    RFWReauthenticationChallengeProviderAdapter reauthentication =
+        new RFWReauthenticationChallengeProviderAdapter(
+            mock(ReauthenticationFacade.class));
+
+    contextRunner
+        .withBean(
+            RFWAuthenticationConsentProviderAdapter.class,
+            () -> authenticationConsent)
+        .withBean(
+            RFWReauthenticationChallengeProviderAdapter.class,
+            () -> reauthentication)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          RFWAccessCapabilityService capabilities =
+              context.getBean(RFWAccessCapabilityService.class);
+
+          assertThat(capabilities.getAvailableCapabilities()).contains(
+              RFWAccessCapabilityEnum.AUTHENTICATION_CONSENT,
+              RFWAccessCapabilityEnum.REAUTHENTICATION);
+          assertThat(capabilities.authenticationConsentProvider())
+              .contains(authenticationConsent);
+          assertThat(capabilities.reauthenticationChallengeProvider())
+              .contains(reauthentication);
         });
   }
 

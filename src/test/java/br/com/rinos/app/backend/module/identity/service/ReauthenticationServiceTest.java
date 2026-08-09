@@ -41,6 +41,7 @@ import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowSnapshotVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.backend.module.identity.vo.ReauthenticationDecisionVO;
+import br.com.rinos.app.backend.module.identity.vo.VerifiedReauthenticationProofVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 import br.com.rinos.app.config.AuthenticationSessionPropertiesConfig;
 
@@ -70,6 +71,7 @@ class ReauthenticationServiceTest {
   private ReauthenticationContextRepository contextRepository;
   private AuthenticationFlowService flowService;
   private AuthenticationMethodAvailabilityService availabilityService;
+  private ReauthenticationProofService proofService;
   private IdentityAuditService auditService;
   private IdentityReferenceService referenceService;
   private ReauthenticationService service;
@@ -86,6 +88,7 @@ class ReauthenticationServiceTest {
     contextRepository = mock(ReauthenticationContextRepository.class);
     flowService = mock(AuthenticationFlowService.class);
     availabilityService = mock(AuthenticationMethodAvailabilityService.class);
+    proofService = mock(ReauthenticationProofService.class);
     auditService = mock(IdentityAuditService.class);
     referenceService = new IdentityReferenceService();
     user = mock(UserEntity.class);
@@ -112,6 +115,11 @@ class ReauthenticationServiceTest {
         .thenReturn(List.of(sessionMethod));
     when(availabilityService.availableMethods(USER_ID))
         .thenReturn(Set.of(AuthenticationMethodEnum.PASSWORD));
+    when(proofService.supportedMethods()).thenReturn(Set.of(AuthenticationMethodEnum.PASSWORD));
+    when(proofService.verify(
+        USER_ID, AuthenticationMethodEnum.PASSWORD, "CorrectPassword1!", NOW))
+        .thenReturn(Optional.of(new VerifiedReauthenticationProofVO(
+            AuthenticationMethodEnum.PASSWORD, null)));
     AuthenticationAssurancePolicyService assurancePolicy =
         new AuthenticationAssurancePolicyService();
     ReauthenticationPolicyService reauthenticationPolicy = new ReauthenticationPolicyService(
@@ -134,6 +142,7 @@ class ReauthenticationServiceTest {
         contextRepository,
         flowService,
         availabilityService,
+        proofService,
         assurancePolicy,
         reauthenticationPolicy,
         referenceService,
@@ -174,7 +183,7 @@ class ReauthenticationServiceTest {
   }
 
   @Test
-  void completeVerified_shouldConsumeOnceAndRefreshOnlyBoundSession() {
+  void complete_shouldConsumeOnceAndRefreshOnlyBoundSession_whenProofIsValid() {
     ReauthenticationContextEntity context = mock(ReauthenticationContextEntity.class);
     when(context.getAuthSession()).thenReturn(session);
     when(context.getOperation()).thenReturn(ReauthenticationOperationEnum.CHANGE_PASSWORD);
@@ -198,12 +207,12 @@ class ReauthenticationServiceTest {
         CHALLENGE_REFERENCE, AuthenticationFlowPurposeEnum.REAUTHENTICATION, NOW))
         .thenReturn(inspection(AuthenticationOperationStatusEnum.USED));
 
-    ReauthenticationDecisionVO result = service.completeVerified(
+    ReauthenticationDecisionVO result = service.complete(
         USER_ID,
         SESSION_REFERENCE,
         CHALLENGE_REFERENCE,
         AuthenticationMethodEnum.PASSWORD,
-        null,
+        "CorrectPassword1!",
         NOW);
 
     assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.COMPLETED);
@@ -214,7 +223,7 @@ class ReauthenticationServiceTest {
   }
 
   @Test
-  void completeVerified_shouldRejectDifferentCurrentSession_withoutConsumingChallenge() {
+  void complete_shouldRejectDifferentCurrentSession_withoutConsumingChallenge() {
     ReauthenticationContextEntity context = mock(ReauthenticationContextEntity.class);
     when(context.getAuthSession()).thenReturn(session);
     when(context.getOperation()).thenReturn(ReauthenticationOperationEnum.CHANGE_PASSWORD);
@@ -225,12 +234,12 @@ class ReauthenticationServiceTest {
         CHALLENGE_REFERENCE, AuthenticationFlowPurposeEnum.REAUTHENTICATION, NOW))
         .thenReturn(openSnapshot(List.of()));
 
-    ReauthenticationDecisionVO result = service.completeVerified(
+    ReauthenticationDecisionVO result = service.complete(
         USER_ID,
         UUID.fromString("dc5f0af9-1ac5-4ca2-a784-230336f9de1e"),
         CHALLENGE_REFERENCE,
         AuthenticationMethodEnum.PASSWORD,
-        null,
+        "CorrectPassword1!",
         NOW);
 
     assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.ACCESS_DENIED);

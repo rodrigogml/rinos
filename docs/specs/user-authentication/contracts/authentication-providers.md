@@ -319,7 +319,8 @@ vencimento absoluto persistido. Cookies ausentes, duplicados ou vazios nunca alc
 **RFW contracts**: `RFWReauthenticationChallengeProvider`, `RFWReauthenticationBeginRequestDTO`,
 `RFWReauthenticationVerificationRequestDTO`, `RFWReauthenticationChallengeVO` e
 `RFWReauthenticationOutcomeVO`<br>
-**Rinos facade proposta**: `ReauthenticationFacade`
+**Rinos facade**: `ReauthenticationFacade`<br>
+**Rinos adapter**: `RFWReauthenticationChallengeProviderAdapter`
 
 Uma consulta inicial verifica se `lastStrongAuthAt` já está dentro dos 15 minutos e se o nível/método satisfaz a
 operação. Quando não estiver, devolve referência opaca, validade, rótulo humano e catálogo de senha, TOTP e/ou
@@ -338,6 +339,18 @@ escolhido e uma prova transitória e só permite continuar a operação original
 vinculada ao usuário, sessão e operação, expirar, ser consumida uma única vez e ser cancelada quando a UI fechar. O
 `operationId` permanece interno; somente o rótulo i18n humano do desafio é exibido. O provider tipado tem precedência
 sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
+
+O adapter obtém identidade e referência de sessão exclusivamente do principal autenticado; esses valores não
+são aceitos do componente. O catálogo apresentado é a interseção entre métodos ativos, métodos permitidos pela
+operação e verificadores criptográficos realmente implementados. Nesta etapa somente `PASSWORD` possui verificador
+real. TOTP e passkey permanecem ocultos até suas cerimônias das tarefas 4.1 e 4.2, mesmo que a credencial persistida
+já exista. A prova é transitória, nunca entra em entity, auditoria, retorno ou `SecurityContext`.
+
+O gate legal pós-autenticação é publicado por `RFWAuthenticationConsentProviderAdapter`. Ele encaminha os IDs das
+versões aceitas para `AuthenticationConsentFacade`, e somente um resultado `READY` volta ao lifecycle oficial do RFW.
+O token intermediário continua sem authorities; a sessão global utilizável só nasce no provider de lifecycle.
+Cancelamento não publica autenticação e a expiração persistente continua sendo o fallback seguro quando o backend
+estiver indisponível.
 
 O vínculo persistente não armazena callback, payload da tela nem fotografia do alvo. `COMPLETED` autoriza somente a
 retomada que o componente RFW manteve em memória. Essa operação é chamada novamente e deve reler seu alvo, conferir a

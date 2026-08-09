@@ -37,6 +37,7 @@ import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.backend.module.identity.vo.ReauthenticationDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.ReauthenticationPolicyDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
+import br.com.rinos.app.backend.module.identity.vo.VerifiedReauthenticationProofVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 
 /**
@@ -60,6 +61,7 @@ public class ReauthenticationService {
   private final ReauthenticationContextRepository contextRepository;
   private final AuthenticationFlowService flowService;
   private final AuthenticationMethodAvailabilityService availabilityService;
+  private final ReauthenticationProofService proofService;
   private final AuthenticationAssurancePolicyService assurancePolicy;
   private final ReauthenticationPolicyService reauthenticationPolicy;
   private final IdentityReferenceService referenceService;
@@ -75,6 +77,7 @@ public class ReauthenticationService {
       ReauthenticationContextRepository contextRepository,
       AuthenticationFlowService flowService,
       AuthenticationMethodAvailabilityService availabilityService,
+      ReauthenticationProofService proofService,
       AuthenticationAssurancePolicyService assurancePolicy,
       ReauthenticationPolicyService reauthenticationPolicy,
       IdentityReferenceService referenceService,
@@ -87,6 +90,7 @@ public class ReauthenticationService {
     this.contextRepository = contextRepository;
     this.flowService = flowService;
     this.availabilityService = availabilityService;
+    this.proofService = proofService;
     this.assurancePolicy = assurancePolicy;
     this.reauthenticationPolicy = reauthenticationPolicy;
     this.referenceService = referenceService;
@@ -121,7 +125,10 @@ public class ReauthenticationService {
       return terminal(ReauthenticationStatusEnum.ACCESS_DENIED);
     }
     List<VerifiedAuthSessionMethodVO> sessionMethods = sessionMethods(session);
-    Set<AuthenticationMethodEnum> availableMethods = availabilityService.availableMethods(user.getId());
+    Set<AuthenticationMethodEnum> availableMethods = availabilityService.availableMethods(user.getId())
+        .stream()
+        .filter(proofService.supportedMethods()::contains)
+        .collect(java.util.stream.Collectors.toUnmodifiableSet());
     ReauthenticationPolicyDecisionVO decision = reauthenticationPolicy.evaluate(
         operation,
         session.getAssuranceLevel(),
@@ -165,29 +172,52 @@ public class ReauthenticationService {
   }
 
   /**
-   * Consome uma prova já validada pelo adapter do método e libera uma única retomada.
+   * Valida e consome a prova transitória, liberando uma única retomada.
    *
-   * <p>Senha, TOTP ou passkey devem ser comprovados antes desta chamada e dentro da mesma
-   * transação coordenadora. Nenhum material de prova é recebido ou persistido aqui.
+   * <p>O verificador do método e o consumo executam na mesma transação. O material da prova não
+   * é persistido, auditado nem devolvido.
    *
    * @param userId identidade autenticada
    * @param currentSessionReference sessão que iniciou e concluirá o desafio
    * @param challengeReference referência opaca emitida em {@link #begin}
    * @param verifiedMethod método cuja prova acabou de ser validada
-   * @param userVerification confirmação local WebAuthn ou {@code null}
+   * @param proof prova efêmera que será descartada depois da verificação
    * @param occurredAt instante UTC da comprovação
    * @return conclusão ou estado terminal seguro
    */
   @Transactional
-  public ReauthenticationDecisionVO completeVerified(
+  public ReauthenticationDecisionVO complete(
+      Long userId,
+      UUID currentSessionReference,
+      String challengeReference,
+      AuthenticationMethodEnum verifiedMethod,
+      String proof,
+      Instant occurredAt) {
+    Objects.requireNonNull(verifiedMethod, "verifiedMethod must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    VerifiedReauthenticationProofVO verifiedProof = proofService
+        .verify(userId, verifiedMethod, proof, occurredAt)
+        .orElse(null);
+    if (!proofService.supportedMethods().contains(verifiedMethod) || verifiedProof == null
+        || verifiedProof.method() != verifiedMethod) {
+      return terminal(ReauthenticationStatusEnum.REJECTED);
+    }
+    return completeVerified(
+        userId,
+        currentSessionReference,
+        challengeReference,
+        verifiedMethod,
+        verifiedProof.userVerification(),
+        occurredAt);
+  }
+
+  private ReauthenticationDecisionVO completeVerified(
       Long userId,
       UUID currentSessionReference,
       String challengeReference,
       AuthenticationMethodEnum verifiedMethod,
       Boolean userVerification,
       Instant occurredAt) {
-    Objects.requireNonNull(verifiedMethod, "verifiedMethod must not be null");
-    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
     Long ownerId = flowService.resolveUserId(challengeReference).orElse(null);
     if (ownerId == null || !ownerId.equals(userId)) {
       return terminal(ReauthenticationStatusEnum.REJECTED);

@@ -8,7 +8,8 @@
   catálogo fechado;
 - a conclusão bloqueia e revalida identidade, fluxo, contexto, sessão, vencimentos e disponibilidade atual do método;
 - uma referência apresentada por outra identidade ou sessão não é consumida;
-- somente uma prova previamente validada por senha, TOTP ou passkey pode ser registrada pelo coordenador;
+- somente uma prova aceita por um verificador real pode ser registrada pelo coordenador; senha é o primeiro
+  verificador entregue, enquanto TOTP e passkey dependem das respectivas cerimônias das fases seguintes;
 - a conclusão consome o fluxo uma única vez, acrescenta evidência sanitizada e atualiza apenas
   `lastStrongAuthAt`/`assuranceLevel` da sessão vinculada;
 - nenhuma sessão ou authority é criada durante a reautenticação;

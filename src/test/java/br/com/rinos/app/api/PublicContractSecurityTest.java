@@ -29,6 +29,8 @@ import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationResendRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationStartRequestDTO;
+import br.com.rinos.app.api.dto.ReauthenticationBeginRequestDTO;
+import br.com.rinos.app.api.dto.ReauthenticationVerificationRequestDTO;
 import br.com.rinos.app.api.dto.SessionBulkRevocationRequestDTO;
 import br.com.rinos.app.api.dto.SessionManagementContextDTO;
 import br.com.rinos.app.api.dto.SessionRevocationRequestDTO;
@@ -62,6 +64,7 @@ import br.com.rinos.app.api.vo.RegistrationCancellationConfirmationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.com.rinos.app.api.vo.RegistrationResendResultVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
+import br.com.rinos.app.api.vo.ReauthenticationResultVO;
 import br.com.rinos.app.api.vo.RemoteOriginRequestVO;
 import br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
@@ -91,6 +94,8 @@ class PublicContractSecurityTest {
       RegistrationCancellationRequestDTO.class,
       RegistrationResendRequestDTO.class,
       RegistrationStartRequestDTO.class,
+      ReauthenticationBeginRequestDTO.class,
+      ReauthenticationVerificationRequestDTO.class,
       SessionBulkRevocationRequestDTO.class,
       SessionManagementContextDTO.class,
       SessionRevocationRequestDTO.class,
@@ -109,6 +114,7 @@ class PublicContractSecurityTest {
       RegistrationCancellationRequestResultVO.class,
       RegistrationResendResultVO.class,
       RegistrationStartResultVO.class,
+      ReauthenticationResultVO.class,
       RemoteOriginRequestVO.class,
       RinosAuthenticationCompletionVO.class,
       RinosUserPrincipalVO.class,
@@ -225,6 +231,24 @@ class PublicContractSecurityTest {
         new RegistrationActivationRequestDTO(email, proof, CORRELATION_ID),
         new ActivationConsentRequestDTO(reference, List.of("terms-v2"), CORRELATION_ID),
         new AuthenticationConsentRequestDTO(reference, List.of("terms-v2"), EXPIRES_AT),
+        new ReauthenticationBeginRequestDTO(
+            42L,
+            "286ba2c3-baea-46d4-942f-e94684cd25ea",
+            "change-password",
+            EXPIRES_AT),
+        new ReauthenticationVerificationRequestDTO(
+            42L,
+            "286ba2c3-baea-46d4-942f-e94684cd25ea",
+            reference,
+            AuthenticationMethodEnum.PASSWORD,
+            proof,
+            EXPIRES_AT),
+        new ReauthenticationResultVO(
+            br.com.rinos.app.api.enums.ReauthenticationStatusEnum.CHALLENGE_REQUIRED,
+            reference,
+            "identity.reauthentication.operation.change-password",
+            EXPIRES_AT,
+            Set.of(AuthenticationMethodEnum.PASSWORD)),
         new ExternalRegistrationCompletionRequestDTO(
             reference,
             List.of("terms-v1"),

@@ -91,6 +91,39 @@ public class PasswordCredentialAuthenticationService {
     }
   }
 
+  /**
+   * Comprova a senha da identidade autenticada sem depender do e-mail exposto na interface.
+   *
+   * @param userId identidade vinculada à sessão corrente
+   * @param password array cuja propriedade é transferida ao método
+   * @param verifiedAt instante UTC da prova
+   * @return {@code true} somente para usuário e credencial locais ativos e não comprometidos
+   */
+  @Transactional
+  public boolean verifyUser(Long userId, char[] password, Instant verifiedAt) {
+    Objects.requireNonNull(password, "password must not be null");
+    Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
+    try {
+      UserEntity user = userId == null || userId <= 0
+          ? null : userRepository.findByIdForUpdate(userId).orElse(null);
+      long credentialOwnerId = user == null ? SENTINEL_USER_ID : user.getId();
+      LocalCredentialEntity credential = credentialRepository
+          .findByUserIdForUpdate(credentialOwnerId)
+          .orElse(null);
+      String comparedHash = credential == null ? sentinelHash : credential.getPasswordHash();
+      boolean matches = passwordEncoder.matches(CharBuffer.wrap(password), comparedHash);
+      if (!matches || user == null || user.getStatus() != UserStatusEnum.ACTIVE
+          || credential == null || credential.getStatus() != LocalCredentialStatusEnum.ACTIVE
+          || credential.getCompromisedAt() != null) {
+        return false;
+      }
+      upgradeHashIfRequired(credential, password);
+      return true;
+    } finally {
+      Arrays.fill(password, '\0');
+    }
+  }
+
   private void upgradeHashIfRequired(LocalCredentialEntity credential, char[] password) {
     if (!passwordEncoder.upgradeEncoding(credential.getPasswordHash())) {
       return;

@@ -184,6 +184,40 @@ class PasswordCredentialAuthenticationServiceTest {
     verify(credentials, never()).save(any());
   }
 
+  @Test
+  void verifyUser_shouldAcceptActiveLocalCredentialAndErasePassword() {
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    LocalCredentialEntity credential = new LocalCredentialEntity(
+        user, "{argon2id}real-hash", NOW.minusSeconds(60));
+    when(users.findByIdForUpdate(41L)).thenReturn(Optional.of(user));
+    when(credentials.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
+    when(encoder.matches(any(CharSequence.class), eq("{argon2id}real-hash")))
+        .thenReturn(true);
+    char[] password = "CorrectPassword1!".toCharArray();
+
+    boolean result = service.verifyUser(41L, password, NOW);
+
+    assertThat(result).isTrue();
+    assertThat(password).containsOnly('\0');
+    verify(encoder).matches(any(CharSequence.class), eq("{argon2id}real-hash"));
+  }
+
+  @Test
+  void verifyUser_shouldPaySentinelCostForUnknownIdentityAndErasePassword() {
+    when(users.findByIdForUpdate(99L)).thenReturn(Optional.empty());
+    when(credentials.findByUserIdForUpdate(0L)).thenReturn(Optional.empty());
+    when(encoder.matches(any(CharSequence.class), eq("{argon2id}sentinel")))
+        .thenReturn(false);
+    char[] password = "WrongPassword1!".toCharArray();
+
+    boolean result = service.verifyUser(99L, password, NOW);
+
+    assertThat(result).isFalse();
+    assertThat(password).containsOnly('\0');
+    verify(credentials).findByUserIdForUpdate(0L);
+    verify(encoder).matches(any(CharSequence.class), eq("{argon2id}sentinel"));
+  }
+
   private static UserEntity user(UserStatusEnum status) {
     UserEntity user = new UserEntity("person@example.test", "person@example.test", status);
     ReflectionTestUtils.setField(user, "id", 41L);
