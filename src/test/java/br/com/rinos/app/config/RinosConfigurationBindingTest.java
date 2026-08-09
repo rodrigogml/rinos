@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +16,8 @@ class RinosConfigurationBindingTest {
 
   private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
       .withUserConfiguration(RinosConfigurationConfig.class);
+
+  private static final String KEY_V1 = Base64.getEncoder().encodeToString(new byte[32]);
 
   /**
    * Comprova os valores padrão funcionais e o binding de lista explícita.
@@ -69,6 +72,60 @@ class RinosConfigurationBindingTest {
           assertThat(context).hasNotFailed();
           assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())
               .isEqualTo(URI.create("https://app.rinos.com.br"));
+        });
+  }
+
+  @Test
+  void bind_shouldLoadActiveAndPreviousKeyVersions_whenKeyringIsValid() {
+    byte[] secondKey = new byte[32];
+    java.util.Arrays.fill(secondKey, (byte) 2);
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.keyring.enabled=true",
+            "rinos.authentication.keyring.active-version=v2",
+            "rinos.authentication.keyring.keys.v1=" + KEY_V1,
+            "rinos.authentication.keyring.keys.v2="
+                + Base64.getEncoder().encodeToString(secondKey))
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          AuthenticationKeyringPropertiesConfig keyring =
+              context.getBean(AuthenticationKeyringPropertiesConfig.class);
+          assertThat(keyring.activeVersion()).isEqualTo("v2");
+          assertThat(keyring.keys()).containsOnlyKeys("v1", "v2");
+        });
+  }
+
+  @Test
+  void bind_shouldFailStartup_whenEnabledKeyringHasInvalidSecret() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.keyring.enabled=true",
+            "rinos.authentication.keyring.active-version=v1",
+            "rinos.authentication.keyring.keys.v1=not-base64")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "chaves do keyring devem usar Base64 válido e ao menos 256 bits; "
+                      + "cada versão deve ser canônica e distinta.");
+        });
+  }
+
+  @Test
+  void bind_shouldFailStartup_whenActiveKeyVersionIsMissing() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.authentication.keyring.enabled=true",
+            "rinos.authentication.keyring.active-version=v2",
+            "rinos.authentication.keyring.keys.v1=" + KEY_V1)
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage(
+                  "keyring habilitado exige activeVersion presente em keys.");
         });
   }
 

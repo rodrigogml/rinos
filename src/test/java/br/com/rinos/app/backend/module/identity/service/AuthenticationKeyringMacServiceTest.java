@@ -21,7 +21,8 @@ class AuthenticationKeyringMacServiceTest {
   @Test
   void protect_shouldBeDeterministicAndSeparateSemanticDomains() {
     AuthenticationKeyringMacService service = new AuthenticationKeyringMacService(
-        new AuthenticationKeyringPropertiesConfig(true, "v1", Map.of("v1", KEY)));
+        new AuthenticationKeyringService(
+            new AuthenticationKeyringPropertiesConfig(true, "v1", Map.of("v1", KEY))));
     byte[] value = "same-value".getBytes(StandardCharsets.UTF_8);
 
     ProtectedAuthenticationKeyVO first = service.protect("sign-in/identifier", value);
@@ -37,7 +38,8 @@ class AuthenticationKeyringMacServiceTest {
   @Test
   void protect_shouldFailClosedWhenKeyringIsDisabled() {
     AuthenticationKeyringMacService service = new AuthenticationKeyringMacService(
-        new AuthenticationKeyringPropertiesConfig(false, "", Map.of()));
+        new AuthenticationKeyringService(
+            new AuthenticationKeyringPropertiesConfig(false, "", Map.of())));
 
     assertThatThrownBy(() -> service.protect("sign-in/origin", new byte[] {1, 2, 3, 4}))
         .isInstanceOf(IllegalStateException.class)

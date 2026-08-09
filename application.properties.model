@@ -113,7 +113,8 @@ rinos.authentication.mfa.totp-period=30s
 rinos.authentication.mfa.totp-window=1
 rinos.authentication.mfa.recovery-code-count=10
 
-# Keyring local. Habilite somente depois de substituir o exemplo por segredo Base64 de ao menos 32 bytes.
+# Keyring local. Base64 canônico de 32+ bytes; a versão ativa escreve e as anteriores permanecem para leitura.
+# Todas as instâncias usam o mesmo keyring. Não remova uma versão enquanto houver dado protegido por ela.
 rinos.authentication.keyring.enabled=false
 rinos.authentication.keyring.active-version=
 rinos.authentication.keyring.keys.v1=

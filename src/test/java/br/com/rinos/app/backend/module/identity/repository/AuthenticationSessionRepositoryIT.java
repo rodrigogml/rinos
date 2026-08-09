@@ -57,6 +57,7 @@ import br.com.rinos.app.backend.module.identity.service.AuthenticationAssuranceP
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationKeyringMacService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationKeyringService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationSessionLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationWindowService;
@@ -318,8 +319,9 @@ class AuthenticationSessionRepositoryIT {
       AuthenticationAbuseProtectionService service = new AuthenticationAbuseProtectionService(
           new EmailNormalizationService(),
           new OriginAddressService(),
-          new AuthenticationKeyringMacService(new AuthenticationKeyringPropertiesConfig(
-              true, "v1", Map.of("v1", key))),
+          new AuthenticationKeyringMacService(new AuthenticationKeyringService(
+              new AuthenticationKeyringPropertiesConfig(
+                  true, "v1", Map.of("v1", key)))),
           windows);
 
       List<AuthenticationAbuseDecisionVO> results = compete(() ->
@@ -395,8 +397,9 @@ class AuthenticationSessionRepositoryIT {
       AuthenticationAbuseProtectionService service = new AuthenticationAbuseProtectionService(
           new EmailNormalizationService(),
           new OriginAddressService(),
-          new AuthenticationKeyringMacService(new AuthenticationKeyringPropertiesConfig(
-              true, "v1", Map.of("v1", key))),
+          new AuthenticationKeyringMacService(new AuthenticationKeyringService(
+              new AuthenticationKeyringPropertiesConfig(
+                  true, "v1", Map.of("v1", key)))),
           failingSecondWindow);
 
       assertThatThrownBy(() -> transaction(context).execute(status ->

@@ -96,7 +96,8 @@ método alternativo não ativa implicitamente o 2FA voluntário.
 
 Falhas de senha atualizam, na mesma transação, duas janelas deslizantes independentes: e-mail normalizado informado
 e IP canônico resolvido pela política de proxy. Ambos são persistidos somente como HMAC-SHA-256 versionado e com
-separação de domínio; a ordem de lock é sempre identificador → origem. A resposta combina a política mais restritiva:
+separação de domínio; a ordem de lock segue a ordenação binária da chave do índice, e não o papel semântico, para
+evitar ciclos de gap lock na criação concorrente. A resposta combina a política mais restritiva:
 maior contador, maior espera progressiva e exigência de Turnstile em qualquer dimensão. Cada nova falha estende a
 janela, portanto a exigência só termina depois do intervalo configurado sem outra falha.
 

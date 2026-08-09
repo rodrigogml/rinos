@@ -3,6 +3,7 @@ package br.com.rinos.app.backend.module.identity.service;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -18,8 +19,9 @@ import br.com.rinos.app.backend.module.identity.vo.ProtectedAuthenticationKeyVO;
 /**
  * Coordena janelas independentes de login por identificador e origem canônica.
  *
- * <p>A ordem invariável identificador → origem e a separação de domínio dos MACs impedem ciclos de
- * lock entre tentativas concorrentes. Nenhum e-mail ou IP atravessa a fronteira da persistência.
+ * <p>As duas dimensões são bloqueadas pela ordem binária da chave persistida, independentemente de
+ * seu papel semântico. Isso evita ciclos de gap lock durante a criação concorrente no MySQL. Nenhum
+ * e-mail ou IP atravessa a fronteira da persistência.
  *
  * @author Rodrigo Leitão
  * @since 2026-08-09
@@ -56,12 +58,15 @@ public class AuthenticationAbuseProtectionService {
       Instant occurredAt) {
     ProtectedAuthenticationKeyVO identifierKey = identifierKey(identifier);
     ProtectedAuthenticationKeyVO originKey = originKey(canonicalOrigin);
-    AuthenticationWindowDecisionVO identifierDecision = windowService.registerFailure(
-        identifierKey.digest(), identifierKey.keyVersion(),
-        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
-    AuthenticationWindowDecisionVO originDecision = windowService.registerFailure(
-        originKey.digest(), originKey.keyVersion(),
-        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+    AuthenticationWindowDecisionVO identifierDecision;
+    AuthenticationWindowDecisionVO originDecision;
+    if (comparePersistenceKeys(identifierKey, originKey) <= 0) {
+      identifierDecision = registerFailure(identifierKey, occurredAt);
+      originDecision = registerFailure(originKey, occurredAt);
+    } else {
+      originDecision = registerFailure(originKey, occurredAt);
+      identifierDecision = registerFailure(identifierKey, occurredAt);
+    }
     return combine(identifierDecision, originDecision);
   }
 
@@ -78,7 +83,7 @@ public class AuthenticationAbuseProtectionService {
    * Consulta as dimensões disponíveis sem incrementar contadores.
    *
    * <p>Quando o identificador ainda não foi informado, somente a origem participa da decisão. Com
-   * identificador presente, a ordem invariável de lock continua identificador → origem.
+   * identificador presente, a ordem invariável de lock segue a chave binária persistida.
    *
    * @param identifier identificador efêmero informado, quando disponível
    * @param canonicalOrigin origem canônica obrigatória
@@ -95,13 +100,39 @@ public class AuthenticationAbuseProtectionService {
     }
     ProtectedAuthenticationKeyVO identifierKey = identifierKey(identifier);
     ProtectedAuthenticationKeyVO originKey = originKey(canonicalOrigin);
-    AuthenticationWindowDecisionVO identifierDecision = windowService.inspect(
-        identifierKey.digest(), identifierKey.keyVersion(),
-        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
-    AuthenticationWindowDecisionVO originDecision = windowService.inspect(
-        originKey.digest(), originKey.keyVersion(),
-        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+    AuthenticationWindowDecisionVO identifierDecision;
+    AuthenticationWindowDecisionVO originDecision;
+    if (comparePersistenceKeys(identifierKey, originKey) <= 0) {
+      identifierDecision = inspect(identifierKey, occurredAt);
+      originDecision = inspect(originKey, occurredAt);
+    } else {
+      originDecision = inspect(originKey, occurredAt);
+      identifierDecision = inspect(identifierKey, occurredAt);
+    }
     return identifierDecision.turnstileRequired() || originDecision.turnstileRequired();
+  }
+
+  private AuthenticationWindowDecisionVO registerFailure(
+      ProtectedAuthenticationKeyVO key,
+      Instant occurredAt) {
+    return windowService.registerFailure(
+        key.digest(), key.keyVersion(), AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+  }
+
+  private AuthenticationWindowDecisionVO inspect(
+      ProtectedAuthenticationKeyVO key,
+      Instant occurredAt) {
+    return windowService.inspect(
+        key.digest(), key.keyVersion(), AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+  }
+
+  private static int comparePersistenceKeys(
+      ProtectedAuthenticationKeyVO first,
+      ProtectedAuthenticationKeyVO second) {
+    int digestComparison = Arrays.compareUnsigned(first.digest(), second.digest());
+    return digestComparison != 0
+        ? digestComparison
+        : first.keyVersion().compareTo(second.keyVersion());
   }
 
   private ProtectedAuthenticationKeyVO identifierKey(String identifier) {

@@ -50,7 +50,7 @@ class AuthenticationAbuseProtectionServiceTest {
   }
 
   @Test
-  void registerFailure_shouldLockIdentifierBeforeOriginAndCombineStrictestPolicy() {
+  void registerFailure_shouldLockByPersistenceKeyAndCombineStrictestPolicy() {
     when(windows.registerFailure(
         any(), eq("v1"), eq(AuthenticationWindowOperationEnum.SIGN_IN), eq(NOW)))
         .thenReturn(new AuthenticationWindowDecisionVO(
@@ -72,6 +72,26 @@ class AuthenticationAbuseProtectionServiceTest {
   }
 
   @Test
+  void registerFailure_shouldReverseSemanticOrderWhenOriginKeySortsFirst() {
+    when(mac.protect(eq("sign-in/identifier"), any()))
+        .thenReturn(new ProtectedAuthenticationKeyVO(bytes(2), "v1"));
+    when(mac.protect(eq("sign-in/origin"), any()))
+        .thenReturn(new ProtectedAuthenticationKeyVO(bytes(1), "v1"));
+    when(windows.registerFailure(
+        any(), eq("v1"), eq(AuthenticationWindowOperationEnum.SIGN_IN), eq(NOW)))
+        .thenReturn(new AuthenticationWindowDecisionVO(
+            1, false, Duration.ZERO, NOW.plusSeconds(900), null));
+
+    service.registerFailure("Person@Example.test", "198.51.100.12", NOW);
+
+    InOrder order = inOrder(windows);
+    order.verify(windows).registerFailure(
+        bytes(1), "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW);
+    order.verify(windows).registerFailure(
+        bytes(2), "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW);
+  }
+
+  @Test
   void isOriginTurnstileRequired_shouldInspectWithoutIncrementing() {
     when(windows.inspect(
         any(), eq("v1"), eq(AuthenticationWindowOperationEnum.SIGN_IN), eq(NOW)))
@@ -82,7 +102,7 @@ class AuthenticationAbuseProtectionServiceTest {
   }
 
   @Test
-  void isTurnstileRequired_shouldInspectIdentifierBeforeOriginAndCombinePolicy() {
+  void isTurnstileRequired_shouldInspectByPersistenceKeyAndCombinePolicy() {
     when(windows.inspect(
         any(), eq("v1"), eq(AuthenticationWindowOperationEnum.SIGN_IN), eq(NOW)))
         .thenReturn(new AuthenticationWindowDecisionVO(

@@ -291,7 +291,12 @@ Ref: Spec FR-AUTH-012..014 e FR-AUTH-SES-008; Interface INT-WEB-AUTH-003/010
 
 Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 
-- [ ] 4.1.1 Implementar keyring AEAD/MAC versionado e falha de startup para configuração inválida
+- [x] 4.1.1 Implementar keyring AEAD/MAC versionado e falha de startup para configuração inválida
+
+> [!IMPORTANT]
+> A rotação, separação criptográfica e os gates de configuração estão registrados em
+> [`evidence/4.1.1/README.md`](./evidence/4.1.1/README.md). Trocar a versão ativa não autoriza remover chaves antigas:
+> cada versão deve permanecer configurada enquanto existir ciphertext ou MAC persistido com ela.
 - [ ] 4.1.2 Implementar enrollment TOTP, URI/QR, confirmação, janela e proteção contra replay
 - [ ] 4.1.3 Implementar emissão/reenvio/consumo de OTP por e-mail com limites e envio pós-commit
 - [ ] 4.1.4 Implementar geração de 10 recovery codes, hash individual, consumo e substituição total
