@@ -20,7 +20,7 @@ class AuthenticationFactorEntityTest {
   @Test
   void totp_shouldRequireConfirmationAndRejectReplayedStep() {
     TotpFactorEntity factor = new TotpFactorEntity(user(), UUID.randomUUID(), "Celular",
-        new byte[] {1, 2}, new byte[12], "key-1");
+        new byte[] {1, 2}, new byte[12], "key-1", NOW.plusSeconds(300));
     factor.confirm(100, NOW);
     factor.acceptStep(101, NOW.plusSeconds(30));
     assertThat(factor.getStatus()).isEqualTo(TotpFactorStatusEnum.ACTIVE);

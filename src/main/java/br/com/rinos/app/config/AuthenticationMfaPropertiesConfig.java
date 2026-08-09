@@ -13,16 +13,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties("rinos.authentication.mfa")
 public record AuthenticationMfaPropertiesConfig(
     @DefaultValue("5m") Duration challengeValidity,
-    @DefaultValue("5") int maximumAttempts,
-    @DefaultValue("6") int totpDigits,
-    @DefaultValue("30s") Duration totpPeriod,
-    @DefaultValue("1") int totpWindow,
-    @DefaultValue("10") int recoveryCodeCount) {
+    @DefaultValue("5") int maximumAttempts) {
   public AuthenticationMfaPropertiesConfig {
     if (challengeValidity == null || challengeValidity.isNegative() || challengeValidity.isZero())
       throw new IllegalArgumentException("challengeValidity deve ser maior que zero.");
-    if (maximumAttempts <= 0 || totpDigits != 6 || !Duration.ofSeconds(30).equals(totpPeriod)
-        || totpWindow != 1 || recoveryCodeCount != 10)
-      throw new IllegalArgumentException("parâmetros MFA divergem da política aprovada.");
+    if (maximumAttempts <= 0)
+      throw new IllegalArgumentException("maximumAttempts deve ser maior que zero.");
   }
 }

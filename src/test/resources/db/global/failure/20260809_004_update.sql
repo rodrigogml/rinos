@@ -13,4 +13,4 @@ CREATE TABLE testUnexpectedUpdateContinuation (
 CREATE OR REPLACE
 SQL SECURITY INVOKER
 VIEW databaseVersion AS
-SELECT '20260809003' AS version;
+SELECT '20260809004' AS version;

@@ -53,6 +53,10 @@ public class TotpFactorEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 24)
   private TotpFactorStatusEnum status;
+  @Column(name = "enrollmentExpiresAt", nullable = false)
+  private Instant enrollmentExpiresAt;
+  @Column(name = "attemptCount", nullable = false)
+  private int attemptCount;
   @Column(name = "lastAcceptedStep")
   private Long lastAcceptedStep;
   @Column(name = "confirmedAt")
@@ -71,13 +75,15 @@ public class TotpFactorEntity {
   protected TotpFactorEntity() { }
 
   public TotpFactorEntity(UserEntity user, UUID reference, String label, byte[] encryptedSecret,
-      byte[] encryptionNonce, String keyVersion) {
+      byte[] encryptionNonce, String keyVersion, Instant enrollmentExpiresAt) {
     this.user = Objects.requireNonNull(user, "user must not be null");
     this.reference = uuidBytes(reference);
     this.label = text(label, 100, "label");
     this.encryptedSecret = bytes(encryptedSecret, 1, 512, "encryptedSecret");
     this.encryptionNonce = bytes(encryptionNonce, 12, 12, "encryptionNonce");
     this.keyVersion = text(keyVersion, 32, "keyVersion");
+    this.enrollmentExpiresAt = Objects.requireNonNull(
+        enrollmentExpiresAt, "enrollmentExpiresAt must not be null");
     status = TotpFactorStatusEnum.PENDING;
   }
 
@@ -89,6 +95,8 @@ public class TotpFactorEntity {
   public byte[] getEncryptionNonce() { return Arrays.copyOf(encryptionNonce, encryptionNonce.length); }
   public String getKeyVersion() { return keyVersion; }
   public TotpFactorStatusEnum getStatus() { return status; }
+  public Instant getEnrollmentExpiresAt() { return enrollmentExpiresAt; }
+  public int getAttemptCount() { return attemptCount; }
   public Long getLastAcceptedStep() { return lastAcceptedStep; }
   public Instant getConfirmedAt() { return confirmedAt; }
   public Instant getLastUsedAt() { return lastUsedAt; }
@@ -96,6 +104,31 @@ public class TotpFactorEntity {
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
   public long getVersion() { return version; }
+
+  /** Registra uma prova inválida e revoga a pendência ao atingir o limite. */
+  public boolean rejectEnrollmentAttempt(int maximumAttempts, Instant occurredAt) {
+    if (status != TotpFactorStatusEnum.PENDING || maximumAttempts <= 0) {
+      throw new IllegalStateException("pending TOTP factor and positive limit are required");
+    }
+    attemptCount++;
+    if (attemptCount < maximumAttempts) {
+      return false;
+    }
+    status = TotpFactorStatusEnum.REVOKED;
+    revokedAt = Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    return true;
+  }
+
+  /** Invalida uma apresentação pendente por cancelamento, substituição ou expiração. */
+  public boolean cancelPending(Instant occurredAt) {
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    if (status != TotpFactorStatusEnum.PENDING) {
+      return false;
+    }
+    status = TotpFactorStatusEnum.REVOKED;
+    revokedAt = occurredAt;
+    return true;
+  }
 
   public void confirm(long acceptedStep, Instant occurredAt) {
     if (status != TotpFactorStatusEnum.PENDING || acceptedStep < 0) {

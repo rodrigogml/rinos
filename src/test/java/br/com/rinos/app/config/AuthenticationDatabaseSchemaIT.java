@@ -96,7 +96,7 @@ class AuthenticationDatabaseSchemaIT {
     dataSource = testDatabase.recreateSchema();
     executeUpdates(dataSource);
 
-    assertThat(readVersion(dataSource)).isEqualTo("20260809002");
+    assertThat(readVersion(dataSource)).isEqualTo("20260809003");
     assertThat(readTableDefinitions(dataSource)).isEqualTo(initializedDefinitions);
   }
 
@@ -263,6 +263,8 @@ class AuthenticationDatabaseSchemaIT {
     assertColumn("identity_authenticationFlowMethod", "verifiedAt", "timestamp(6)", "YES");
     assertColumn("identity_authenticationProof", "proofDigest", "varbinary(96)", "NO");
     assertColumn("identity_totpFactor", "encryptedSecret", "varbinary(512)", "NO");
+    assertColumn("identity_totpFactor", "enrollmentExpiresAt", "timestamp(6)", "NO");
+    assertColumn("identity_totpFactor", "attemptCount", "int", "NO");
     assertColumn("identity_passkeyCredential", "credentialId", "varbinary(1024)", "NO");
     assertColumn("identity_passkeyCredential", "signatureCount", "bigint unsigned", "NO");
     assertColumn("identity_authSession", "originAddress", "varbinary(16)", "YES");
@@ -319,7 +321,8 @@ class AuthenticationDatabaseSchemaIT {
         "20260808_001_update.sql",
         "20260808_002_update.sql",
         "20260809_001_update.sql",
-        "20260809_002_update.sql")) {
+        "20260809_002_update.sql",
+        "20260809_003_update.sql")) {
       populator.addScript(new ClassPathResource("db/global/update/" + script));
     }
     populator.execute(target);

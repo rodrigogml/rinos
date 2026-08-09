@@ -297,7 +297,12 @@ Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 > A rotação, separação criptográfica e os gates de configuração estão registrados em
 > [`evidence/4.1.1/README.md`](./evidence/4.1.1/README.md). Trocar a versão ativa não autoriza remover chaves antigas:
 > cada versão deve permanecer configurada enquanto existir ciphertext ou MAC persistido com ela.
-- [ ] 4.1.2 Implementar enrollment TOTP, URI/QR, confirmação, janela e proteção contra replay
+- [x] 4.1.2 Implementar enrollment TOTP, URI/QR, confirmação, janela e proteção contra replay
+
+> [!NOTE]
+> O protocolo, a persistência protegida, o adapter RFW e os testes de replay estão registrados em
+> [`evidence/4.1.2/README.md`](./evidence/4.1.2/README.md). A aplicação fornece a URI `otpauth://`; o renderer RFW
+> produz o QR localmente, sem enviar segredo ou imagem a terceiros.
 - [ ] 4.1.3 Implementar emissão/reenvio/consumo de OTP por e-mail com limites e envio pós-commit
 - [ ] 4.1.4 Implementar geração de 10 recovery codes, hash individual, consumo e substituição total
 - [ ] 4.1.5 Implementar seleção de fator por contexto e invariantes administrativas/mesmo canal

@@ -108,10 +108,6 @@ rinos.authentication.retention.temporary-artifacts=30d
 rinos.authentication.retention.identity-events=365d
 rinos.authentication.mfa.challenge-validity=5m
 rinos.authentication.mfa.maximum-attempts=5
-rinos.authentication.mfa.totp-digits=6
-rinos.authentication.mfa.totp-period=30s
-rinos.authentication.mfa.totp-window=1
-rinos.authentication.mfa.recovery-code-count=10
 
 # Keyring local. Base64 canônico de 32+ bytes; a versão ativa escreve e as anteriores permanecem para leitura.
 # Todas as instâncias usam o mesmo keyring. Não remova uma versão enquanto houver dado protegido por ela.
@@ -147,6 +143,12 @@ rfw.authentication.turnstile.secret-key=
 rfw.authentication.turnstile.expected-hostnames=
 rfw.authentication.turnstile.site-verify-endpoint=https://challenges.cloudflare.com/turnstile/v0/siteverify
 rfw.authentication.turnstile.timeout=10s
+# Protocolo MFA da RFW: fonte única para TOTP, OTP por e-mail e recovery codes.
+rfw.authentication.second-factor.totp-digits=6
+rfw.authentication.second-factor.totp-period-seconds=30
+rfw.authentication.second-factor.totp-window=1
+rfw.authentication.second-factor.email-code-digits=6
+rfw.authentication.second-factor.recovery-code-count=10
 
 # Google Identity Services fornecido pelo RFW Platform
 rfw.authentication.google.enabled=false

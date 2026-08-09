@@ -10,4 +10,4 @@ import br.com.rinos.app.backend.module.identity.enums.TotpFactorStatusEnum;
  * @author Rodrigo Leitão
  */
 public record TotpFactorSummaryVO(UUID reference, String label, TotpFactorStatusEnum status,
-    Instant confirmedAt, Instant lastUsedAt) { }
+    Instant createdAt, Instant confirmedAt, Instant lastUsedAt) { }

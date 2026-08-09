@@ -376,6 +376,19 @@ controles complementares, não uma persistência perigosa da operação original
 Toda operação sensível executa novamente a invariant no backend depois da reautenticação; ocultar/desabilitar botão
 na UI não é controle de segurança.
 
+O enrollment TOTP concreto usa `TotpManagementFacade` e o adapter
+`RFWSecondFactorManagementProviderAdapter`. O adapter deriva o usuário exclusivamente do principal autenticado e
+entrega à RFW referência opaca, validade, URI `otpauth://` e segredo manual somente na resposta inicial. A RFW gera o
+QR localmente a partir da URI; nenhuma imagem ou segredo é enviado a serviço externo. Fechar o diálogo cancela a
+pendência, e nova emissão revoga qualquer pendência anterior do mesmo usuário.
+
+A confirmação bloqueia usuário e fator no banco global, aplica a janela `±1` definida em
+`rfw.authentication.second-factor`, persiste o passo exato aceito e recusa qualquer passo igual ou anterior. O
+segredo fica cifrado por AEAD com vínculo a usuário e referência; resultados terminais, listagem e representação
+textual não o devolvem. A validade e o máximo de tentativas vêm de `rinos.authentication.mfa`; dígitos, período,
+janela e parâmetros dos protocolos RFW pertencem exclusivamente a `rfw.authentication.second-factor`, sem segunda
+origem no Rinos.
+
 Para senha, `getPasswordCredential()` devolve somente `RFWPasswordCredentialVO`: estado `ABSENT`, `CONFIGURED` ou
 `COMPROMISED`, datas públicas e versão concorrente. `changePassword(...)` recebe `RFWPasswordChangeRequestDTO` com
 senha e confirmação transitórias e `expectedVersion`; não recebe nem devolve hash. O provider deve revalidar a

@@ -288,6 +288,8 @@ CREATE TABLE identity_totpFactor (
   encryptionNonce BINARY(12) NOT NULL,
   keyVersion VARCHAR(32) NOT NULL,
   status VARCHAR(24) NOT NULL,
+  enrollmentExpiresAt TIMESTAMP(6) NOT NULL,
+  attemptCount INT NOT NULL DEFAULT 0,
   lastAcceptedStep BIGINT NULL,
   confirmedAt TIMESTAMP(6) NULL,
   lastUsedAt TIMESTAMP(6) NULL,
@@ -302,6 +304,7 @@ CREATE TABLE identity_totpFactor (
     ON UPDATE RESTRICT,
   CONSTRAINT uk_identity_totp_factor_reference UNIQUE (reference),
   CONSTRAINT ck_identity_totp_factor_status CHECK (status IN ('PENDING', 'ACTIVE', 'REVOKED')),
+  CONSTRAINT ck_identity_totp_factor_attempts CHECK (attemptCount >= 0),
   CONSTRAINT ck_identity_totp_factor_step CHECK (lastAcceptedStep IS NULL OR lastAcceptedStep >= 0),
   CONSTRAINT ck_identity_totp_factor_version CHECK (version >= 0),
   INDEX idx_identity_totp_factor_user_state (idUser, status)

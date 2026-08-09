@@ -48,8 +48,8 @@ class RinosConfigurationBindingTest {
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
           assertThat(context.getBean(AuthenticationSessionPropertiesConfig.class).normalAbsolute())
               .isEqualTo(Duration.ofHours(12));
-          assertThat(context.getBean(AuthenticationMfaPropertiesConfig.class).recoveryCodeCount())
-              .isEqualTo(10);
+          assertThat(context.getBean(AuthenticationMfaPropertiesConfig.class).maximumAttempts())
+              .isEqualTo(5);
           assertThat(context.getBean(AuthenticationKeyringPropertiesConfig.class).enabled())
               .isFalse();
           assertThat(context.getBean(ApplicationPropertiesConfig.class).publicBaseUrl())

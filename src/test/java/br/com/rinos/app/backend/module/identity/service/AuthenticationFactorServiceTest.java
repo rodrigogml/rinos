@@ -32,6 +32,7 @@ import br.com.rinos.app.backend.module.identity.repository.RecoveryCodeSetReposi
 import br.com.rinos.app.backend.module.identity.repository.TotpFactorRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationMethodInventoryVO;
+import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 
 @DisplayName("Invariantes transacionais dos fatores")
 class AuthenticationFactorServiceTest {
@@ -89,12 +90,19 @@ class AuthenticationFactorServiceTest {
   void totpRevoke_shouldAllowSelectiveRemovalWhenAnotherAdministrativeFactorRemains() {
     TotpFactorRepository factors = mock(TotpFactorRepository.class);
     TotpFactorEntity factor = new TotpFactorEntity(user, UUID.randomUUID(), "Celular",
-        new byte[] {1}, new byte[12], "key-1");
+        new byte[] {1}, new byte[12], "key-1", NOW.plusSeconds(300));
     factor.confirm(1, NOW);
     when(factors.findByUserIdAndReferenceForUpdate(any(), any())).thenReturn(Optional.of(factor));
     AuthenticationMethodInventoryService inventory = mock(AuthenticationMethodInventoryService.class);
     when(inventory.inspect(11L)).thenReturn(new AuthenticationMethodInventoryVO(true, false, 1, 1, false, 1));
-    TotpFactorService service = new TotpFactorService(users, factors, inventory, references, audit);
+    TotpFactorService service = new TotpFactorService(
+        users,
+        factors,
+        inventory,
+        references,
+        audit,
+        mock(TotpProtocolService.class),
+        new AuthenticationMfaPropertiesConfig(java.time.Duration.ofMinutes(5), 5));
 
     FactorOperationStatusEnum result = service.revoke(11L, factor.getReference(),
         true, UUID.randomUUID(), NOW.plusSeconds(1));

@@ -147,8 +147,7 @@ class ReauthenticationServiceTest {
         reauthenticationPolicy,
         referenceService,
         auditService,
-        new AuthenticationMfaPropertiesConfig(
-            Duration.ofMinutes(5), 5, 6, Duration.ofSeconds(30), 1, 10));
+        new AuthenticationMfaPropertiesConfig(Duration.ofMinutes(5), 5));
   }
 
   @Test

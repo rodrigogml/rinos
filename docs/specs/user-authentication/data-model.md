@@ -165,6 +165,8 @@ parcial.
 | `encryptionNonce` | `BINARY(12)` | NOT NULL | Nonce único por cifra |
 | `keyVersion` | `VARCHAR(32)` | NOT NULL | Chave necessária para leitura |
 | `status` | `VARCHAR(24)` | NOT NULL | `PENDING`, `ACTIVE`, `REVOKED` |
+| `enrollmentExpiresAt` | `TIMESTAMP(6)` | NOT NULL | Validade imutável da apresentação e confirmação inicial |
+| `attemptCount` | `INT` | NOT NULL | Tentativas inválidas durante o enrollment |
 | `lastAcceptedStep` | `BIGINT` | NULL | Impede replay na janela já consumida |
 | `confirmedAt` | `TIMESTAMP(6)` | NULL | UTC |
 | `lastUsedAt` | `TIMESTAMP(6)` | NULL | UTC |
@@ -176,6 +178,9 @@ parcial.
 ### Rules
 
 - Uma linha `PENDING` não é método utilizável e possui retenção curta.
+- Uma nova pendência invalida a pendência anterior do usuário. A validade é fixada no registro; o contador de
+  tentativas também é persistente, enquanto o máximo configurado é reavaliado a cada confirmação. Expiração ou
+  esgotamento do limite revoga a pendência sem afetar fatores já ativos.
 - O segredo e a URI `otpauth` são apresentados somente no enrollment; depois da confirmação, nenhuma facade os
   retorna.
 - A confirmação bloqueia a linha, valida um time-step ainda não usado e muda para `ACTIVE`.
