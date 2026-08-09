@@ -48,6 +48,7 @@ class AuthenticationDatabaseSchemaIT {
       "identity_passkeyCredential",
       "identity_authSession",
       "identity_authSessionMethod",
+      "identity_reauthenticationContext",
       "security_authenticationWindow");
 
   private static MySqlTestDatabase testDatabase;
@@ -95,7 +96,7 @@ class AuthenticationDatabaseSchemaIT {
     dataSource = testDatabase.recreateSchema();
     executeUpdates(dataSource);
 
-    assertThat(readVersion(dataSource)).isEqualTo("20260809001");
+    assertThat(readVersion(dataSource)).isEqualTo("20260809002");
     assertThat(readTableDefinitions(dataSource)).isEqualTo(initializedDefinitions);
   }
 
@@ -265,6 +266,7 @@ class AuthenticationDatabaseSchemaIT {
     assertColumn("identity_passkeyCredential", "credentialId", "varbinary(1024)", "NO");
     assertColumn("identity_passkeyCredential", "signatureCount", "bigint unsigned", "NO");
     assertColumn("identity_authSession", "originAddress", "varbinary(16)", "YES");
+    assertColumn("identity_reauthenticationContext", "operation", "varchar(48)", "NO");
 
     for (String table : List.of(
         "identity_authenticationFlow",
@@ -316,7 +318,8 @@ class AuthenticationDatabaseSchemaIT {
         "20260802_001_update.sql",
         "20260808_001_update.sql",
         "20260808_002_update.sql",
-        "20260809_001_update.sql")) {
+        "20260809_001_update.sql",
+        "20260809_002_update.sql")) {
       populator.addScript(new ClassPathResource("db/global/update/" + script));
     }
     populator.execute(target);

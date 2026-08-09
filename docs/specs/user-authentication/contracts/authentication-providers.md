@@ -339,6 +339,12 @@ vinculada ao usuário, sessão e operação, expirar, ser consumida uma única v
 `operationId` permanece interno; somente o rótulo i18n humano do desafio é exibido. O provider tipado tem precedência
 sobre `RFWReauthenticationProvider`, mantido como adapter legado de senha.
 
+O vínculo persistente não armazena callback, payload da tela nem fotografia do alvo. `COMPLETED` autoriza somente a
+retomada que o componente RFW manteve em memória. Essa operação é chamada novamente e deve reler seu alvo, conferir a
+sessão recente e reaplicar versão e invariantes transacionalmente; se o estado tiver mudado durante o diálogo, devolve
+`CONFLICT`/`STALE` sem reaplicação automática. Assim, consumo único da prova e concorrência do recurso protegido são
+controles complementares, não uma persistência perigosa da operação original.
+
 ## Security Settings
 
 **RFW component**: `RFWSecuritySettingsComponent`<br>

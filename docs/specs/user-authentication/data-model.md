@@ -353,6 +353,37 @@ Registra cada método que efetivamente contribuiu para a garantia da sessão.
 | `verifiedAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 | `userVerification` | `BOOLEAN` | NULL | Aplicável a WebAuthn |
 
+Uma reautenticação concluída acrescenta nova evidência à sessão e atualiza
+`lastStrongAuthAt` e `assuranceLevel` com a garantia efetivamente demonstrada naquele instante. Isso evita tratar a
+garantia histórica do login como se tivesse sido comprovada novamente por uma prova mais fraca.
+
+## Entity: ReauthenticationContext
+
+**Tabela proposta**: `identity_reauthenticationContext`
+
+Vincula de forma imutável um fluxo de finalidade `REAUTHENTICATION` à sessão atual e a uma operação do catálogo
+fechado. O estado, a validade e o consumo único continuam pertencendo a `AuthenticationFlow`.
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| `id` | `BIGINT` | PK, auto increment | |
+| `idAuthenticationFlow` | `BIGINT` | NOT NULL, FK, UK | Uma operação por continuação opaca |
+| `idAuthSession` | `BIGINT` | NOT NULL, FK | Sessão que iniciou e deve concluir a prova |
+| `operation` | `VARCHAR(48)` | NOT NULL, CHECK | Valor do catálogo `ReauthenticationOperationEnum` |
+| `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
+
+### Reauthentication context rules
+
+- a referência bruta permanece somente no cliente; o contexto relaciona IDs internos;
+- conclusão e cancelamento com outra identidade ou sessão falham sem consumir o desafio;
+- a conclusão bloqueia `User` → `AuthenticationFlow` → `ReauthenticationContext` → `AuthSession` e
+  revalida sessão ativa, vencimentos, operação catalogada e disponibilidade atual do método;
+- o consumo libera somente a retomada mantida em memória pela interface; nenhum callback ou payload arbitrário é
+  persistido;
+- ao ser retomada, a operação concreta deve reler o alvo e reaplicar suas invariantes e controle de versão. Estado
+  obsoleto produz conflito e nunca é reaplicado automaticamente;
+- a remoção de um fluxo ou de sua sessão elimina o contexto por cascade, sem prolongar sua retenção.
+
 UK em `(idAuthSession, factorOrder)`. Os registros explicam a garantia, mas não concedem authorities.
 
 ## Entity: AuthenticationAttemptWindow

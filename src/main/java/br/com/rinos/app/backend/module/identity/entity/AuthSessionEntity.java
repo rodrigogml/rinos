@@ -357,6 +357,27 @@ public class AuthSessionEntity {
     return lastStrongAuthAt;
   }
 
+  /**
+   * Registra a prova interativa mais recente sem criar outra sessão nem conceder autoridade.
+   *
+   * @param assuranceLevel garantia efetivamente demonstrada pela nova prova
+   * @param verifiedAt instante UTC da comprovação
+   * @throws IllegalStateException quando a sessão não está ativa
+   * @throws IllegalArgumentException quando o instante antecede a autenticação da sessão
+   */
+  public void recordStrongAuthentication(
+      AuthenticationAssuranceEnum assuranceLevel,
+      Instant verifiedAt) {
+    requireActive();
+    this.assuranceLevel = Objects.requireNonNull(
+        assuranceLevel, "assuranceLevel must not be null");
+    Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
+    if (verifiedAt.isBefore(authenticatedAt)) {
+      throw new IllegalArgumentException("verifiedAt must not precede authenticatedAt");
+    }
+    lastStrongAuthAt = verifiedAt;
+  }
+
   /** @return última atividade efetivamente persistida */
   public Instant getLastActivityAt() {
     return lastActivityAt;

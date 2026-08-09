@@ -73,6 +73,11 @@ public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, 
       @Param("userId") Long userId,
       @Param("publicReference") byte[] publicReference);
 
+  /** Bloqueia uma sessão por ID depois de usuário e fluxo de reautenticação. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT session FROM AuthSessionEntity session WHERE session.id = :sessionId")
+  Optional<AuthSessionEntity> findByIdForUpdate(@Param("sessionId") Long sessionId);
+
   /** Bloqueia todas as sessões do usuário em ordem determinística. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("""
