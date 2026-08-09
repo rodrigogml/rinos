@@ -45,7 +45,18 @@ identidade, método existente, causa interna ou referência opaca.
 ## Password Authentication
 
 **RFW contract**: `RFWPasswordAuthenticationProvider`<br>
-**Rinos facade proposta**: `AuthenticationFacade.authenticatePassword(PasswordAuthenticationRequestDTO)`
+**Rinos facade**: `PasswordAuthenticationFacade.authenticate(PasswordAuthenticationRequestDTO)`
+
+`PasswordCredentialAuthenticationService` normaliza o e-mail e bloqueia usuário → credencial na mesma transação
+que abre o fluxo. A comparação Argon2id ocorre exatamente uma vez por tentativa: quando identidade ou credencial não
+existem, o serviço compara a entrada com um hash sentinela gerado em memória pelo mesmo `PasswordEncoder` e pelos
+mesmos parâmetros vigentes. O array recebido é apagado em todos os resultados. O valor sentinela não representa uma
+conta e nunca é persistido.
+
+Quando TOTP, fator de e-mail ou conjunto de recovery codes estiver ativo, a fachada exige
+`MULTI_FACTOR`; métodos adicionais utilizáveis, inclusive passkey, são entregues como alternativas ao orquestrador.
+Google e a própria senha nunca são oferecidos como segundo fator desse fluxo. A presença isolada de uma passkey como
+método alternativo não ativa implicitamente o 2FA voluntário.
 
 ### Input
 
