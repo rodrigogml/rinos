@@ -68,16 +68,36 @@ class HumanVerificationPolicyFacadeImplTest {
 
   @Test
   void isHumanVerificationRequired_shouldDelegateSignInToPersistentOriginWindow() {
-    when(abuseProtectionService.isOriginTurnstileRequired(
-        "203.0.113.10", Instant.parse("2026-08-09T12:00:00Z")))
+    when(abuseProtectionService.isTurnstileRequired(
+        null, "203.0.113.10", Instant.parse("2026-08-09T12:00:00Z")))
         .thenReturn(false);
 
     boolean required = facade.isHumanVerificationRequired(
         HumanVerificationOperationEnum.SIGN_IN, "203.0.113.10");
 
     assertThat(required).isFalse();
-    verify(abuseProtectionService).isOriginTurnstileRequired(
-        "203.0.113.10", Instant.parse("2026-08-09T12:00:00Z"));
+    verify(abuseProtectionService).isTurnstileRequired(
+        null, "203.0.113.10", Instant.parse("2026-08-09T12:00:00Z"));
+  }
+
+  @Test
+  void isHumanVerificationRequired_shouldIncludeSubmittedIdentifierForSignIn() {
+    when(abuseProtectionService.isTurnstileRequired(
+        "person@example.test",
+        "203.0.113.10",
+        Instant.parse("2026-08-09T12:00:00Z")))
+        .thenReturn(true);
+
+    boolean required = facade.isHumanVerificationRequired(
+        HumanVerificationOperationEnum.SIGN_IN,
+        "203.0.113.10",
+        "person@example.test");
+
+    assertThat(required).isTrue();
+    verify(abuseProtectionService).isTurnstileRequired(
+        "person@example.test",
+        "203.0.113.10",
+        Instant.parse("2026-08-09T12:00:00Z"));
   }
 
   @Test

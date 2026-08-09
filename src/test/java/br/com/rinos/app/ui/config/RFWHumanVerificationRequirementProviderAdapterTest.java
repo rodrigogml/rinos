@@ -37,4 +37,26 @@ class RFWHumanVerificationRequirementProviderAdapterTest {
       verify(facade).isHumanVerificationRequired(operation, "203.0.113.10");
     });
   }
+
+  @Test
+  void isRequired_shouldForwardEphemeralIdentifierToContextualPolicy() {
+    HumanVerificationPolicyFacade facade = mock(HumanVerificationPolicyFacade.class);
+    when(facade.isHumanVerificationRequired(
+        HumanVerificationOperationEnum.SIGN_IN,
+        "203.0.113.10",
+        "person@example.test"))
+        .thenReturn(true);
+    RFWHumanVerificationRequirementProviderAdapter adapter =
+        new RFWHumanVerificationRequirementProviderAdapter(facade);
+
+    assertThat(adapter.isRequired(
+        RFWHumanVerificationOperationEnum.SIGN_IN,
+        "203.0.113.10",
+        "person@example.test"))
+        .isTrue();
+    verify(facade).isHumanVerificationRequired(
+        HumanVerificationOperationEnum.SIGN_IN,
+        "203.0.113.10",
+        "person@example.test");
+  }
 }

@@ -74,6 +74,36 @@ public class AuthenticationAbuseProtectionService {
         .turnstileRequired();
   }
 
+  /**
+   * Consulta as dimensões disponíveis sem incrementar contadores.
+   *
+   * <p>Quando o identificador ainda não foi informado, somente a origem participa da decisão. Com
+   * identificador presente, a ordem invariável de lock continua identificador → origem.
+   *
+   * @param identifier identificador efêmero informado, quando disponível
+   * @param canonicalOrigin origem canônica obrigatória
+   * @param occurredAt instante da decisão
+   * @return {@code true} se qualquer dimensão exigir comprovação humana
+   */
+  @Transactional
+  public boolean isTurnstileRequired(
+      String identifier,
+      String canonicalOrigin,
+      Instant occurredAt) {
+    if (identifier == null || identifier.isBlank()) {
+      return isOriginTurnstileRequired(canonicalOrigin, occurredAt);
+    }
+    ProtectedAuthenticationKeyVO identifierKey = identifierKey(identifier);
+    ProtectedAuthenticationKeyVO originKey = originKey(canonicalOrigin);
+    AuthenticationWindowDecisionVO identifierDecision = windowService.inspect(
+        identifierKey.digest(), identifierKey.keyVersion(),
+        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+    AuthenticationWindowDecisionVO originDecision = windowService.inspect(
+        originKey.digest(), originKey.keyVersion(),
+        AuthenticationWindowOperationEnum.SIGN_IN, occurredAt);
+    return identifierDecision.turnstileRequired() || originDecision.turnstileRequired();
+  }
+
   private ProtectedAuthenticationKeyVO identifierKey(String identifier) {
     String canonical;
     try {

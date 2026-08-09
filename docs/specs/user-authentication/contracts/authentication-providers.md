@@ -69,8 +69,9 @@ método alternativo não ativa implicitamente o 2FA voluntário.
 | `identifier` | yes | e-mail normalizado; limite de comprimento antes de custo criptográfico |
 | `password` | yes | efêmera; aceita Unicode/espaços conforme credencial registrada |
 | `rememberMe` | yes | booleano explícito |
-| `turnstileToken` | conditional | exigido pela política por origem/identificador |
+| `turnstileToken` | conditional | consumido e validado no servidor pelo RFW antes de chamar o provider hospedeiro |
 | `origin` | yes | fornecida pelo adapter de origem confiável, nunca por campo do cliente |
+| `correlationId` | yes | UUID técnico criado pelo adapter; não contém nem permite derivar identidade ou origem |
 
 ### Outcome mapping
 
@@ -91,10 +92,12 @@ maior contador, maior espera progressiva e exigência de Turnstile em qualquer d
 janela, portanto a exigência só termina depois do intervalo configurado sem outra falha.
 
 O `PasswordAuthenticationResultVO` transporta a decisão sem expor contador, digest, e-mail ou IP: entrega apenas o
-outcome do orquestrador, `turnstileRequired` e `retryAfter`. A consulta prévia atualmente oferecida pelo RFW recebe a
-origem e já usa a janela de IP. Para cumprir também o limiar distribuído por identificador antes da submissão, a
-integração da tarefa 3.2.4 deverá entregar o identificador ao protocolo de requisito humano ou receber um outcome
-equivalente do RFW; essa evolução compartilhável exige o ciclo RFW autorizado antes da UI real.
+outcome do orquestrador, `turnstileRequired` e `retryAfter`. Desde o RFW `911aa5d`, a política de verificação humana
+recebe também o identificador efêmero no submit. O Rinos consulta as janelas protegidas na ordem identificador → origem
+e exige Turnstile se qualquer dimensão determinar. Antes de chamar `RFWPasswordAuthenticationProvider`, o próprio RFW
+valida token, hostname, action, validade e uso único no servidor; ausência, rejeição ou indisponibilidade falha fechada
+sem executar a fachada de senha. O adapter cria um `correlationId` por tentativa e nunca registra identificador, senha,
+token ou origem.
 
 ## Second Factor
 

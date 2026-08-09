@@ -40,6 +40,18 @@ public class RFWHumanVerificationRequirementProviderAdapter
   }
 
   /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean isRequired(
+      RFWHumanVerificationOperationEnum operation,
+      String remoteAddress,
+      String identifier) {
+    return policyFacade.isHumanVerificationRequired(
+        map(operation), remoteAddress, identifier);
+  }
+
+  /**
    * Mantém um mapeamento exaustivo para que novas operações do RFW exijam decisão explícita do Rinos.
    *
    * @param operation operação RFW não nula

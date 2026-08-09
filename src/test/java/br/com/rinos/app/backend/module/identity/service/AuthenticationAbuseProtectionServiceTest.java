@@ -81,6 +81,35 @@ class AuthenticationAbuseProtectionServiceTest {
     assertThat(service.isOriginTurnstileRequired("198.51.100.12", NOW)).isTrue();
   }
 
+  @Test
+  void isTurnstileRequired_shouldInspectIdentifierBeforeOriginAndCombinePolicy() {
+    when(windows.inspect(
+        any(), eq("v1"), eq(AuthenticationWindowOperationEnum.SIGN_IN), eq(NOW)))
+        .thenReturn(new AuthenticationWindowDecisionVO(
+            3, true, Duration.ofSeconds(4), NOW.plusSeconds(900), NOW.plusSeconds(900)))
+        .thenReturn(new AuthenticationWindowDecisionVO(
+            1, false, Duration.ofSeconds(1), NOW.plusSeconds(900), null));
+
+    assertThat(service.isTurnstileRequired(
+        "Person@Example.test", "198.51.100.12", NOW)).isTrue();
+
+    InOrder order = inOrder(windows);
+    order.verify(windows).inspect(
+        bytes(1), "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW);
+    order.verify(windows).inspect(
+        bytes(2), "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW);
+  }
+
+  @Test
+  void isTurnstileRequired_shouldInspectOnlyOriginBeforeIdentifierIsEntered() {
+    when(windows.inspect(
+        bytes(2), "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW))
+        .thenReturn(new AuthenticationWindowDecisionVO(
+            0, false, Duration.ZERO, NOW.plusSeconds(900), null));
+
+    assertThat(service.isTurnstileRequired(null, "198.51.100.12", NOW)).isFalse();
+  }
+
   private static byte[] bytes(int first) {
     byte[] value = new byte[32];
     value[0] = (byte) first;

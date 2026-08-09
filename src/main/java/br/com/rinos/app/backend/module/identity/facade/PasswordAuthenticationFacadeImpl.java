@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -33,7 +35,7 @@ import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
  * Mantém a prova de senha e a abertura do fluxo na mesma transação bloqueada.
  *
  * <p>Falhas são contabilizadas nas dimensões independentes de identificador e origem. A validação
- * server-side do token Turnstile pertence ao ciclo seguinte e reutiliza esta decisão persistente.
+ * server-side do token Turnstile ocorre no RFW antes da chamada desta fachada.
  *
  * @author Rodrigo Leitão
  * @since 2026-08-09
@@ -41,6 +43,9 @@ import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 @Service
 @Lazy
 public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationFacade {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(
+      PasswordAuthenticationFacadeImpl.class);
 
   private static final Set<br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum>
       MFA_ACTIVATION_METHODS = Set.of(
@@ -134,6 +139,10 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
           false,
           java.time.Duration.ZERO));
     } catch (RuntimeException unavailable) {
+      LOGGER.warn(
+          "Primeiro fator por senha indisponível: correlationId={}, failureType={}",
+          request.correlationId(),
+          unavailable.getClass().getSimpleName());
       return completed(new PasswordAuthenticationResultVO(
           terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE),
           false,

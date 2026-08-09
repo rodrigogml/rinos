@@ -234,9 +234,16 @@ Ref: Spec FR-AUTH-PWD-*, FR-AUTH-ABUSE-*; Interface INT-WEB-AUTH-001
 - [x] 3.2.1 Autenticar e-mail normalizado com verificação de hash de custo equivalente para identidades ausentes
 - [x] 3.2.2 Atualizar Argon2id após sucesso quando parâmetros estiverem defasados
 - [x] 3.2.3 Contabilizar atomicamente falhas por identificador e IP e decidir Turnstile/espera progressiva
-- [ ] 3.2.4 Integrar validação Turnstile fail-closed e respostas neutras com correlation ID
+- [x] 3.2.4 Integrar validação Turnstile fail-closed e respostas neutras com correlation ID
 - [ ] 3.2.5 Bloquear credencial marcada como comprometida até redefinição
 - [ ] 3.2.6 Testar timing observável, limites, proxy confiável, indisponibilidade e concorrência
+
+> [!NOTE]
+> O RFW `911aa5d` reavalia a política com o identificador efêmero no submit e valida o Turnstile
+> server-side antes do provider. O adapter real de senha resolve a origem confiável, cria um
+> `correlationId` aleatório e publica apenas rejeição neutra, limitação sem dimensão ou
+> indisponibilidade temporária. Testes de integração comprovam que prova obrigatória rejeitada não
+> alcança a fachada de senha.
 
 ### 3.3 Implementar sessão global, cookie e guard `[C]`
 

@@ -82,6 +82,17 @@ public class HumanVerificationPolicyFacadeImpl implements HumanVerificationPolic
   public boolean isHumanVerificationRequired(
       HumanVerificationOperationEnum operation,
       String canonicalOrigin) {
+    return isHumanVerificationRequired(operation, canonicalOrigin, null);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean isHumanVerificationRequired(
+      HumanVerificationOperationEnum operation,
+      String canonicalOrigin,
+      String identifier) {
     Objects.requireNonNull(operation, "operation não pode ser nula.");
     if (canonicalOrigin == null
         || canonicalOrigin.isBlank()) {
@@ -89,8 +100,8 @@ public class HumanVerificationPolicyFacadeImpl implements HumanVerificationPolic
     }
     if (operation == HumanVerificationOperationEnum.SIGN_IN) {
       try {
-        return abuseProtectionService.isOriginTurnstileRequired(
-            canonicalOrigin, clock.instant());
+        return abuseProtectionService.isTurnstileRequired(
+            identifier, canonicalOrigin, clock.instant());
       } catch (RuntimeException unavailablePolicy) {
         return true;
       }

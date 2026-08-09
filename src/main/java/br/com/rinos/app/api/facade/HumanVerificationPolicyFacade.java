@@ -32,4 +32,23 @@ public interface HumanVerificationPolicyFacade {
   boolean isHumanVerificationRequired(
       HumanVerificationOperationEnum operation,
       String canonicalOrigin);
+
+  /**
+   * Decide a exigência incluindo o identificador efêmero informado na operação.
+   *
+   * <p>A implementação padrão preserva consumidores anteriores e delega à política por origem.
+   * Implementações que controlam abuso distribuído podem sobrescrever esta variante sem persistir
+   * nem expor o identificador.
+   *
+   * @param operation operação pública
+   * @param canonicalOrigin origem previamente validada
+   * @param identifier identificador efêmero, quando aplicável
+   * @return {@code true} quando a comprovação é obrigatória
+   */
+  default boolean isHumanVerificationRequired(
+      HumanVerificationOperationEnum operation,
+      String canonicalOrigin,
+      String identifier) {
+    return isHumanVerificationRequired(operation, canonicalOrigin);
+  }
 }

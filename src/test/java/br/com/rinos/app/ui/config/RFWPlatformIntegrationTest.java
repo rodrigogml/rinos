@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,6 +65,7 @@ import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
+import br.com.rinos.app.api.facade.PasswordAuthenticationFacade;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
 import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
@@ -78,6 +80,7 @@ import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory
 import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
 import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWPasswordAuthenticationRequestDTO;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationAutoConfiguration;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
@@ -89,6 +92,7 @@ import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityProvider
 import br.eng.rodrigogml.rfw.authentication.provider.RFWExternalIdentityResolver;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationProvider;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWHumanVerificationRequirementProvider;
+import br.eng.rodrigogml.rfw.authentication.provider.RFWPasswordAuthenticationProvider;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWRegistrationProvider;
 import br.eng.rodrigogml.rfw.authentication.google.RFWGoogleIdentityProvider;
 import br.eng.rodrigogml.rfw.authentication.service.RFWAccessCapabilityService;
@@ -608,6 +612,88 @@ class RFWPlatformIntegrationTest {
   }
 
   /**
+   * Comprova que a política contextual e a validação fail-closed antecedem a fachada de senha.
+   */
+  @Test
+  void passwordAuthentication_shouldNotReachHostFacadeWhenRequiredTurnstileIsRejected() {
+    AtomicReference<String> policyIdentifier = new AtomicReference<>();
+    RFWHumanVerificationRequirementProvider requirementProvider =
+        new RFWHumanVerificationRequirementProvider() {
+          @Override
+          public boolean isRequired(
+              RFWHumanVerificationOperationEnum operation,
+              String remoteAddress) {
+            return true;
+          }
+
+          @Override
+          public boolean isRequired(
+              RFWHumanVerificationOperationEnum operation,
+              String remoteAddress,
+              String identifier) {
+            policyIdentifier.set(identifier);
+            return true;
+          }
+        };
+    RFWHumanVerificationProvider verificationProvider = (token, remoteAddress) ->
+        CompletableFuture.completedFuture(new RFWHumanVerificationResultVO(
+            false,
+            "rinos.test",
+            Instant.parse("2026-08-09T12:00:00Z"),
+            List.of("invalid-input-response")));
+    PasswordAuthenticationFacade passwordFacade = mock(PasswordAuthenticationFacade.class);
+    RFWPasswordAuthenticationProvider passwordProvider =
+        new RFWPasswordAuthenticationProviderAdapter(
+            passwordFacade,
+            ignored -> "203.0.113.10",
+            new RFWAuthenticationOutcomeAdapter());
+
+    contextRunner
+        .withBean(RFWHumanVerificationProvider.class, () -> verificationProvider)
+        .withBean(RFWHumanVerificationRequirementProvider.class, () -> requirementProvider)
+        .withBean(RFWRemoteAddressProvider.class, () -> ignored -> "203.0.113.10")
+        .withBean(RFWPasswordAuthenticationProvider.class, () -> passwordProvider)
+        .withPropertyValues(
+            "rfw.authentication.turnstile.enabled=true",
+            "rfw.authentication.turnstile.site-key=test-site")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse()));
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+
+            component.submitPasswordAuthentication(
+                new RFWPasswordAuthenticationRequestDTO(
+                    "person@example.test", "Password1!", false, "invalid-token"));
+
+            assertThat(policyIdentifier.get()).isEqualTo("person@example.test");
+            assertThat(component.getCurrentOutcome().status())
+                .isEqualTo(RFWAccessStatusEnum.REJECTED);
+            verify(passwordFacade, never()).authenticate(any());
+          } finally {
+            session.unlock();
+          }
+        });
+  }
+
+  /**
    * Comprova que uma rejeição recuperável retém somente o identificador e exige nova prova humana.
    */
   @Test
@@ -952,12 +1038,15 @@ class RFWPlatformIntegrationTest {
    * Comprova que todos os estados públicos desta etapa possuem texto localizado na hospedeira.
    */
   @Test
-  void context_shouldResolveActivationCancellationAndSmtpFailureMessages() {
+  void context_shouldResolveAuthenticationAndRegistrationMessages() {
     contextRunner.run(context -> {
       assertThat(context).hasNotFailed();
       RFWTranslationService translations = context.getBean(RFWTranslationService.class);
 
       assertThat(List.of(
+          "authentication.credentials.invalid",
+          "authentication.sign-in.rate-limited",
+          "authentication.temporarily-unavailable",
           "registration.activation.invalid-proof",
           "registration.activation.expired-proof",
           "registration.activation.used-proof",
