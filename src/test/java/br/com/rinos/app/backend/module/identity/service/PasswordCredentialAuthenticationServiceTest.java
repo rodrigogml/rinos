@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +45,7 @@ class PasswordCredentialAuthenticationServiceTest {
     when(encoder.encode(any(CharSequence.class))).thenReturn("{argon2id}sentinel");
     service = new PasswordCredentialAuthenticationService(
         normalization, users, credentials, encoder);
+    clearInvocations(encoder);
     when(normalization.normalize("Person@Example.test"))
         .thenReturn(new NormalizedEmailVO("Person@Example.test", "person@example.test"));
   }
@@ -113,6 +115,46 @@ class PasswordCredentialAuthenticationServiceTest {
     assertThat(result).isEmpty();
     verify(encoder).matches(any(CharSequence.class), eq("{argon2id}sentinel"));
     verify(users, never()).findByNormalizedEmailForUpdate(any());
+  }
+
+  @Test
+  void verify_shouldUpgradeOutdatedHashWithoutChangingPasswordDate() {
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    Instant passwordChangedAt = NOW.minusSeconds(86_400);
+    LocalCredentialEntity credential = new LocalCredentialEntity(
+        user, "{argon2id}outdated-hash", passwordChangedAt);
+    when(users.findByNormalizedEmailForUpdate("person@example.test"))
+        .thenReturn(Optional.of(user));
+    when(credentials.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
+    when(encoder.matches(any(CharSequence.class), eq("{argon2id}outdated-hash")))
+        .thenReturn(true);
+    when(encoder.upgradeEncoding("{argon2id}outdated-hash")).thenReturn(true);
+    when(encoder.encode(any(CharSequence.class))).thenReturn("{argon2id}current-hash");
+
+    OptionalLong result = service.verify(
+        "Person@Example.test", "CorrectPassword1!".toCharArray(), NOW);
+
+    assertThat(result).hasValue(41L);
+    assertThat(credential.getPasswordHash()).isEqualTo("{argon2id}current-hash");
+    assertThat(credential.getPasswordChangedAt()).isEqualTo(passwordChangedAt);
+    verify(credentials).save(credential);
+  }
+
+  @Test
+  void verify_shouldNotRewriteCurrentHash() {
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    LocalCredentialEntity credential = new LocalCredentialEntity(
+        user, "{argon2id}current-hash", NOW.minusSeconds(60));
+    when(users.findByNormalizedEmailForUpdate("person@example.test"))
+        .thenReturn(Optional.of(user));
+    when(credentials.findByUserIdForUpdate(41L)).thenReturn(Optional.of(credential));
+    when(encoder.matches(any(CharSequence.class), eq("{argon2id}current-hash")))
+        .thenReturn(true);
+
+    service.verify("Person@Example.test", "CorrectPassword1!".toCharArray(), NOW);
+
+    verify(encoder, never()).encode(any(CharSequence.class));
+    verify(credentials, never()).save(any());
   }
 
   private static UserEntity user(UserStatusEnum status) {

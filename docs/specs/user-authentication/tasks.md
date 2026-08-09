@@ -232,7 +232,7 @@ Ref: Plan §Authentication Flow; Contract Authentication Providers §General Rul
 Ref: Spec FR-AUTH-PWD-*, FR-AUTH-ABUSE-*; Interface INT-WEB-AUTH-001
 
 - [x] 3.2.1 Autenticar e-mail normalizado com verificação de hash de custo equivalente para identidades ausentes
-- [ ] 3.2.2 Atualizar Argon2id após sucesso quando parâmetros estiverem defasados
+- [x] 3.2.2 Atualizar Argon2id após sucesso quando parâmetros estiverem defasados
 - [ ] 3.2.3 Contabilizar atomically falhas por identificador e IP e decidir Turnstile/espera progressiva
 - [ ] 3.2.4 Integrar validação Turnstile fail-closed e respostas neutras com correlation ID
 - [ ] 3.2.5 Bloquear credencial marcada como comprometida até redefinição

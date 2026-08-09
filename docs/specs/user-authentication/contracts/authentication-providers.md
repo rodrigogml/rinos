@@ -53,6 +53,10 @@ existem, o serviço compara a entrada com um hash sentinela gerado em memória p
 mesmos parâmetros vigentes. O array recebido é apagado em todos os resultados. O valor sentinela não representa uma
 conta e nunca é persistido.
 
+Depois de uma correspondência válida, `PasswordEncoder.upgradeEncoding` decide se o hash precisa ser recalculado
+com os parâmetros atuais. O upgrade ocorre ainda sob o lock da credencial, antes de apagar a senha, e não modifica
+`passwordChangedAt`, pois o segredo escolhido pelo usuário não mudou. Hash vigente não produz escrita adicional.
+
 Quando TOTP, fator de e-mail ou conjunto de recovery codes estiver ativo, a fachada exige
 `MULTI_FACTOR`; métodos adicionais utilizáveis, inclusive passkey, são entregues como alternativas ao orquestrador.
 Google e a própria senha nunca são oferecidos como segundo fator desse fluxo. A presença isolada de uma passkey como

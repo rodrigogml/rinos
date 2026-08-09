@@ -79,10 +79,21 @@ public class PasswordCredentialAuthenticationService {
           || credential == null || credential.getStatus() != LocalCredentialStatusEnum.ACTIVE) {
         return OptionalLong.empty();
       }
+      upgradeHashIfRequired(credential, password);
       return OptionalLong.of(user.getId());
     } finally {
       Arrays.fill(password, '\0');
     }
+  }
+
+  private void upgradeHashIfRequired(LocalCredentialEntity credential, char[] password) {
+    if (!passwordEncoder.upgradeEncoding(credential.getPasswordHash())) {
+      return;
+    }
+    String upgradedHash = Objects.requireNonNull(
+        passwordEncoder.encode(CharBuffer.wrap(password)), "upgradedHash must not be null");
+    credential.setPasswordHash(upgradedHash);
+    credentialRepository.save(credential);
   }
 
   private UserEntity normalizeAndLock(String identifier) {
