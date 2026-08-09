@@ -82,4 +82,36 @@ class RFWAuthenticationConsentProviderAdapterTest {
 
     verify(facade).cancel("opaque-flow", NOW);
   }
+
+  @Test
+  void completeAuthenticationConsent_shouldPresentNewRequiredVersionWithoutAuthentication() {
+    AuthenticationConsentFacade facade = mock(AuthenticationConsentFacade.class);
+    when(facade.complete(any())).thenReturn(new AuthenticationOrchestrationResultVO(
+        AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED,
+        "opaque-flow",
+        null,
+        AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        Set.of(),
+        List.of(new AuthenticationMethodEvidenceVO(
+            AuthenticationMethodEnum.PASSWORD, NOW, null)),
+        Set.of("13"),
+        false,
+        NOW.plusSeconds(300),
+        UUID.fromString("590cd2c5-5b5d-45e6-bfbf-887033f407f0")));
+    RFWAuthenticationConsentProviderAdapter adapter =
+        new RFWAuthenticationConsentProviderAdapter(
+            facade,
+            new RFWAuthenticationOutcomeAdapter(),
+            Clock.fixed(NOW, ZoneOffset.UTC));
+
+    var outcome = adapter.completeAuthenticationConsent(
+        new RFWAuthenticationConsentRequestDTO("opaque-flow", List.of("11", "12")))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(
+        RFWAccessStatusEnum.AUTHENTICATION_CONSENT_REQUIRED);
+    assertThat(outcome.authentication()).isNull();
+    assertThat(outcome.authenticationConsent().legalDocumentIds()).containsExactly("13");
+  }
 }

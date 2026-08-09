@@ -276,7 +276,12 @@ Ref: Spec FR-AUTH-012..014 e FR-AUTH-SES-008; Interface INT-WEB-AUTH-003/010
 - [x] 3.4.3 Implementar cálculo de garantia recente e métodos compatíveis por operação
 - [x] 3.4.4 Retomar uma única operação após prova e revalidar o estado original
 - [x] 3.4.5 Integrar providers RFW de gate legal e reautenticação sem conceder authorities
-- [ ] 3.4.6 Testar nova versão concorrente, recusa, timeout, Google mesmo canal e operação stale
+- [x] 3.4.6 Testar nova versão concorrente, recusa, timeout, Google mesmo canal e operação stale
+
+> [!NOTE]
+> A matriz de borda do gate legal e da reautenticação está registrada em
+> [`evidence/3.4.6/README.md`](./evidence/3.4.6/README.md). A operação original permanece somente em memória no
+> componente RFW, é executada no máximo uma vez e ainda devolve `STALE`/`CONFLICT` ao revalidar seu próprio alvo.
 
 ---
 

@@ -247,6 +247,74 @@ class ReauthenticationServiceTest {
     verify(session, never()).recordStrongAuthentication(any(), any());
   }
 
+  @Test
+  void complete_shouldRejectInvalidProofWithoutInspectingOrMutatingFlow() {
+    when(proofService.verify(
+        USER_ID, AuthenticationMethodEnum.PASSWORD, "WrongPassword1!", NOW))
+        .thenReturn(Optional.empty());
+
+    ReauthenticationDecisionVO result = service.complete(
+        USER_ID,
+        SESSION_REFERENCE,
+        CHALLENGE_REFERENCE,
+        AuthenticationMethodEnum.PASSWORD,
+        "WrongPassword1!",
+        NOW);
+
+    assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.REJECTED);
+    verify(flowService, never()).resolveUserId(any());
+    verify(flowService, never()).consume(any(), any(), any());
+    verify(session, never()).recordStrongAuthentication(any(), any());
+  }
+
+  @Test
+  void complete_shouldReturnExpiredWithoutRefreshingSession_whenChallengeTimedOut() {
+    when(flowService.resolveUserId(CHALLENGE_REFERENCE)).thenReturn(Optional.of(USER_ID));
+    when(flowService.snapshot(
+        CHALLENGE_REFERENCE, AuthenticationFlowPurposeEnum.REAUTHENTICATION, NOW))
+        .thenReturn(terminalSnapshot(AuthenticationOperationStatusEnum.EXPIRED));
+
+    ReauthenticationDecisionVO result = service.complete(
+        USER_ID,
+        SESSION_REFERENCE,
+        CHALLENGE_REFERENCE,
+        AuthenticationMethodEnum.PASSWORD,
+        "CorrectPassword1!",
+        NOW);
+
+    assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.EXPIRED);
+    verify(contextRepository, never()).findByAuthenticationFlowIdForUpdate(any());
+    verify(flowService, never()).consume(any(), any(), any());
+    verify(session, never()).recordStrongAuthentication(any(), any());
+  }
+
+  @Test
+  void complete_shouldReturnConflictWithoutConsuming_whenMethodBecameUnavailable() {
+    ReauthenticationContextEntity context = mock(ReauthenticationContextEntity.class);
+    when(context.getAuthSession()).thenReturn(session);
+    when(context.getOperation()).thenReturn(ReauthenticationOperationEnum.CHANGE_PASSWORD);
+    when(contextRepository.findByAuthenticationFlowIdForUpdate(FLOW_ID))
+        .thenReturn(Optional.of(context));
+    when(flowService.resolveUserId(CHALLENGE_REFERENCE)).thenReturn(Optional.of(USER_ID));
+    when(flowService.snapshot(
+        CHALLENGE_REFERENCE, AuthenticationFlowPurposeEnum.REAUTHENTICATION, NOW))
+        .thenReturn(openSnapshot(List.of()));
+    when(availabilityService.availableMethods(USER_ID)).thenReturn(Set.of());
+
+    ReauthenticationDecisionVO result = service.complete(
+        USER_ID,
+        SESSION_REFERENCE,
+        CHALLENGE_REFERENCE,
+        AuthenticationMethodEnum.PASSWORD,
+        "CorrectPassword1!",
+        NOW);
+
+    assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.CONFLICT);
+    verify(flowService, never()).verifyMethod(any(), any(), any(), any(), any(), any());
+    verify(flowService, never()).consume(any(), any(), any());
+    verify(session, never()).recordStrongAuthentication(any(), any());
+  }
+
   private static AuthenticationFlowSnapshotVO openSnapshot(
       List<AuthenticationFlowVerifiedMethodVO> verifiedMethods) {
     return new AuthenticationFlowSnapshotVO(
@@ -274,6 +342,22 @@ class ReauthenticationServiceTest {
         Set.of(AuthenticationMethodEnum.PASSWORD),
         false,
         NOW.plus(Duration.ofMinutes(5)),
+        CORRELATION_ID);
+  }
+
+  private static AuthenticationFlowSnapshotVO terminalSnapshot(
+      AuthenticationOperationStatusEnum status) {
+    return new AuthenticationFlowSnapshotVO(
+        status,
+        FLOW_ID,
+        USER_ID,
+        AuthenticationFlowPurposeEnum.REAUTHENTICATION,
+        null,
+        AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        Set.of(AuthenticationMethodEnum.PASSWORD),
+        List.of(),
+        false,
+        NOW,
         CORRELATION_ID);
   }
 }

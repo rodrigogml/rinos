@@ -117,4 +117,40 @@ class RFWReauthenticationChallengeProviderAdapterTest {
     assertThat(outcome.status()).isEqualTo(RFWReauthenticationStatusEnum.ACCESS_DENIED);
     verifyNoInteractions(facade);
   }
+
+  @Test
+  void verify_shouldMapExpiredChallengeWithoutChangingAuthenticatedContext() {
+    when(facade.verify(any())).thenReturn(new ReauthenticationResultVO(
+        ReauthenticationStatusEnum.EXPIRED, null, null, null, Set.of()));
+
+    var outcome = adapter.verify(new RFWReauthenticationVerificationRequestDTO(
+        "challenge-reference",
+        RFWAuthenticationMethodEnum.PASSWORD,
+        "CorrectPassword1!"))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWReauthenticationStatusEnum.EXPIRED);
+    assertThat(outcome.errorKey())
+        .isEqualTo("ui.securitySettings.error.reauthenticationExpired");
+    assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
+  }
+
+  @Test
+  void verify_shouldMapStaleChallengeAsConflictWithoutChangingAuthenticatedContext() {
+    when(facade.verify(any())).thenReturn(new ReauthenticationResultVO(
+        ReauthenticationStatusEnum.CONFLICT, null, null, null, Set.of()));
+
+    var outcome = adapter.verify(new RFWReauthenticationVerificationRequestDTO(
+        "challenge-reference",
+        RFWAuthenticationMethodEnum.PASSWORD,
+        "CorrectPassword1!"))
+        .toCompletableFuture()
+        .join();
+
+    assertThat(outcome.status()).isEqualTo(RFWReauthenticationStatusEnum.CONFLICT);
+    assertThat(outcome.errorKey())
+        .isEqualTo("ui.securitySettings.error.reauthenticationConflict");
+    assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
+  }
 }
