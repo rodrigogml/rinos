@@ -26,7 +26,7 @@ class AuthenticationOrchestrationFacadeImplTest {
   private static final Instant NOW = Instant.parse("2026-08-08T12:00:00Z");
 
   @Test
-  void complete_shouldPublishMinimalPrincipalOnlyAfterDomainCompletion() {
+  void complete_shouldExposeReadyPrincipalAndKeepOpaqueContinuation() {
     AuthenticationOrchestrationService service = mock(AuthenticationOrchestrationService.class);
     AuthenticationOrchestrationFacadeImpl facade =
         new AuthenticationOrchestrationFacadeImpl(service);
@@ -34,8 +34,8 @@ class AuthenticationOrchestrationFacadeImplTest {
     when(service.complete("opaque-reference", NOW)).thenReturn(
         new AuthenticationOrchestrationDecisionVO(
             br.com.rinos.app.backend.module.identity.enums
-                .AuthenticationOrchestrationStatusEnum.COMPLETED,
-            null,
+                .AuthenticationOrchestrationStatusEnum.READY,
+            "opaque-reference",
             41L,
             "person@example.test",
             AuthenticationAssuranceEnum.MULTI_FACTOR,
@@ -52,7 +52,8 @@ class AuthenticationOrchestrationFacadeImplTest {
 
     AuthenticationOrchestrationResultVO result = facade.complete("opaque-reference", NOW);
 
-    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.COMPLETED);
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.READY);
+    assertThat(result.continuationReference()).isEqualTo("opaque-reference");
     assertThat(result.principal().userId()).isEqualTo(41L);
     assertThat(result.principal().email()).isEqualTo("person@example.test");
     assertThat(result.verifiedMethods()).hasSize(2);

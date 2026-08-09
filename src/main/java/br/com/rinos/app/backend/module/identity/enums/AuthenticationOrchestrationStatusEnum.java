@@ -10,7 +10,6 @@ public enum AuthenticationOrchestrationStatusEnum {
   CHALLENGE_REQUIRED,
   LEGAL_CONSENT_REQUIRED,
   READY,
-  COMPLETED,
   CANCELLED,
   REJECTED,
   EXPIRED,

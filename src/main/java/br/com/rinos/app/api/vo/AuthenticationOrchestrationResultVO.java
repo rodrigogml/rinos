@@ -34,10 +34,8 @@ public record AuthenticationOrchestrationResultVO(
     verifiedMethods = verifiedMethods == null ? List.of() : List.copyOf(verifiedMethods);
     missingLegalDocumentIds = missingLegalDocumentIds == null
         ? Set.of() : Set.copyOf(missingLegalDocumentIds);
-    if ((status == AuthenticationOrchestrationStatusEnum.READY
-        || status == AuthenticationOrchestrationStatusEnum.COMPLETED)
-        && principal == null) {
-      throw new IllegalArgumentException("principal is required for a completed factor flow");
+    if (status == AuthenticationOrchestrationStatusEnum.READY && principal == null) {
+      throw new IllegalArgumentException("principal is required for a ready factor flow");
     }
   }
 

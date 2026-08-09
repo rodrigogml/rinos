@@ -20,7 +20,7 @@ public interface AuthenticationOrchestrationFacade {
   /** Acrescenta um fator validado ao fluxo ainda aberto. */
   AuthenticationOrchestrationResultVO advance(AuthenticationOrchestrationAdvanceDTO request);
 
-  /** Consome uma conclusão pronta imediatamente antes de o RFW publicar a sessão. */
+  /** Revalida uma conclusão pronta sem consumi-la antes do lifecycle da sessão. */
   AuthenticationOrchestrationResultVO complete(String reference, Instant occurredAt);
 
   /** Cancela idempotentemente uma continuação de login. */

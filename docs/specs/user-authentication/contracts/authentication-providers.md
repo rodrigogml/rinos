@@ -24,8 +24,9 @@ continuação idempotentemente. Nenhum desses métodos publica `SecurityContext`
 
 A garantia é calculada sobre os métodos comprovados. Passkey com user verification satisfaz garantia resistente a
 phishing; dois canais independentes satisfazem MFA; Google e código enviado ao mesmo e-mail não contam como canais
-independentes. O principal mínimo somente é devolvido por uma conclusão pronta ou consumida. A criação compensável
-da sessão pertence ao lifecycle descrito em [Authentication Session Lifecycle](#authentication-session-lifecycle),
+independentes. O principal mínimo somente é devolvido por uma conclusão `READY`, ainda não consumida. O consumo e a
+criação compensável da sessão pertencem ao lifecycle descrito em
+[Authentication Session Lifecycle](#authentication-session-lifecycle),
 e o registro atômico dos novos aceites pertence ao provider descrito em
 [Legal Consent after Authentication](#legal-consent-after-authentication).
 

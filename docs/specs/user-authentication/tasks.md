@@ -215,7 +215,7 @@ Ref: Data Model §AuthSession, §AuthenticationAttemptWindow; Plan §Configurati
 Ref: Plan §Authentication Flow; Contract Authentication Providers §General Rules
 
 - [x] 3.1.1 Definir DTOs/VOs/enums de solicitação, método, garantia e outcomes públicos
-- [ ] 3.1.2 Implementar fluxo primeiro fator, MFA, gate legal e conclusão única sem `SecurityContext` parcial
+- [x] 3.1.2 Implementar fluxo primeiro fator, MFA, gate legal e conclusão única sem `SecurityContext` parcial
 - [ ] 3.1.3 Revalidar usuário, métodos, fatores e documentos em cada transição crítica
 - [ ] 3.1.4 Garantir idempotência e compensação na criação de sessão/evento
 - [ ] 3.1.5 Implementar adapters RFW para outcomes e erros públicos estáveis
