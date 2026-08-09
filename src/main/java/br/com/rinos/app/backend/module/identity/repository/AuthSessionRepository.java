@@ -51,6 +51,16 @@ public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, 
   Optional<AuthSessionEntity> findBySelectorHashForUpdate(
       @Param("selectorHash") byte[] selectorHash);
 
+  /** Resolve o proprietário antes de aplicar a ordem global usuário → sessão. */
+  @Query("""
+      SELECT session
+      FROM AuthSessionEntity session
+      JOIN FETCH session.user
+      WHERE session.selectorHash = :selectorHash
+      """)
+  Optional<AuthSessionEntity> findBySelectorHash(
+      @Param("selectorHash") byte[] selectorHash);
+
   /** Bloqueia uma sessão do usuário pela referência exclusiva de gestão. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("""

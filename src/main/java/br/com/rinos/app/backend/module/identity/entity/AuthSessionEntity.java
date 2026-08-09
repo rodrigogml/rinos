@@ -403,6 +403,25 @@ public class AuthSessionEntity {
     this.keyVersion = requiredText(keyVersion, 32, "keyVersion");
   }
 
+  /**
+   * Vincula um novo par autenticador depois que a sessão persistente foi publicada.
+   *
+   * <p>A substituição conjunta impede que um seletor novo seja observado com o validador
+   * reservado durante a preparação.
+   */
+  public void replaceAuthenticator(
+      byte[] selectorHash,
+      byte[] validatorDigest,
+      String keyVersion) {
+    requireActive();
+    if (!remembered) {
+      throw new IllegalStateException("only a remembered session accepts a persistent authenticator");
+    }
+    this.selectorHash = exact(selectorHash, 32, "selectorHash");
+    this.validatorDigest = bounded(validatorDigest, 1, 96, "validatorDigest");
+    this.keyVersion = requiredText(keyVersion, 32, "keyVersion");
+  }
+
   /** Publica idempotentemente uma preparação depois que o contexto local foi salvo. */
   public void activate(Instant at) {
     Objects.requireNonNull(at, "at must not be null");

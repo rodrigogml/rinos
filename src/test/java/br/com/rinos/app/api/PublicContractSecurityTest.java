@@ -37,6 +37,7 @@ import br.com.rinos.app.api.enums.AuthenticationProofTypeEnum;
 import br.com.rinos.app.api.enums.AuthenticationSessionLifecycleStatusEnum;
 import br.com.rinos.app.api.enums.GoogleIdentityResolutionStatusEnum;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
+import br.com.rinos.app.api.enums.PersistentLoginStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
@@ -50,6 +51,7 @@ import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.api.vo.PersistentLoginResultVO;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationConfirmationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
@@ -90,6 +92,7 @@ class PublicContractSecurityTest {
       GoogleIdentityResolutionResultVO.class,
       LegalDocumentContentVO.class,
       LegalDocumentReferenceVO.class,
+      PersistentLoginResultVO.class,
       RegistrationActivationResultVO.class,
       RegistrationCancellationConfirmationResultVO.class,
       RegistrationCancellationRequestResultVO.class,
@@ -230,6 +233,10 @@ class PublicContractSecurityTest {
             new RinosUserPrincipalVO(42L, email),
             false,
             EXPIRES_AT),
+        new PersistentLoginResultVO(
+            PersistentLoginStatusEnum.RESTORED,
+            new RinosUserPrincipalVO(42L, email),
+            reference),
         new RegistrationCancellationRequestDTO(
             email,
             Locale.of("pt", "BR"),

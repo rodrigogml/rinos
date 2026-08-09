@@ -172,10 +172,11 @@ Sessões normais têm duração absoluta de 12 horas e inatividade de 30 minutos
 têm duração absoluta de 30 dias e inatividade de sete dias. Os valores funcionais são fixados pela spec; propriedades
 podem somente materializar a política aprovada e falham na inicialização quando incompatíveis.
 
-O navegador recebe um cookie de autenticação opaco com seletor público aleatório e verificador secreto. O banco
-armazena o seletor e somente o hash/MAC do verificador. O verificador é rotacionado depois de uso válido; apresentação
+Quando “lembrar-me” é solicitado, o navegador recebe um cookie de autenticação opaco com seletor aleatório e
+verificador secreto. O banco armazena somente o SHA-256 de ambos. O verificador é rotacionado depois de uso válido; apresentação
 de seletor conhecido com verificador inválido revoga a família por suspeita de roubo. A ausência de “lembrar-me” usa
-cookie de sessão; a opção habilitada adiciona expiração persistente coerente com os 30 dias.
+somente o cookie de sessão local do Spring; a opção habilitada adiciona a credencial opaca com expiração limitada
+pelo vencimento absoluto de 30 dias.
 
 `identity_authSession` não armazena o cookie bruto nem o identificador `HttpSession`. A referência exibida na gestão é
 outro valor opaco, sem utilidade para autenticar. Revogar uma sessão invalida também seus validadores persistentes.

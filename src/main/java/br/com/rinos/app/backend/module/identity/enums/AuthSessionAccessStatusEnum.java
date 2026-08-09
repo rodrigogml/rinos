@@ -10,6 +10,8 @@ public enum AuthSessionAccessStatusEnum {
   ACTIVE,
   ROTATED,
   REJECTED,
+  BLOCKED,
+  REPLAY_DETECTED,
   REVOKED,
   EXPIRED
 }

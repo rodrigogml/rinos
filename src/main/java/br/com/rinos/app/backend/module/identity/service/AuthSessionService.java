@@ -31,6 +31,7 @@ import br.com.rinos.app.backend.module.identity.vo.AuthSessionAccessVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationCleanupResultVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthSessionSummaryVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthSessionVO;
+import br.com.rinos.app.backend.module.identity.vo.IssuedPersistentLoginVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
 import br.com.rinos.app.config.AuthenticationRetentionPropertiesConfig;
 import br.com.rinos.app.config.AuthenticationSessionPropertiesConfig;
@@ -165,10 +166,16 @@ public class AuthSessionService {
     if (parts == null) {
       return AuthSessionAccessVO.rejected();
     }
+    byte[] selectorHash = opaqueTokenService.hash(parts[0]);
+    AuthSessionEntity located = sessionRepository.findBySelectorHash(selectorHash).orElse(null);
+    if (located == null) {
+      return AuthSessionAccessVO.rejected();
+    }
+    lockUser(located.getUser().getId());
     AuthSessionEntity session = sessionRepository
-        .findBySelectorHashForUpdate(opaqueTokenService.hash(parts[0]))
+        .findBySelectorHashForUpdate(selectorHash)
         .orElse(null);
-    if (session == null) {
+    if (session == null || session.getStatus() == AuthSessionStatusEnum.PREPARED) {
       return AuthSessionAccessVO.rejected();
     }
     if (session.getStatus() == AuthSessionStatusEnum.REVOKED) {
@@ -179,11 +186,11 @@ public class AuthSessionService {
     }
     if (!opaqueTokenService.matches(parts[1], session.getValidatorDigest())) {
       revoke(session, AuthSessionRevocationReasonEnum.VALIDATOR_MISMATCH, occurredAt, correlationId);
-      return AuthSessionAccessVO.rejected();
+      return view(session, AuthSessionAccessStatusEnum.REPLAY_DETECTED, null);
     }
     if (session.getUser().getStatus() != UserStatusEnum.ACTIVE) {
       revoke(session, AuthSessionRevocationReasonEnum.USER_NOT_ACTIVE, occurredAt, correlationId);
-      return view(session, AuthSessionAccessStatusEnum.REVOKED, null);
+      return view(session, AuthSessionAccessStatusEnum.BLOCKED, null);
     }
     if (!occurredAt.isBefore(session.getAbsoluteExpiresAt())
         || !occurredAt.isBefore(session.getIdleExpiresAt())) {
@@ -205,6 +212,43 @@ public class AuthSessionService {
         session,
         AuthSessionAccessStatusEnum.ROTATED,
         cookie(parts[0], validator));
+  }
+
+  /**
+   * Substitui os valores reservados na preparação e entrega o cookie somente para uma sessão
+   * persistente, ativa e ainda vigente.
+   */
+  @Transactional
+  public IssuedPersistentLoginVO issuePersistentCredential(
+      UUID publicReference,
+      Instant occurredAt) {
+    Objects.requireNonNull(publicReference, "publicReference must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    byte[] encodedReference = referenceService.encode(publicReference);
+    AuthSessionEntity located = sessionRepository.findByPublicReference(encodedReference)
+        .orElseThrow(() -> new IllegalStateException("Authentication session is unavailable"));
+    UserEntity user = lockActiveUser(located.getUser().getId());
+    AuthSessionEntity session = sessionRepository.findByPublicReferenceForUpdate(encodedReference)
+        .orElseThrow(() -> new IllegalStateException("Authentication session is unavailable"));
+    if (session.getUser().getId() == null
+        || !session.getUser().getId().equals(user.getId())
+        || session.getStatus() != AuthSessionStatusEnum.ACTIVE
+        || !session.isRemembered()
+        || !occurredAt.isBefore(session.getAbsoluteExpiresAt())
+        || !occurredAt.isBefore(session.getIdleExpiresAt())) {
+      throw new IllegalStateException("Authentication session cannot issue a persistent credential");
+    }
+    String selector = opaqueTokenService.generate();
+    String validator = opaqueTokenService.generate();
+    session.replaceAuthenticator(
+        opaqueTokenService.hash(selector),
+        opaqueTokenService.hash(validator),
+        DIGEST_VERSION);
+    sessionRepository.flush();
+    return new IssuedPersistentLoginVO(
+        cookie(selector, validator),
+        publicReference,
+        session.getAbsoluteExpiresAt());
   }
 
   /** Lista sessões do usuário sem material autenticador ou endereço de origem. */
@@ -332,6 +376,7 @@ public class AuthSessionService {
     return new AuthSessionAccessVO(
         status,
         session.getUser().getId(),
+        session.getUser().getEmail(),
         decodeReference(session.getPublicReference()),
         session.getAssuranceLevel(),
         session.getLastStrongAuthAt(),

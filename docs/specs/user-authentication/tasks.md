@@ -256,7 +256,7 @@ Ref: Spec FR-AUTH-PWD-*, FR-AUTH-ABUSE-*; Interface INT-WEB-AUTH-001
 Ref: Spec FR-AUTH-SES-*; Plan §Session and Remember-me Strategy
 
 - [x] 3.3.1 Criar e publicar `AuthSession` antes de estabelecer contexto local autenticado
-- [ ] 3.3.2 Emitir cookie selector+validator seguro, rotacionável e sem valor bruto persistido
+- [x] 3.3.2 Emitir cookie selector+validator seguro, rotacionável e sem valor bruto persistido
 - [ ] 3.3.3 Implementar guard por request/heartbeat com atividade amortizada e validação de estado
 - [ ] 3.3.4 Implementar logout e revogação atual, remota, outras e todas cross-instance
 - [ ] 3.3.5 Integrar bloqueio/desativação/cancelamento e mudança de senha à invalidação total

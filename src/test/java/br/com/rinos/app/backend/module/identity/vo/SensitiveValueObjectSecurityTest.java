@@ -39,6 +39,7 @@ class SensitiveValueObjectSecurityTest {
     String diagnostic = new AuthSessionAccessVO(
         AuthSessionAccessStatusEnum.ROTATED,
         10L,
+        "person@example.test",
         UUID.fromString("784c7c76-b1d7-4fa5-8060-98dcf9202fe5"),
         null,
         null,
@@ -48,8 +49,8 @@ class SensitiveValueObjectSecurityTest {
         .toString();
 
     assertThat(diagnostic)
-        .contains("rotatedCookieValue=<redacted>")
-        .doesNotContain(cookie);
+        .contains("rotatedCookieValue=<redacted>", "userEmail=<redacted>")
+        .doesNotContain(cookie, "person@example.test");
   }
 
   @Test

@@ -70,6 +70,7 @@ import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionV
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationSessionLifecycleVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthSessionVO;
+import br.com.rinos.app.backend.module.identity.vo.IssuedPersistentLoginVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
 import br.com.rinos.app.backend.module.identity.vo.LegalRequirementStatusVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
@@ -301,7 +302,7 @@ class AuthenticationSessionRepositoryIT {
           NOW.plusSeconds(1),
           UUID.randomUUID()).status());
       assertThat(replayStatus)
-          .isEqualTo(AuthSessionAccessStatusEnum.REJECTED);
+          .isEqualTo(AuthSessionAccessStatusEnum.REPLAY_DETECTED);
       AuthSessionAccessStatusEnum persistedStatus = transaction.execute(status -> service.access(
           replayed.cookieValue(), false, NOW.plusSeconds(2), UUID.randomUUID()).status());
       assertThat(persistedStatus)
@@ -354,7 +355,7 @@ class AuthenticationSessionRepositoryIT {
           Set.of(),
           List.of(new AuthenticationFlowVerifiedMethodVO(
               AuthenticationMethodEnum.PASSWORD, NOW.minusSeconds(1), null)),
-          false,
+          true,
           NOW.minusSeconds(10),
           NOW.plusSeconds(300),
           UUID.randomUUID()));
@@ -364,7 +365,7 @@ class AuthenticationSessionRepositoryIT {
               issued.reference(),
               AuthenticationFlowPurposeEnum.SIGN_IN,
               userId,
-              false,
+              true,
               new byte[] {127, 0, 0, 1},
               "Browser/1.0",
               NOW)));
@@ -434,6 +435,31 @@ class AuthenticationSessionRepositoryIT {
           .contains(
               IdentityEventTypeEnum.AUTHENTICATION_SUCCEEDED,
               IdentityEventTypeEnum.AUTHENTICATION_SESSION_CREATED);
+
+      AuthSessionService persistentLogin = sessionService(context);
+      IssuedPersistentLoginVO cookie = transaction.execute(status ->
+          persistentLogin.issuePersistentCredential(prepared.sessionReference(), NOW.plusSeconds(1)));
+      String[] credential = cookie.cookieValue().split("\\.", -1);
+      assertThat(credential).hasSize(2);
+      assertThat(context.getBean(AuthSessionRepository.class).findAll())
+          .singleElement()
+          .satisfies(session -> {
+            assertThat(session.getSelectorHash()).containsExactly(tokens.hash(credential[0]));
+            assertThat(session.getValidatorDigest()).containsExactly(tokens.hash(credential[1]));
+          });
+
+      var rotated = transaction.execute(status -> persistentLogin.access(
+          cookie.cookieValue(), true, NOW.plusSeconds(2), UUID.randomUUID()));
+      assertThat(rotated.status()).isEqualTo(AuthSessionAccessStatusEnum.ROTATED);
+      assertThat(rotated.rotatedCookieValue()).isNotEqualTo(cookie.cookieValue());
+
+      AuthSessionAccessStatusEnum replay = transaction.execute(status -> persistentLogin.access(
+          cookie.cookieValue(), true, NOW.plusSeconds(3), UUID.randomUUID()).status());
+      assertThat(replay).isEqualTo(AuthSessionAccessStatusEnum.REPLAY_DETECTED);
+      AuthSessionAccessStatusEnum revoked = transaction.execute(status -> persistentLogin.access(
+          rotated.rotatedCookieValue(), true, NOW.plusSeconds(4), UUID.randomUUID()).status());
+      assertThat(revoked)
+          .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
     });
   }
 

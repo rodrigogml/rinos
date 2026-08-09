@@ -286,6 +286,12 @@ O contrato público não expõe hash, selector interno, validator, token bruto o
 já é registrado sobre o modelo persistente; o provider de login persistente somente será registrado quando a emissão,
 leitura e rotação do cookie estiverem completas, sem capability provisória.
 
+A implementação usa uma fachada HTTP deliberadamente restrita: ela recebe request/response servlet, manipula o
+cookie dentro da própria fronteira e devolve somente status, principal mínimo e referência não autenticadora. Essa
+exceção técnica evita transportar selector/validator por DTO, VO, estado Vaadin ou pelo adapter RFW. O cookie usa
+`Path=/`, `HttpOnly`, `Secure` conforme a configuração do ambiente, `SameSite=Strict` e `Max-Age` limitado ao
+vencimento absoluto persistido. Cookies ausentes, duplicados ou vazios nunca alcançam a consulta autenticadora.
+
 ## Reauthentication
 
 **RFW contracts**: `RFWReauthenticationChallengeProvider`, `RFWReauthenticationBeginRequestDTO`,
