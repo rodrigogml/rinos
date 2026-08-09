@@ -15,7 +15,7 @@ import br.com.rinos.app.backend.module.identity.enums.AuthSessionStatusEnum;
  * @param status estado corrente
  * @param primaryMethod método primário
  * @param assuranceLevel garantia calculada
- * @param authenticatedAt instante da autenticação
+ * @param createdAt instante em que a sessão foi publicada
  * @param lastActivityAt última atividade persistida
  * @param absoluteExpiresAt limite absoluto
  * @param deviceDescription descrição sanitizada ou {@code null}
@@ -28,7 +28,7 @@ public record AuthSessionSummaryVO(
     AuthSessionStatusEnum status,
     AuthenticationMethodEnum primaryMethod,
     AuthenticationAssuranceEnum assuranceLevel,
-    Instant authenticatedAt,
+    Instant createdAt,
     Instant lastActivityAt,
     Instant absoluteExpiresAt,
     String deviceDescription) {

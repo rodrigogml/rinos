@@ -69,6 +69,7 @@ import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationSessionLifecycleVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthSessionSummaryVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthSessionVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedPersistentLoginVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthenticationFlowVO;
@@ -148,6 +149,89 @@ class AuthenticationSessionRepositoryIT {
           issued.cookieValue(), false, NOW.plusSeconds(31), UUID.randomUUID()).status());
       assertThat(revokedStatus)
           .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+    });
+  }
+
+  @Test
+  void managedRevocation_shouldScopeTargetsAndPropagateAcrossInstances() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      UserRepository users = context.getBean(UserRepository.class);
+      AuthSessionService firstInstance = sessionService(context);
+      AuthSessionService secondInstance = sessionService(context);
+      Long ownerId = activeUser(transaction, users, "owner@example.test");
+      Long otherUserId = activeUser(transaction, users, "other@example.test");
+      IssuedAuthSessionVO current = issue(transaction, firstInstance, ownerId);
+      IssuedAuthSessionVO firstRemote = issue(transaction, firstInstance, ownerId);
+      IssuedAuthSessionVO secondRemote = issue(transaction, firstInstance, ownerId);
+      IssuedAuthSessionVO foreign = issue(transaction, firstInstance, otherUserId);
+
+      List<AuthSessionSummaryVO> managedSessions =
+          transaction.execute(status -> firstInstance.listManaged(
+              ownerId, current.publicReference(), NOW.plusSeconds(1)));
+      assertThat(managedSessions)
+          .extracting(session -> session.publicReference())
+          .containsExactlyInAnyOrder(
+              current.publicReference(), firstRemote.publicReference(), secondRemote.publicReference());
+
+      var foreignAttempt = transaction.execute(status -> firstInstance.revokeManaged(
+          ownerId,
+          current.publicReference(),
+          foreign.publicReference(),
+          NOW.plusSeconds(2),
+          UUID.randomUUID()));
+      assertThat(foreignAttempt.revokedCount()).isZero();
+      AuthSessionAccessStatusEnum foreignStatus = transaction.execute(status -> secondInstance.access(
+          foreign.cookieValue(), false, NOW.plusSeconds(3), UUID.randomUUID()).status());
+      assertThat(foreignStatus)
+          .isEqualTo(AuthSessionAccessStatusEnum.ACTIVE);
+
+      var oneRemote = transaction.execute(status -> firstInstance.revokeManaged(
+          ownerId,
+          current.publicReference(),
+          firstRemote.publicReference(),
+          NOW.plusSeconds(4),
+          UUID.randomUUID()));
+      assertThat(oneRemote.revokedCount()).isEqualTo(1);
+      assertThat(oneRemote.currentSessionRevoked()).isFalse();
+      AuthSessionAccessStatusEnum firstRemoteStatus = transaction.execute(status -> secondInstance.access(
+          firstRemote.cookieValue(), false, NOW.plusSeconds(5), UUID.randomUUID()).status());
+      assertThat(firstRemoteStatus)
+          .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+
+      var others = transaction.execute(status -> secondInstance.revokeAllManaged(
+          ownerId,
+          current.publicReference(),
+          true,
+          NOW.plusSeconds(6),
+          UUID.randomUUID()));
+      assertThat(others.revokedCount()).isEqualTo(1);
+      assertThat(others.currentSessionRevoked()).isFalse();
+      AuthSessionAccessStatusEnum secondRemoteStatus = transaction.execute(status -> firstInstance.access(
+          secondRemote.cookieValue(), false, NOW.plusSeconds(7), UUID.randomUUID()).status());
+      assertThat(secondRemoteStatus)
+          .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+      AuthSessionAccessStatusEnum currentStatus = transaction.execute(status -> firstInstance.access(
+          current.cookieValue(), false, NOW.plusSeconds(7), UUID.randomUUID()).status());
+      assertThat(currentStatus)
+          .isEqualTo(AuthSessionAccessStatusEnum.ACTIVE);
+
+      var all = transaction.execute(status -> firstInstance.revokeAllManaged(
+          ownerId,
+          current.publicReference(),
+          false,
+          NOW.plusSeconds(8),
+          UUID.randomUUID()));
+      assertThat(all.revokedCount()).isEqualTo(1);
+      assertThat(all.currentSessionRevoked()).isTrue();
+      AuthSessionAccessStatusEnum revokedCurrentStatus = transaction.execute(status -> secondInstance.access(
+          current.cookieValue(), false, NOW.plusSeconds(9), UUID.randomUUID()).status());
+      assertThat(revokedCurrentStatus)
+          .isEqualTo(AuthSessionAccessStatusEnum.REVOKED);
+
+      assertThatThrownBy(() -> transaction.execute(status -> firstInstance.listManaged(
+          ownerId, current.publicReference(), NOW.plusSeconds(10))))
+          .isInstanceOf(SecurityException.class);
     });
   }
 

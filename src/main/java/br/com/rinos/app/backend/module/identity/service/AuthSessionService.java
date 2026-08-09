@@ -30,6 +30,7 @@ import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthSessionAccessVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationCleanupResultVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthSessionSummaryVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthSessionRevocationVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedAuthSessionVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedPersistentLoginVO;
 import br.com.rinos.app.backend.module.identity.vo.VerifiedAuthSessionMethodVO;
@@ -260,6 +261,92 @@ public class AuthSessionService {
         .toList();
   }
 
+  /**
+   * Lista somente sessões ativas e vigentes depois de comprovar que a referência corrente
+   * pertence ao usuário solicitante.
+   */
+  @Transactional
+  public List<AuthSessionSummaryVO> listManaged(
+      Long userId,
+      UUID currentReference,
+      Instant occurredAt) {
+    UserEntity user = lockActiveUser(userId);
+    Objects.requireNonNull(currentReference, "currentReference must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    List<AuthSessionEntity> sessions = sessionRepository.findByUserIdAndStatusForUpdate(
+        user.getId(), AuthSessionStatusEnum.ACTIVE);
+    requireCurrentSession(sessions, currentReference, occurredAt);
+    return sessions.stream()
+        .filter(session -> isWithinValidity(session, occurredAt))
+        .map(this::summary)
+        .toList();
+  }
+
+  /**
+   * Revoga uma sessão própria de modo idempotente, inclusive quando o alvo é a corrente.
+   */
+  @Transactional
+  public AuthSessionRevocationVO revokeManaged(
+      Long userId,
+      UUID currentReference,
+      UUID targetReference,
+      Instant occurredAt,
+      UUID correlationId) {
+    UserEntity user = lockActiveUser(userId);
+    Objects.requireNonNull(currentReference, "currentReference must not be null");
+    Objects.requireNonNull(targetReference, "targetReference must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    Objects.requireNonNull(correlationId, "correlationId must not be null");
+    List<AuthSessionEntity> sessions = sessionRepository.findByUserIdAndStatusForUpdate(
+        user.getId(), AuthSessionStatusEnum.ACTIVE);
+    requireCurrentSession(sessions, currentReference, occurredAt);
+    AuthSessionEntity target = findByReference(sessions, targetReference);
+    if (target == null) {
+      return new AuthSessionRevocationVO(0, false);
+    }
+    if (!isWithinValidity(target, occurredAt)) {
+      expire(target, occurredAt, correlationId);
+      return new AuthSessionRevocationVO(0, false);
+    }
+    boolean current = referencesEqual(target, currentReference);
+    revoke(target, AuthSessionRevocationReasonEnum.USER_REQUEST, occurredAt, correlationId);
+    return new AuthSessionRevocationVO(1, current);
+  }
+
+  /** Revoga todas as sessões próprias, preservando opcionalmente a corrente. */
+  @Transactional
+  public AuthSessionRevocationVO revokeAllManaged(
+      Long userId,
+      UUID currentReference,
+      boolean keepCurrent,
+      Instant occurredAt,
+      UUID correlationId) {
+    UserEntity user = lockActiveUser(userId);
+    Objects.requireNonNull(currentReference, "currentReference must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    Objects.requireNonNull(correlationId, "correlationId must not be null");
+    List<AuthSessionEntity> sessions = sessionRepository.findByUserIdAndStatusForUpdate(
+        user.getId(), AuthSessionStatusEnum.ACTIVE);
+    requireCurrentSession(sessions, currentReference, occurredAt);
+    int revoked = 0;
+    boolean currentRevoked = false;
+    for (AuthSessionEntity session : sessions) {
+      boolean current = referencesEqual(session, currentReference);
+      if (keepCurrent && current) {
+        continue;
+      }
+      if (!isWithinValidity(session, occurredAt)) {
+        expire(session, occurredAt, correlationId);
+        continue;
+      }
+      revoke(session, current ? AuthSessionRevocationReasonEnum.USER_REQUEST
+          : AuthSessionRevocationReasonEnum.OTHER_SESSIONS, occurredAt, correlationId);
+      revoked++;
+      currentRevoked |= current;
+    }
+    return new AuthSessionRevocationVO(revoked, currentRevoked);
+  }
+
   /** Revoga uma sessão pela referência de gestão de modo idempotente. */
   @Transactional
   public boolean revoke(
@@ -392,10 +479,39 @@ public class AuthSessionService {
         session.getStatus(),
         session.getPrimaryMethod(),
         session.getAssuranceLevel(),
-        session.getAuthenticatedAt(),
+        session.getActivatedAt() == null ? session.getAuthenticatedAt() : session.getActivatedAt(),
         session.getLastActivityAt(),
         session.getAbsoluteExpiresAt(),
         session.getDeviceDescription());
+  }
+
+  private void requireCurrentSession(
+      List<AuthSessionEntity> sessions,
+      UUID currentReference,
+      Instant occurredAt) {
+    AuthSessionEntity current = findByReference(sessions, currentReference);
+    if (current == null || !isWithinValidity(current, occurredAt)) {
+      throw new SecurityException("Current authentication session is not active");
+    }
+  }
+
+  private AuthSessionEntity findByReference(
+      List<AuthSessionEntity> sessions,
+      UUID reference) {
+    return sessions.stream()
+        .filter(session -> referencesEqual(session, reference))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private boolean referencesEqual(AuthSessionEntity session, UUID reference) {
+    return java.security.MessageDigest.isEqual(
+        session.getPublicReference(), referenceService.encode(reference));
+  }
+
+  private static boolean isWithinValidity(AuthSessionEntity session, Instant occurredAt) {
+    return occurredAt.isBefore(session.getAbsoluteExpiresAt())
+        && occurredAt.isBefore(session.getIdleExpiresAt());
   }
 
   private UserEntity lockActiveUser(Long userId) {

@@ -222,6 +222,15 @@ Operações de gestão:
 `revoke(reference)` autoriza somente sessão do próprio usuário. `revokeAll(keepCurrent)` bloqueia o usuário e as
 sessões alvo na mesma transação. Revogar a sessão corrente limpa também o contexto local e o cookie.
 
+A autoridade de backend exige simultaneamente `userId` e a referência da sessão corrente ainda ativa; depois
+bloqueia o usuário e todas as sessões ativas em ordem determinística antes de localizar o alvo. Uma referência de
+outro usuário é tratada como alvo ausente e nunca revela nem altera a sessão estrangeira. Revogação remota repetida
+é sucesso idempotente; revogar a atual ou todas faz o próximo guard remover contexto e cookie em qualquer instância.
+
+O `SessionManagementFacade` e seus contratos seguros já materializam listar, revogar uma, as outras e todas. O
+`RFWSessionManagementProvider` permanece propositalmente sem bean até a tarefa de interface integrar também a
+reautenticação exigida para a ação abrangente; assim a capability não aparece prematuramente.
+
 ## Authentication Session Lifecycle
 
 **RFW contracts**: `RFWAuthenticationSessionLifecycleProvider`,

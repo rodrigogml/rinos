@@ -28,6 +28,9 @@ import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationResendRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationStartRequestDTO;
+import br.com.rinos.app.api.dto.SessionBulkRevocationRequestDTO;
+import br.com.rinos.app.api.dto.SessionManagementContextDTO;
+import br.com.rinos.app.api.dto.SessionRevocationRequestDTO;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 import br.com.rinos.app.api.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
@@ -47,6 +50,7 @@ import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
 import br.com.rinos.app.api.vo.AuthenticationProofResultVO;
 import br.com.rinos.app.api.vo.AuthenticationSessionLifecycleResultVO;
+import br.com.rinos.app.api.vo.AuthenticatedSessionVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
@@ -60,6 +64,7 @@ import br.com.rinos.app.api.vo.RegistrationStartResultVO;
 import br.com.rinos.app.api.vo.RemoteOriginRequestVO;
 import br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
+import br.com.rinos.app.api.vo.SessionRevocationResultVO;
 
 /**
  * Protege a fronteira pública contra dependências de persistência, mutação externa e diagnóstico
@@ -84,10 +89,14 @@ class PublicContractSecurityTest {
       RegistrationCancellationRequestDTO.class,
       RegistrationResendRequestDTO.class,
       RegistrationStartRequestDTO.class,
+      SessionBulkRevocationRequestDTO.class,
+      SessionManagementContextDTO.class,
+      SessionRevocationRequestDTO.class,
       ExternalRegistrationCompletionResultVO.class,
       AuthenticationFlowResultVO.class,
       AuthenticationProofResultVO.class,
       AuthenticationSessionLifecycleResultVO.class,
+      AuthenticatedSessionVO.class,
       GoogleIdentityResolutionRequestVO.class,
       GoogleIdentityResolutionResultVO.class,
       LegalDocumentContentVO.class,
@@ -100,7 +109,8 @@ class PublicContractSecurityTest {
       RegistrationStartResultVO.class,
       RemoteOriginRequestVO.class,
       RinosAuthenticationCompletionVO.class,
-      RinosUserPrincipalVO.class);
+      RinosUserPrincipalVO.class,
+      SessionRevocationResultVO.class);
 
   @Test
   void publicContracts_shouldNotReferencePersistenceTypes() {
@@ -237,6 +247,22 @@ class PublicContractSecurityTest {
             PersistentLoginStatusEnum.RESTORED,
             new RinosUserPrincipalVO(42L, email),
             reference),
+        new SessionManagementContextDTO(42L, reference, EXPIRES_AT),
+        new SessionRevocationRequestDTO(
+            new SessionManagementContextDTO(42L, reference, EXPIRES_AT),
+            "target-" + reference,
+            CORRELATION_ID),
+        new SessionBulkRevocationRequestDTO(
+            new SessionManagementContextDTO(42L, reference, EXPIRES_AT),
+            true,
+            CORRELATION_ID),
+        new AuthenticatedSessionVO(
+            reference,
+            true,
+            EXPIRES_AT.minusSeconds(60),
+            EXPIRES_AT,
+            "Known browser",
+            null),
         new RegistrationCancellationRequestDTO(
             email,
             Locale.of("pt", "BR"),
