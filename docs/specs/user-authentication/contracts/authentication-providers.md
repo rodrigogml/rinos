@@ -326,6 +326,13 @@ operação. Quando não estiver, devolve referência opaca, validade, rótulo hu
 passkey. A conclusão atualiza somente a sessão corrente e registra evento; não cria outra sessão e não concede
 authority.
 
+O catálogo fechado inicial reconhece criação/alteração de senha, nomeação/cadastro/revogação de passkey,
+inclusão/remoção de fator, regeneração de recovery codes, vínculo/desvínculo Google e revogação de uma ou todas as
+sessões. A política nunca oferece `GOOGLE`, `EMAIL_CODE` ou `RECOVERY_CODE` como prova interativa de reautenticação;
+ela intersecta `PASSWORD`, `TOTP` e `PASSKEY` com os métodos atualmente utilizáveis. Uma sessão Google recente, por
+si só, não dispensa o desafio de uma operação sensível. O limite de 15 minutos é inclusivo: somente instantes
+posteriores exigem nova prova.
+
 `begin(...)` pode responder `ALREADY_RECENT` ou `CHALLENGE_REQUIRED`. `verify(...)` recebe a referência, o método
 escolhido e uma prova transitória e só permite continuar a operação original em `COMPLETED`. A referência deve estar
 vinculada ao usuário, sessão e operação, expirar, ser consumida uma única vez e ser cancelada quando a UI fechar. O
