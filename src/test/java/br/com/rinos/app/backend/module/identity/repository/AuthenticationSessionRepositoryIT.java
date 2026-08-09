@@ -65,6 +65,7 @@ import br.com.rinos.app.backend.module.identity.service.IdentityReferenceService
 import br.com.rinos.app.backend.module.identity.service.LegalConsentService;
 import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
 import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationWindowDecisionVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationFlowVerifiedMethodVO;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationSessionLifecycleVO;
@@ -173,6 +174,67 @@ class AuthenticationSessionRepositoryIT {
       assertThat(results).containsExactlyInAnyOrder(1, 2);
       assertThat(finalDecision.failureCount()).isEqualTo(2);
       assertThat(finalDecision.turnstileRequired()).isFalse();
+    });
+  }
+
+  @Test
+  void registerFailure_shouldSerializeIdentifierAndOriginTogetherBetweenInstances() {
+    contextRunner().run(context -> {
+      AuthenticationWindowRepository repository =
+          context.getBean(AuthenticationWindowRepository.class);
+      AuthenticationWindowService windows = new AuthenticationWindowService(
+          repository, abuseProperties());
+      String key = Base64.getEncoder().encodeToString(new byte[32]);
+      AuthenticationAbuseProtectionService service = new AuthenticationAbuseProtectionService(
+          new EmailNormalizationService(),
+          new OriginAddressService(),
+          new AuthenticationKeyringMacService(new AuthenticationKeyringPropertiesConfig(
+              true, "v1", Map.of("v1", key))),
+          windows);
+
+      List<AuthenticationAbuseDecisionVO> results = compete(() ->
+          transaction(context).execute(status -> service.registerFailure(
+              "person@example.test", "198.51.100.12", NOW)));
+
+      assertThat(results)
+          .extracting(AuthenticationAbuseDecisionVO::maximumFailureCount)
+          .containsExactlyInAnyOrder(1, 2);
+      assertThat(repository.findAll())
+          .hasSize(2)
+          .allSatisfy(window -> assertThat(window.getFailureCount()).isEqualTo(2));
+    });
+  }
+
+  @Test
+  void registerFailure_shouldRequireAndRenewTurnstileUntilFullQuietWindow() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      AuthenticationWindowService service = new AuthenticationWindowService(
+          context.getBean(AuthenticationWindowRepository.class), abuseProperties());
+      byte[] digest = new byte[32];
+      digest[0] = 84;
+
+      AuthenticationWindowDecisionVO first = transaction.execute(status -> service.registerFailure(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW));
+      AuthenticationWindowDecisionVO second = transaction.execute(status -> service.registerFailure(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW.plusSeconds(1)));
+      AuthenticationWindowDecisionVO threshold = transaction.execute(status -> service.registerFailure(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW.plusSeconds(2)));
+      AuthenticationWindowDecisionVO renewed = transaction.execute(status -> service.registerFailure(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW.plusSeconds(600)));
+      AuthenticationWindowDecisionVO afterOriginalDeadline = transaction.execute(status -> service.inspect(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW.plusSeconds(903)));
+      AuthenticationWindowDecisionVO afterQuietWindow = transaction.execute(status -> service.inspect(
+          digest, "v1", AuthenticationWindowOperationEnum.SIGN_IN, NOW.plusSeconds(1_500)));
+
+      assertThat(first.turnstileRequired()).isFalse();
+      assertThat(second.turnstileRequired()).isFalse();
+      assertThat(threshold.turnstileRequired()).isTrue();
+      assertThat(threshold.turnstileRequiredUntil()).isEqualTo(NOW.plusSeconds(902));
+      assertThat(renewed.turnstileRequiredUntil()).isEqualTo(NOW.plusSeconds(1_500));
+      assertThat(afterOriginalDeadline.turnstileRequired()).isTrue();
+      assertThat(afterQuietWindow.turnstileRequired()).isFalse();
+      assertThat(afterQuietWindow.failureCount()).isZero();
     });
   }
 

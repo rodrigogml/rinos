@@ -101,6 +101,21 @@ class HumanVerificationPolicyFacadeImplTest {
   }
 
   @Test
+  void isHumanVerificationRequired_shouldFailClosedWhenSignInPolicyIsUnavailable() {
+    when(abuseProtectionService.isTurnstileRequired(
+        "person@example.test",
+        "203.0.113.10",
+        Instant.parse("2026-08-09T12:00:00Z")))
+        .thenThrow(new IllegalStateException("database unavailable"));
+
+    assertThat(facade.isHumanVerificationRequired(
+        HumanVerificationOperationEnum.SIGN_IN,
+        "203.0.113.10",
+        "person@example.test"))
+        .isTrue();
+  }
+
+  @Test
   void isHumanVerificationRequired_shouldAlwaysProtectRegistrationCancellation() {
     boolean required = facade.isHumanVerificationRequired(
         HumanVerificationOperationEnum.REGISTRATION_CANCELLATION,

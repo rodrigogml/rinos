@@ -34,6 +34,8 @@ public class PasswordCredentialAuthenticationService {
 
   private static final String SENTINEL_INPUT =
       "Rinos password verification timing sentinel; not a user credential.";
+  private static final String SENTINEL_NORMALIZED_EMAIL = "__rinos_timing_sentinel__";
+  private static final long SENTINEL_USER_ID = 0L;
 
   private final EmailNormalizationService emailNormalizationService;
   private final UserRepository userRepository;
@@ -71,8 +73,10 @@ public class PasswordCredentialAuthenticationService {
     Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
     try {
       UserEntity user = normalizeAndLock(identifier);
-      LocalCredentialEntity credential = user == null ? null
-          : credentialRepository.findByUserIdForUpdate(user.getId()).orElse(null);
+      long credentialOwnerId = user == null ? SENTINEL_USER_ID : user.getId();
+      LocalCredentialEntity credential = credentialRepository
+          .findByUserIdForUpdate(credentialOwnerId)
+          .orElse(null);
       String comparedHash = credential == null ? sentinelHash : credential.getPasswordHash();
       boolean matches = passwordEncoder.matches(CharBuffer.wrap(password), comparedHash);
       if (!matches || user == null || user.getStatus() != UserStatusEnum.ACTIVE
@@ -98,11 +102,12 @@ public class PasswordCredentialAuthenticationService {
   }
 
   private UserEntity normalizeAndLock(String identifier) {
+    String normalizedEmail;
     try {
-      String normalized = emailNormalizationService.normalize(identifier).normalizedEmail();
-      return userRepository.findByNormalizedEmailForUpdate(normalized).orElse(null);
+      normalizedEmail = emailNormalizationService.normalize(identifier).normalizedEmail();
     } catch (NullPointerException | IllegalArgumentException invalidIdentifier) {
-      return null;
+      normalizedEmail = SENTINEL_NORMALIZED_EMAIL;
     }
+    return userRepository.findByNormalizedEmailForUpdate(normalizedEmail).orElse(null);
   }
 }

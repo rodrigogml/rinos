@@ -236,7 +236,7 @@ Ref: Spec FR-AUTH-PWD-*, FR-AUTH-ABUSE-*; Interface INT-WEB-AUTH-001
 - [x] 3.2.3 Contabilizar atomicamente falhas por identificador e IP e decidir Turnstile/espera progressiva
 - [x] 3.2.4 Integrar validação Turnstile fail-closed e respostas neutras com correlation ID
 - [x] 3.2.5 Bloquear credencial marcada como comprometida até redefinição
-- [ ] 3.2.6 Testar timing observável, limites, proxy confiável, indisponibilidade e concorrência
+- [x] 3.2.6 Testar timing observável, limites, proxy confiável, indisponibilidade e concorrência
 
 > [!NOTE]
 > O RFW `911aa5d` reavalia a política com o identificador efêmero no submit e valida o Turnstile
@@ -244,6 +244,12 @@ Ref: Spec FR-AUTH-PWD-*, FR-AUTH-ABUSE-*; Interface INT-WEB-AUTH-001
 > `correlationId` aleatório e publica apenas rejeição neutra, limitação sem dimensão ou
 > indisponibilidade temporária. Testes de integração comprovam que prova obrigatória rejeitada não
 > alcança a fachada de senha.
+
+> [!NOTE]
+> A evidência reproduzível da matriz de proteção e do gate MySQL 9 está em
+> [`evidence/3.2.6/README.md`](./evidence/3.2.6/README.md). A equivalência de timing é tratada como
+> equivalência de caminho controlável — duas consultas indexadas e uma comparação Argon2id —, não
+> como promessa irreal de duração constante de rede, JVM ou banco.
 
 ### 3.3 Implementar sessão global, cookie e guard `[C]`
 

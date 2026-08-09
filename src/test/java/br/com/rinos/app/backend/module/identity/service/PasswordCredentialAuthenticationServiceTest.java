@@ -54,6 +54,7 @@ class PasswordCredentialAuthenticationServiceTest {
   void verify_shouldUseSentinelHashAndErasePassword_whenIdentityDoesNotExist() {
     when(users.findByNormalizedEmailForUpdate("person@example.test"))
         .thenReturn(Optional.empty());
+    when(credentials.findByUserIdForUpdate(0L)).thenReturn(Optional.empty());
     when(encoder.matches(any(CharSequence.class), eq("{argon2id}sentinel")))
         .thenReturn(false);
     char[] password = "WrongPassword1!".toCharArray();
@@ -63,7 +64,7 @@ class PasswordCredentialAuthenticationServiceTest {
     assertThat(result).isEmpty();
     assertThat(password).containsOnly('\0');
     verify(encoder).matches(any(CharSequence.class), eq("{argon2id}sentinel"));
-    verify(credentials, never()).findByUserIdForUpdate(any());
+    verify(credentials).findByUserIdForUpdate(0L);
   }
 
   @Test
@@ -129,6 +130,9 @@ class PasswordCredentialAuthenticationServiceTest {
   void verify_shouldStillPaySentinelCostForMalformedIdentifier() {
     when(normalization.normalize("invalid"))
         .thenThrow(new IllegalArgumentException("invalid email"));
+    when(users.findByNormalizedEmailForUpdate("__rinos_timing_sentinel__"))
+        .thenReturn(Optional.empty());
+    when(credentials.findByUserIdForUpdate(0L)).thenReturn(Optional.empty());
     when(encoder.matches(any(CharSequence.class), eq("{argon2id}sentinel")))
         .thenReturn(false);
 
@@ -136,7 +140,8 @@ class PasswordCredentialAuthenticationServiceTest {
 
     assertThat(result).isEmpty();
     verify(encoder).matches(any(CharSequence.class), eq("{argon2id}sentinel"));
-    verify(users, never()).findByNormalizedEmailForUpdate(any());
+    verify(users).findByNormalizedEmailForUpdate("__rinos_timing_sentinel__");
+    verify(credentials).findByUserIdForUpdate(0L);
   }
 
   @Test

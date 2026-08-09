@@ -53,6 +53,12 @@ existem, o serviço compara a entrada com um hash sentinela gerado em memória p
 mesmos parâmetros vigentes. O array recebido é apagado em todos os resultados. O valor sentinela não representa uma
 conta e nunca é persistido.
 
+Para reduzir diferenças grosseiras de tempo e de acesso ao banco, identidade existente, ausente ou identificador
+malformado executam o mesmo formato mínimo: uma consulta indexada de usuário, uma consulta indexada de credencial e
+uma comparação Argon2id. Os casos ausentes usam valores sentinela impossíveis (`normalizedEmail` fora da gramática e
+`userId=0`) sem criar linhas no banco. Isso não promete tempo constante em rede, JVM ou MySQL; o contrato é evitar
+atalhos controlados pela existência da identidade e manter idênticos conteúdo, status e navegação públicos.
+
 Depois de uma correspondência válida, `PasswordEncoder.upgradeEncoding` decide se o hash precisa ser recalculado
 com os parâmetros atuais. O upgrade ocorre ainda sob o lock da credencial, antes de apagar a senha, e não modifica
 `passwordChangedAt`, pois o segredo escolhido pelo usuário não mudou. Hash vigente não produz escrita adicional.
