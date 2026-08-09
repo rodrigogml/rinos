@@ -51,6 +51,7 @@ import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAssurancePolicyService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationFlowService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationSessionLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationWindowService;
 import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
@@ -216,8 +217,12 @@ class AuthenticationSessionRepositoryIT {
           tokens,
           audit);
       LegalConsentService legal = mock(LegalConsentService.class);
+      AuthenticationMethodAvailabilityService availability = mock(
+          AuthenticationMethodAvailabilityService.class);
       when(legal.evaluateRequiredConsents(userId, NOW))
           .thenReturn(new LegalRequirementStatusVO(List.of(1L, 2L), List.of()));
+      when(availability.availableMethods(userId))
+          .thenReturn(Set.of(AuthenticationMethodEnum.PASSWORD));
       AuthenticationSessionLifecycleService lifecycle =
           new AuthenticationSessionLifecycleService(
               context.getBean(AuthSessionRepository.class),
@@ -226,6 +231,7 @@ class AuthenticationSessionRepositoryIT {
               userRepository,
               flows,
               new AuthenticationAssurancePolicyService(),
+              availability,
               legal,
               tokens,
               new IdentityReferenceService(),

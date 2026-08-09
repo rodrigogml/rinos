@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -56,6 +57,7 @@ class AuthenticationSessionLifecycleServiceTest {
   private AuthenticationFlowRepository flowRepository;
   private UserRepository userRepository;
   private AuthenticationFlowService flowService;
+  private AuthenticationMethodAvailabilityService methodAvailability;
   private LegalConsentService legalConsentService;
   private IdentityAuditService auditService;
   private AuthenticationSessionLifecycleService service;
@@ -70,6 +72,7 @@ class AuthenticationSessionLifecycleServiceTest {
     flowRepository = mock(AuthenticationFlowRepository.class);
     userRepository = mock(UserRepository.class);
     flowService = mock(AuthenticationFlowService.class);
+    methodAvailability = mock(AuthenticationMethodAvailabilityService.class);
     legalConsentService = mock(LegalConsentService.class);
     auditService = mock(IdentityAuditService.class);
     user = new UserEntity("person@example.test", "person@example.test", UserStatusEnum.ACTIVE);
@@ -95,6 +98,8 @@ class AuthenticationSessionLifecycleServiceTest {
         .thenReturn(flowResult(AuthenticationOperationStatusEnum.USED));
     when(legalConsentService.evaluateRequiredConsents(41L, NOW))
         .thenReturn(new LegalRequirementStatusVO(List.of(1L, 2L), List.of()));
+    when(methodAvailability.availableMethods(41L))
+        .thenReturn(Set.of(AuthenticationMethodEnum.values()));
     when(flowRepository.getReferenceById(91L)).thenReturn(flow);
     when(sessionRepository.findByAuthenticationFlowIdForUpdate(91L))
         .thenReturn(Optional.empty());
@@ -109,6 +114,7 @@ class AuthenticationSessionLifecycleServiceTest {
         userRepository,
         flowService,
         new AuthenticationAssurancePolicyService(),
+        methodAvailability,
         legalConsentService,
         new RFWOpaqueTokenService(),
         new IdentityReferenceService(),
@@ -205,6 +211,17 @@ class AuthenticationSessionLifecycleServiceTest {
     assertThat(persistedSession.getStatus()).isEqualTo(AuthSessionStatusEnum.EXPIRED);
     verify(auditService, never()).record(
         any(), any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void prepare_shouldRejectEvidenceWhoseMethodWasRevoked() {
+    when(methodAvailability.availableMethods(41L)).thenReturn(Set.of());
+
+    assertThatThrownBy(this::prepare)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("no longer available");
+
+    verify(sessionRepository, never()).saveAndFlush(any());
   }
 
   private AuthenticationSessionLifecycleVO prepare() {

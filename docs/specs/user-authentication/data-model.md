@@ -384,6 +384,8 @@ recuperação, credential ID completo, token Google ou prova WebAuthn.
 4. Administrador não pode concluir remoção que o deixe sem fator compatível com MFA.
 5. `AuthSession.ACTIVE` exige usuário `ACTIVE` e fluxo de autenticação consumido uma única vez.
 6. Nenhuma sessão é criada enquanto faltar aceite obrigatório vigente.
+7. Cada método comprovado permanece utilizável em `prepare(...)` e `publish(...)`: senha ativa e não comprometida,
+   vínculo Google ativo, passkey/TOTP/e-mail ativos ou conjunto de recuperação ativo com código disponível.
 7. OTP/TOTP/código de recuperação aceito não pode ser consumido novamente.
 8. Google é identificado somente por `issuer + subject`; e-mail coincidente não cria vínculo.
 9. Uma sessão Google não usa `EMAIL_CODE` do mesmo e-mail para atingir garantia administrativa.

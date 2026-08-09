@@ -115,6 +115,8 @@ limpa o estado local e compensa a preparação ou publicação.
    senha ou Google podem exigir TOTP, e-mail, passkey ou recuperação conforme contexto e configuração.
 5. Antes de publicar a sessão, o backend revalida usuário ativo e versões legais obrigatórias. Aceite pendente abre
    continuação própria sem conservar credenciais na UI.
+   A disponibilidade de senha, Google, passkey, TOTP, e-mail e recovery code é recomposta no banco; método
+   comprovado revogado rejeita o fluxo e alternativa indisponível deixa de ser oferecida.
 6. O lifecycle cria `AuthSession.PREPARED`; o RFW renova o identificador HTTP e salva o `SecurityContext` local.
 7. A publicação global revalida as invariants e, numa transação, consome o fluxo, ativa a sessão e registra os
    eventos. Qualquer falha limpa o contexto local e chama a compensação idempotente.

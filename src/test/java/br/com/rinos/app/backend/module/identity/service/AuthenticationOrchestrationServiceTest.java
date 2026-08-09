@@ -46,6 +46,7 @@ class AuthenticationOrchestrationServiceTest {
   private static final String SIGN_IN_REFERENCE = "sign-in-reference";
 
   private AuthenticationFlowService flowService;
+  private AuthenticationMethodAvailabilityService methodAvailability;
   private LegalConsentService legalConsentService;
   private UserRepository userRepository;
   private AuthenticationOrchestrationService service;
@@ -54,15 +55,19 @@ class AuthenticationOrchestrationServiceTest {
   @BeforeEach
   void setUp() {
     flowService = mock(AuthenticationFlowService.class);
+    methodAvailability = mock(AuthenticationMethodAvailabilityService.class);
     legalConsentService = mock(LegalConsentService.class);
     userRepository = mock(UserRepository.class);
     service = new AuthenticationOrchestrationService(
         flowService,
         new AuthenticationAssurancePolicyService(),
+        methodAvailability,
         legalConsentService,
         userRepository);
     user = user(UserStatusEnum.ACTIVE);
     when(userRepository.findByIdForUpdate(41L)).thenReturn(Optional.of(user));
+    when(methodAvailability.availableMethods(41L))
+        .thenReturn(Set.of(AuthenticationMethodEnum.values()));
   }
 
   @Test
@@ -161,6 +166,39 @@ class AuthenticationOrchestrationServiceTest {
         eq(NOW),
         isNull(),
         eq(NOW));
+  }
+
+  @Test
+  void complete_shouldRejectWhenVerifiedMethodWasRevokedAfterProof() {
+    when(flowService.resolveUserId(SIGN_IN_REFERENCE)).thenReturn(Optional.of(41L));
+    when(flowService.snapshot(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(snapshot(
+            AuthenticationAssuranceEnum.SINGLE_FACTOR,
+            Set.of(),
+            List.of(verified(AuthenticationMethodEnum.PASSWORD))));
+    when(methodAvailability.availableMethods(41L)).thenReturn(Set.of());
+
+    AuthenticationOrchestrationDecisionVO result = service.complete(SIGN_IN_REFERENCE, NOW);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
+    verify(legalConsentService, never()).evaluateRequiredConsents(41L, NOW);
+  }
+
+  @Test
+  void start_shouldNotOfferFactorThatIsNoLongerAvailable() {
+    stubSignInIssueAndSnapshot(AuthenticationAssuranceEnum.MULTI_FACTOR, snapshot(
+        AuthenticationAssuranceEnum.MULTI_FACTOR,
+        Set.of(AuthenticationMethodEnum.TOTP),
+        List.of(verified(AuthenticationMethodEnum.PASSWORD))));
+    when(methodAvailability.availableMethods(41L))
+        .thenReturn(Set.of(AuthenticationMethodEnum.PASSWORD));
+
+    AuthenticationOrchestrationDecisionVO result = start(
+        AuthenticationAssuranceEnum.MULTI_FACTOR);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.CONFLICT);
+    assertThat(result.permittedMethods()).isEmpty();
   }
 
   private AuthenticationOrchestrationDecisionVO start(

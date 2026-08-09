@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.com.rinos.app.backend.module.identity.entity.ExternalIdentityEntity;
+import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityProviderEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityStatusEnum;
 import jakarta.persistence.LockModeType;
 
@@ -61,6 +62,11 @@ public interface ExternalIdentityRepository
       ExternalIdentityStatusEnum status);
 
   boolean existsByUserIdAndStatus(Long userId, ExternalIdentityStatusEnum status);
+
+  boolean existsByUserIdAndProviderAndStatus(
+      Long userId,
+      ExternalIdentityProviderEnum provider,
+      ExternalIdentityStatusEnum status);
 
   /**
    * Bloqueia os vínculos pendentes de um usuário antes de substituição ou ativação.

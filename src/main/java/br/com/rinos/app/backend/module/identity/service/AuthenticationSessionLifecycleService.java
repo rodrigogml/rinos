@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.context.annotation.Lazy;
@@ -17,6 +18,7 @@ import br.com.rinos.app.backend.module.identity.entity.AuthenticationFlowEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationFlowPurposeEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationOperationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthenticationSessionLifecycleStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
@@ -55,6 +57,7 @@ public class AuthenticationSessionLifecycleService {
   private final UserRepository userRepository;
   private final AuthenticationFlowService flowService;
   private final AuthenticationAssurancePolicyService assurancePolicy;
+  private final AuthenticationMethodAvailabilityService methodAvailability;
   private final LegalConsentService legalConsentService;
   private final RFWOpaqueTokenService opaqueTokenService;
   private final IdentityReferenceService referenceService;
@@ -69,6 +72,7 @@ public class AuthenticationSessionLifecycleService {
       UserRepository userRepository,
       AuthenticationFlowService flowService,
       AuthenticationAssurancePolicyService assurancePolicy,
+      AuthenticationMethodAvailabilityService methodAvailability,
       LegalConsentService legalConsentService,
       RFWOpaqueTokenService opaqueTokenService,
       IdentityReferenceService referenceService,
@@ -80,6 +84,7 @@ public class AuthenticationSessionLifecycleService {
     this.userRepository = userRepository;
     this.flowService = flowService;
     this.assurancePolicy = assurancePolicy;
+    this.methodAvailability = methodAvailability;
     this.legalConsentService = legalConsentService;
     this.opaqueTokenService = opaqueTokenService;
     this.referenceService = referenceService;
@@ -298,6 +303,13 @@ public class AuthenticationSessionLifecycleService {
       throw new IllegalStateException("Authentication flow is not ready for a session");
     }
     AuthenticationAssuranceEnum achieved = assurancePolicy.calculate(snapshot.verifiedMethods());
+    Set<AuthenticationMethodEnum> availableMethods = methodAvailability.availableMethods(
+        user.getId());
+    if (snapshot.verifiedMethods().stream()
+        .map(method -> method.method())
+        .anyMatch(method -> !availableMethods.contains(method))) {
+      throw new IllegalStateException("Verified authentication method is no longer available");
+    }
     if (!assurancePolicy.satisfies(achieved, snapshot.requiredAssurance())) {
       throw new IllegalStateException("Authentication assurance is insufficient");
     }

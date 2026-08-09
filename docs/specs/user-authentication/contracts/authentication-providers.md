@@ -12,6 +12,9 @@ repositories ou services diretamente.
 - Exceção técnica é convertida em erro público estável e evento sanitizado; stack trace não chega à UI.
 - Capability só é anunciada quando o provider real e todas as dependências obrigatórias estiverem disponíveis.
 - Um resultado autenticado só pode existir depois de usuário, fatores e documentos legais terem sido revalidados.
+- Toda transição crítica recompõe os métodos utilizáveis no banco, sem cache da fotografia do fluxo. Evidência
+  cujo método foi comprometido, desativado, revogado ou esgotado rejeita a transição; alternativa ainda não usada
+  que deixou de existir é removida do desafio oferecido.
 
 ## Authentication Orchestration Core
 
@@ -188,7 +191,8 @@ O lifecycle da sessão global segue uma ordem fechada:
 5. falha em qualquer etapa posterior à preparação limpa contexto/cookie e chama `abort(...)` de forma idempotente.
 
 `prepare(...)` revalida propriedade do fluxo, usuário `ACTIVE`, garantia, evidências, escolha persistente e
-documentos legais vigentes. Ela grava `AuthSession.PREPARED` ligada de forma única ao fluxo, mas não consome o fluxo
+disponibilidade atual dos métodos comprovados e documentos legais vigentes. Ela grava `AuthSession.PREPARED` ligada
+de forma única ao fluxo, mas não consome o fluxo
 nem registra sucesso. `publish(...)` repete as validações críticas e, numa única transação, consome o fluxo, muda a
 sessão para `ACTIVE` e registra `AUTHENTICATION_SUCCEEDED` e `AUTHENTICATION_SESSION_CREATED`. A continuação efêmera
 fica em `Authentication.details` apenas até a preparação; o principal final conserva somente identidade e referência

@@ -40,6 +40,7 @@ public class AuthenticationOrchestrationService {
 
   private final AuthenticationFlowService flowService;
   private final AuthenticationAssurancePolicyService assurancePolicy;
+  private final AuthenticationMethodAvailabilityService methodAvailability;
   private final LegalConsentService legalConsentService;
   private final UserRepository userRepository;
 
@@ -47,10 +48,12 @@ public class AuthenticationOrchestrationService {
   public AuthenticationOrchestrationService(
       AuthenticationFlowService flowService,
       AuthenticationAssurancePolicyService assurancePolicy,
+      AuthenticationMethodAvailabilityService methodAvailability,
       LegalConsentService legalConsentService,
       UserRepository userRepository) {
     this.flowService = flowService;
     this.assurancePolicy = assurancePolicy;
+    this.methodAvailability = methodAvailability;
     this.legalConsentService = legalConsentService;
     this.userRepository = userRepository;
   }
@@ -161,9 +164,19 @@ public class AuthenticationOrchestrationService {
         || snapshot.verifiedMethods().isEmpty()) {
       return rejected();
     }
+    Set<AuthenticationMethodEnum> availableMethods = methodAvailability.availableMethods(
+        user.getId());
+    if (snapshot.verifiedMethods().stream()
+        .map(AuthenticationFlowVerifiedMethodVO::method)
+        .anyMatch(method -> !availableMethods.contains(method))) {
+      return rejected();
+    }
+    Set<AuthenticationMethodEnum> permittedMethods = snapshot.permittedMethods().stream()
+        .filter(availableMethods::contains)
+        .collect(java.util.stream.Collectors.toUnmodifiableSet());
     AuthenticationAssuranceEnum achieved = assurancePolicy.calculate(snapshot.verifiedMethods());
     if (!assurancePolicy.satisfies(achieved, snapshot.requiredAssurance())) {
-      if (snapshot.permittedMethods().isEmpty()) {
+      if (permittedMethods.isEmpty()) {
         return result(
             AuthenticationOrchestrationStatusEnum.CONFLICT,
             null, null, achieved, Set.of(), snapshot.verifiedMethods(), Set.of(),
@@ -171,7 +184,7 @@ public class AuthenticationOrchestrationService {
       }
       return result(
           AuthenticationOrchestrationStatusEnum.CHALLENGE_REQUIRED,
-          reference, null, achieved, snapshot.permittedMethods(), snapshot.verifiedMethods(),
+          reference, null, achieved, permittedMethods, snapshot.verifiedMethods(),
           Set.of(), snapshot.persistentLoginRequested(), snapshot.expiresAt(),
           snapshot.correlationId());
     }
