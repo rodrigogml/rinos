@@ -34,8 +34,20 @@ public record AuthenticationOrchestrationResultVO(
     verifiedMethods = verifiedMethods == null ? List.of() : List.copyOf(verifiedMethods);
     missingLegalDocumentIds = missingLegalDocumentIds == null
         ? Set.of() : Set.copyOf(missingLegalDocumentIds);
-    if (status == AuthenticationOrchestrationStatusEnum.READY && principal == null) {
-      throw new IllegalArgumentException("principal is required for a ready factor flow");
+    if (status == AuthenticationOrchestrationStatusEnum.READY
+        && (principal == null || continuationReference == null || continuationReference.isBlank()
+            || achievedAssurance == null || verifiedMethods.isEmpty())) {
+      throw new IllegalArgumentException("ready factor flow is incomplete");
+    }
+    if (status == AuthenticationOrchestrationStatusEnum.CHALLENGE_REQUIRED
+        && (continuationReference == null || continuationReference.isBlank()
+            || permittedMethods.isEmpty() || expiresAt == null)) {
+      throw new IllegalArgumentException("authentication challenge is incomplete");
+    }
+    if (status == AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED
+        && (continuationReference == null || continuationReference.isBlank()
+            || missingLegalDocumentIds.isEmpty() || expiresAt == null)) {
+      throw new IllegalArgumentException("legal consent challenge is incomplete");
     }
   }
 

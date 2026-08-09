@@ -19,6 +19,7 @@ repositories ou services diretamente.
 ## Authentication Orchestration Core
 
 **Rinos facade**: `AuthenticationOrchestrationFacade`
+**RFW outcome adapter**: `RFWAuthenticationOutcomeAdapter`
 
 O núcleo recebe somente fatores que o serviço especializado já comprovou e conserva no banco a fotografia dos
 métodos verificados. `start(...)` abre o fluxo depois do primeiro fator, `advance(...)` acrescenta uma evidência
@@ -32,6 +33,14 @@ criação compensável da sessão pertencem ao lifecycle descrito em
 [Authentication Session Lifecycle](#authentication-session-lifecycle),
 e o registro atômico dos novos aceites pertence ao provider descrito em
 [Legal Consent after Authentication](#legal-consent-after-authentication).
+
+O adapter de outcome é reutilizado pelos providers concretos de primeiro fator e não representa uma capability
+autônoma. Ele realiza um mapeamento fechado: `READY` cria a autenticação provisória contendo o principal mínimo e a
+continuação efêmera exigida pelo lifecycle; `CHALLENGE_REQUIRED` e `LEGAL_CONSENT_REQUIRED` produzem os desafios
+tipados do RFW sem autenticação parcial. `REJECTED`, `EXPIRED`, `CONFLICT` e `UNAVAILABLE` usam, respectivamente, as
+chaves públicas estáveis `authentication.credentials.invalid`, `authentication.flow.expired`,
+`authentication.flow.conflict` e `authentication.temporarily-unavailable`. Nenhuma dessas mensagens inclui
+identidade, método existente, causa interna ou referência opaca.
 
 ## Password Authentication
 

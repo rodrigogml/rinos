@@ -218,7 +218,7 @@ Ref: Plan §Authentication Flow; Contract Authentication Providers §General Rul
 - [x] 3.1.2 Implementar fluxo primeiro fator, MFA, gate legal e conclusão única sem `SecurityContext` parcial
 - [x] 3.1.3 Revalidar usuário, métodos, fatores e documentos em cada transição crítica
 - [x] 3.1.4 Garantir idempotência e compensação na criação de sessão/evento
-- [ ] 3.1.5 Implementar adapters RFW para outcomes e erros públicos estáveis
+- [x] 3.1.5 Implementar adapters RFW para outcomes e erros públicos estáveis
 - [ ] 3.1.6 Testar todos os caminhos, expiração, repetição, bloqueio concorrente e falha parcial
 
 ### 3.2 Implementar login por senha e proteção contra abuso `[C]`
