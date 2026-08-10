@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Configuration;
     AuthenticationNotificationPropertiesConfig.class,
     AuthenticationRetentionPropertiesConfig.class,
     AuthenticationSessionPropertiesConfig.class,
-    AuthenticationWebAuthnPropertiesConfig.class,
     CleanupPropertiesConfig.class,
     MaintenancePropertiesConfig.class,
     OriginPropertiesConfig.class,

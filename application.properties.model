@@ -118,12 +118,13 @@ rinos.authentication.keyring.enabled=false
 rinos.authentication.keyring.active-version=
 rinos.authentication.keyring.keys.v1=
 
-# WebAuthn. Produção usa HTTPS; HTTP é aceito apenas para localhost de desenvolvimento.
-rinos.authentication.webauthn.enabled=false
-rinos.authentication.webauthn.rp-id=app.rinos.com.br
-rinos.authentication.webauthn.rp-name=Rinos
-rinos.authentication.webauthn.allowed-origins=https://app.rinos.com.br,http://localhost:7070
-rinos.authentication.webauthn.user-verification-required=true
+# WebAuthn. Cada perfil deve declarar origins compatíveis com seu RP ID.
+# Para desenvolvimento local, use rp-id=localhost e allowed-origins=http://localhost:7070.
+rfw.authentication.passkey.enabled=false
+rfw.authentication.passkey.relying-party-id=app.rinos.com.br
+rfw.authentication.passkey.relying-party-name=Rinos
+rfw.authentication.passkey.allowed-origins=https://app.rinos.com.br
+rfw.authentication.passkey.user-verification=required
 
 # Consulta de senhas comprometidas
 rinos.hibp.endpoint=https://api.pwnedpasswords.com/range/

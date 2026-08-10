@@ -51,7 +51,7 @@ validação e evento sanitizado são suficientes. O Rinos não solicita escopos 
 | Step | Contract |
 |------|----------|
 | options | POST com CSRF; usuário autenticado e reautenticado; challenge temporário associado à sessão/cerimônia |
-| browser | `navigator.credentials.create` com user verification requerida/preferida conforme política aprovada |
+| browser | `navigator.credentials.create` com `userVerification=required` |
 | response | attestation e client data Base64URL; limite de payload antes de parsing |
 | persistence | Spring valida origem, RP ID, challenge e credential; adapters persistem owner/credential nas tabelas globais sem substituir material imutável |
 
@@ -75,6 +75,15 @@ validação e evento sanitizado são suficientes. O Rinos não solicita escopos 
 | contador/backup state anormal | decisão de risco; nunca revogar outros métodos automaticamente |
 
 Nenhuma chave privada, PIN ou biometria é recebida pelo Rinos.
+
+### Configuração explícita
+
+O protocolo consome exclusivamente `rfw.authentication.passkey.*` do `application.properties`; não existe um grupo
+paralelo `rinos.authentication.webauthn.*` nem configuração equivalente em banco. Quando habilitado, o startup exige
+RP ID, nome, ao menos uma origin e `user-verification=required`. Origins remotas usam HTTPS, não contêm caminho,
+credenciais, query ou fragmento e precisam ter host igual ou subordinado ao RP ID. O desenvolvimento local constitui
+um perfil distinto: `relying-party-id=localhost` e `allowed-origins=http://localhost:7070`. Uma lista única não mistura
+o RP de produção com a origin local, pois o navegador rejeitaria essa relação.
 
 ### Persistência adaptada
 

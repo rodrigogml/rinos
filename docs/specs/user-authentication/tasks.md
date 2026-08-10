@@ -338,7 +338,12 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 > Os adapters, a política de imutabilidade e o roundtrip MySQL estão registrados em
 > [`evidence/4.2.1/README.md`](./evidence/4.2.1/README.md). Exclusões técnicas do Spring falham fechado; revogação
 > permanece reservada ao caso de uso que aplicará último método, MFA administrativo e auditoria em 4.2.4.
-- [ ] 4.2.2 Configurar RP ID, origins e user verification por propriedades explícitas
+- [x] 4.2.2 Configurar RP ID, origins e user verification por propriedades explícitas
+
+> [!NOTE]
+> A origem exclusiva das propriedades, a validação fail-fast e a aplicação efetiva de user verification no RFW estão
+> registradas em [`evidence/4.2.2/README.md`](./evidence/4.2.2/README.md). Produção e localhost usam perfis de RP
+> distintos; a verificação local é exigida no cadastro e no login.
 - [ ] 4.2.3 Integrar assertion validada ao orquestrador, MFA e gate legal
 - [ ] 4.2.4 Implementar cadastro, nomeação, listagem, último uso e revogação individual
 - [ ] 4.2.5 Auditar anomalias sem revogar automaticamente credenciais independentes

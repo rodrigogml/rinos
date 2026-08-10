@@ -37,6 +37,9 @@ anteriores; cancelamento invalida a referência antes de voltar ao login. Esse p
 provider depois que fluxo, consentimentos e conclusão atômica da autenticação estiverem implementados no global.
 
 A baseline também integra a conclusão WebAuthn à orquestração comum de acesso e publica o enrollment TOTP tipado.
+RP ID, nome, origins e verificação local pertencem exclusivamente a `rfw.authentication.passkey.*`. O Rinos não
+mantém um binder paralelo: exige `user-verification=required`, enquanto o RFW aplica a política às opções de cadastro
+e autenticação produzidas para o Spring Security.
 `RFWSecondFactorEnrollmentVO` entrega referência opaca, validade, URI `otpauth://` e segredo de apresentação única;
 o renderer padrão oferece QR local, alternativa textual e cancelamento explícito. O Rinos deve implementar validade,
 consumo único, persistência protegida e auditoria sem segredo quando registrar o provider concreto. Até essa

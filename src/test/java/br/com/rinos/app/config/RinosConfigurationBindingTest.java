@@ -323,18 +323,4 @@ class RinosConfigurationBindingTest {
         });
   }
 
-  @Test
-  void bind_shouldFail_whenEnabledWebAuthnAllowsInsecureRemoteOrigin() {
-    contextRunner
-        .withPropertyValues(
-            "rinos.maintenance.instance-id=test-instance",
-            "rinos.authentication.webauthn.enabled=true",
-            "rinos.authentication.webauthn.allowed-origins=http://app.rinos.com.br")
-        .run(context -> {
-          assertThat(context).hasFailed();
-          assertThat(context.getStartupFailure())
-              .hasRootCauseMessage(
-                  "origin WebAuthn deve ser HTTPS ou localhost HTTP e não conter extras.");
-        });
-  }
 }
