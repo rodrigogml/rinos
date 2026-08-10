@@ -392,7 +392,13 @@ Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Int
 > o gate legal comum estão registrados em [`evidence/4.3.3/README.md`](./evidence/4.3.3/README.md). Autenticação não
 > concede autorização; a futura feature de acesso administrativo deve solicitar a garantia TOTP/passkey aqui
 > estabelecida.
-- [ ] 4.3.4 Implementar vínculo explícito, conflito único e desvínculo com último método
+- [x] 4.3.4 Implementar vínculo explícito, conflito único e desvínculo com último método
+
+> [!NOTE]
+> A confirmação e reautenticação do RFW, a referência opaca, a autoridade transacional, o conflito neutro, a
+> revogação com último método e o roundtrip MySQL estão registrados em
+> [`evidence/4.3.4/README.md`](./evidence/4.3.4/README.md). O adapter descarta e-mail, tokens e claims não necessários;
+> a próxima tarefa formaliza a ausência de persistência desses tokens e o fallback independente.
 - [ ] 4.3.5 Garantir ausência de access/refresh token persistente e fallback independente
 - [ ] 4.3.6 Testar JWKS/Google indisponível, replay, e-mail coincidente, bloqueio e concorrência de vínculo
 

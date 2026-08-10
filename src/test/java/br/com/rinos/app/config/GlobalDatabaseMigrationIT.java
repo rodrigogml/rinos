@@ -53,8 +53,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260808_002_update.sql",
       "classpath:db/global/update/20260809_001_update.sql",
       "classpath:db/global/update/20260809_002_update.sql",
-      "classpath:db/global/update/20260809_003_update.sql");
-  private static final String TARGET_VERSION = "20260809003";
+      "classpath:db/global/update/20260809_003_update.sql",
+      "classpath:db/global/update/20260810_001_update.sql");
+  private static final String TARGET_VERSION = "20260810001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -190,7 +191,7 @@ class GlobalDatabaseMigrationIT {
       throws SQLException {
     initializeDatabase();
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260809_004_update.sql";
+        + ",classpath:db/global/failure/20260810_002_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();

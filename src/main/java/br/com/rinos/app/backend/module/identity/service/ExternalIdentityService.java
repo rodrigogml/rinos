@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,14 +29,28 @@ public class ExternalIdentityService {
   private static final int MAXIMUM_EXTERNAL_KEY_LENGTH = 255;
 
   private final ExternalIdentityRepository repository;
+  private final IdentityReferenceService references;
 
   /**
    * Cria o serviço sobre o repository interno.
    *
    * @param repository persistência dos vínculos externos
    */
-  public ExternalIdentityService(ExternalIdentityRepository repository) {
+  @Autowired
+  public ExternalIdentityService(
+      ExternalIdentityRepository repository,
+      IdentityReferenceService references) {
     this.repository = repository;
+    this.references = references;
+  }
+
+  /**
+   * Preserva a construção direta usada por testes e integrações internas legadas.
+   *
+   * @param repository persistência dos vínculos externos
+   */
+  public ExternalIdentityService(ExternalIdentityRepository repository) {
+    this(repository, new IdentityReferenceService());
   }
 
   /**
@@ -62,6 +77,7 @@ public class ExternalIdentityService {
     Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
     return repository.save(new ExternalIdentityEntity(
         user,
+        references.generate(),
         provider,
         issuer,
         subject,

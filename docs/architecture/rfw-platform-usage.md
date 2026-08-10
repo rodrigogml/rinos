@@ -10,7 +10,7 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 ## Baseline aprovada
 
 A baseline executável atual usa a revisão
-`911aa5d94c88d4760aed7c72e34bc56ee57284fb` da RFW Platform, publicada como
+`4971e679d56a78c8bc4b73fb436dee84f147ca8f` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 
@@ -82,6 +82,11 @@ indisponibilidade são decisões explícitas do backend; `CONFLICT`/`STALE` exig
 carregamento por seção, ignora conclusões assíncronas antigas e fecha diálogos somente após `COMPLETED`.
 `RFWAuthenticationMethodVO` publica criação e estado seguro sem material de credencial. Adapters legados de
 `List`/`Void` existem apenas para compatibilidade; os providers do Rinos devem implementar o contrato tipado.
+
+O vínculo de uma identidade Google nas configurações de segurança possui duas etapas distintas depois da validação
+criptográfica: confirmação explícita do usuário e reautenticação da operação `link-external-identity`. Cancelar ou
+fechar a confirmação descarta a identidade validada sem chamar o provider de gestão. Mesmo após essas etapas, o
+backend hospedeiro deve revalidar sessão, garantia recente e unicidade antes de persistir o vínculo.
 
 O login persistente completo usa `RFWPersistentLoginProvider`. A aplicação hospedeira permanece proprietária do
 cookie opaco e implementa criação, resolução com rotação atômica, revogação e limpeza. O filtro RFW restaura somente

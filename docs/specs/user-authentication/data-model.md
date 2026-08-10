@@ -48,8 +48,15 @@ conclusão quando a autoridade de sessão estiver disponível e revoga todas as 
 
 ### `identity_externalIdentity`
 
-Vínculos `ACTIVE` continuam localizados somente por `(issuer, subject)`. A feature acrescenta `lastUsedAt` e preserva
-o e-mail externo fora da chave. Remoção é bloqueada quando o vínculo for o último método utilizável.
+Vínculos são localizados para autenticação somente por `(issuer, subject)`. A referência `BINARY(16)` é um UUID opaco
+exclusivo para a gestão pelo proprietário e impede que ID interno, issuer ou subject atravessem a interface. O e-mail
+externo, tokens e claims completos permanecem fora da tabela.
+
+O estado pode ser `PENDING`, `ACTIVE` ou `REVOKED`; `activatedAt`, `lastUsedAt` e `revokedAt` registram apenas os
+marcos necessários. A constraint única de `(issuer, subject)` permanece mesmo depois da revogação: o mesmo usuário
+pode reativar a identidade após nova validação, mas outro usuário recebe conflito neutro e nunca herda o vínculo
+histórico. A remoção é bloqueada quando a identidade for o último método utilizável. Quando houver várias identidades
+externas ativas, cada uma conta como método inicial independente para essa invariant.
 
 ### `identity_passwordRecovery`
 

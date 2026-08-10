@@ -37,7 +37,7 @@ public class AuthenticationMethodInventoryService {
     return new AuthenticationMethodInventoryVO(
         local.existsByUserIdAndStatusAndCompromisedAtIsNull(
             userId, LocalCredentialStatusEnum.ACTIVE),
-        external.existsByUserIdAndStatus(userId, ExternalIdentityStatusEnum.ACTIVE),
+        external.countByUserIdAndStatus(userId, ExternalIdentityStatusEnum.ACTIVE),
         passkeys.countByPasskeyUserUserIdAndStatus(userId, PasskeyCredentialStatusEnum.ACTIVE),
         totp.countByUserIdAndStatus(userId, TotpFactorStatusEnum.ACTIVE),
         email.existsByUserIdAndStatus(userId, EmailFactorStatusEnum.ACTIVE),

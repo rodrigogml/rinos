@@ -161,6 +161,7 @@ CREATE TABLE identity_legalConsent (
 CREATE TABLE identity_externalIdentity (
   id BIGINT AUTO_INCREMENT NOT NULL,
   idUser BIGINT NOT NULL,
+  reference BINARY(16) NOT NULL,
   provider VARCHAR(32) NOT NULL,
   issuer VARCHAR(255) NOT NULL,
   subject VARCHAR(255) NOT NULL,
@@ -168,6 +169,7 @@ CREATE TABLE identity_externalIdentity (
   verifiedAt TIMESTAMP(6) NOT NULL,
   activatedAt TIMESTAMP(6) NULL,
   lastUsedAt TIMESTAMP(6) NULL,
+  revokedAt TIMESTAMP(6) NULL,
   createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   version BIGINT NOT NULL DEFAULT 0,
@@ -176,6 +178,7 @@ CREATE TABLE identity_externalIdentity (
     REFERENCES identity_user (id)
     ON DELETE CASCADE
     ON UPDATE RESTRICT,
+  CONSTRAINT uk_identity_external_identity_reference UNIQUE (reference),
   CONSTRAINT uk_identity_external_identity_issuer_subject UNIQUE (issuer, subject),
   INDEX idx_identity_external_identity_user (idUser)
 ) ENGINE = InnoDB;

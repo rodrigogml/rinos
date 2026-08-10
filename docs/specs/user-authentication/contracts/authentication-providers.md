@@ -208,6 +208,17 @@ O adapter Rinos não será registrado antes da entrega do schema e da facade rea
 - Para vínculo autenticado, a requisição inclui operação de reautenticação já aprovada e confirmação explícita.
 - `link`/`unlink` aplicam unicidade e invariantes do último método em transação.
 
+O componente RFW valida a credencial Google, solicita confirmação explícita e só então inicia a reautenticação
+`link-external-identity`. O adapter Rinos deriva usuário, sessão e instante do contexto autenticado, descarta e-mail e
+claims não necessários e entrega à fachada apenas `provider + issuer + subject`, confirmação e correlação. A fachada
+não recebe ID interno do usuário pela interface e referências de gestão são UUIDs opacos.
+
+O serviço mantém o lock da sessão comprovada até o commit, bloqueia o usuário antes de alterar seu catálogo e usa a
+constraint única `(issuer, subject)` como autoridade final contra corridas entre usuários distintos. Repetir o mesmo
+vínculo ativo para o proprietário é idempotente; vínculo histórico revogado só pode ser reativado pelo mesmo
+proprietário; vínculo pendente ou pertencente a outro usuário produz conflito neutro. O desvínculo muda o estado para
+`REVOKED`, preserva auditoria e falha com `LAST_METHOD` quando nenhum outro método inicial utilizável permanecer.
+
 `GoogleAuthenticationIdentityService` recebe somente issuer e subject já validados, bloqueia o vínculo pela chave
 composta e entrega usuário interno apenas quando vínculo e identidade global estão ativos. Vínculo ausente é
 distinguido internamente para permitir a continuação segura de um novo cadastro; vínculo pendente ou usuário não ativo

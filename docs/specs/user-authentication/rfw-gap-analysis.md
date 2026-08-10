@@ -1,7 +1,7 @@
 # RFW Gap Analysis: Autenticação e Segurança do Usuário
 
 **RFW baseline originally inspected**: `dd7554c8c5ffca3527ffc7ca859eec781703fa46`<br>
-**RFW delivery baseline current**: `911aa5d94c88d4760aed7c72e34bc56ee57284fb` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
+**RFW delivery baseline current**: `4971e679d56a78c8bc4b73fb436dee84f147ca8f` (`br.eng.rodrigogml.rfw:rfw:2.0.0`)<br>
 **Date**: 2026-08-08<br>
 **Status**: gaps AUTH-RFW-001 a AUTH-RFW-010 entregues; os adapters dependentes no Rinos podem avançar conforme a
 ordem do backlog

@@ -2,6 +2,8 @@ package br.com.rinos.app.backend.module.identity.entity;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
+import java.nio.ByteBuffer;
 
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityProviderEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityStatusEnum;
@@ -31,9 +33,13 @@ import jakarta.persistence.Version;
 @Entity
 @Table(
     name = "identity_externalIdentity",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_identity_external_identity_issuer_subject",
-        columnNames = {"issuer", "subject"}),
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_identity_external_identity_reference",
+            columnNames = "reference"),
+        @UniqueConstraint(
+            name = "uk_identity_external_identity_issuer_subject",
+            columnNames = {"issuer", "subject"})},
     indexes = @Index(name = "idx_identity_external_identity_user", columnList = "idUser"))
 public class ExternalIdentityEntity {
 
@@ -45,6 +51,9 @@ public class ExternalIdentityEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "idUser", nullable = false)
   private UserEntity user;
+
+  @Column(name = "reference", nullable = false, length = 16, columnDefinition = "BINARY(16)")
+  private byte[] reference;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "provider", nullable = false, length = 32)
@@ -69,6 +78,9 @@ public class ExternalIdentityEntity {
   @Column(name = "lastUsedAt")
   private Instant lastUsedAt;
 
+  @Column(name = "revokedAt")
+  private Instant revokedAt;
+
   @Column(name = "createdAt", nullable = false, insertable = false, updatable = false)
   private Instant createdAt;
 
@@ -89,6 +101,35 @@ public class ExternalIdentityEntity {
    * Cria um vínculo pendente a partir de atributos já validados pelo provedor.
    *
    * @param user identidade proprietária
+   * @param reference referência pública opaca
+   * @param provider provedor reconhecido
+   * @param issuer emissor validado
+   * @param subject identificador imutável no emissor
+   * @param verifiedAt instante UTC da validação criptográfica
+   */
+  public ExternalIdentityEntity(
+      UserEntity user,
+      UUID reference,
+      ExternalIdentityProviderEnum provider,
+      String issuer,
+      String subject,
+      Instant verifiedAt) {
+    this.user = Objects.requireNonNull(user, "user must not be null");
+    this.reference = encodeReference(reference);
+    this.provider = Objects.requireNonNull(provider, "provider must not be null");
+    this.issuer = Objects.requireNonNull(issuer, "issuer must not be null");
+    this.subject = Objects.requireNonNull(subject, "subject must not be null");
+    this.verifiedAt = Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
+    status = ExternalIdentityStatusEnum.PENDING;
+  }
+
+  /**
+   * Cria um vínculo com referência opaca gerada localmente.
+   *
+   * <p>Este construtor preserva o contrato de criação anterior para integrações internas que não
+   * precisam controlar a referência. Novos services podem injetar a referência pelo construtor completo.</p>
+   *
+   * @param user identidade proprietária
    * @param provider provedor reconhecido
    * @param issuer emissor validado
    * @param subject identificador imutável no emissor
@@ -100,12 +141,7 @@ public class ExternalIdentityEntity {
       String issuer,
       String subject,
       Instant verifiedAt) {
-    this.user = Objects.requireNonNull(user, "user must not be null");
-    this.provider = Objects.requireNonNull(provider, "provider must not be null");
-    this.issuer = Objects.requireNonNull(issuer, "issuer must not be null");
-    this.subject = Objects.requireNonNull(subject, "subject must not be null");
-    this.verifiedAt = Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
-    status = ExternalIdentityStatusEnum.PENDING;
+    this(user, UUID.randomUUID(), provider, issuer, subject, verifiedAt);
   }
 
   /**
@@ -124,6 +160,16 @@ public class ExternalIdentityEntity {
    */
   public UserEntity getUser() {
     return user;
+  }
+
+  /**
+   * Retorna a referência opaca destinada à gestão pelo proprietário.
+   *
+   * @return UUID sem significado de negócio
+   */
+  public UUID getReference() {
+    ByteBuffer buffer = ByteBuffer.wrap(reference);
+    return new UUID(buffer.getLong(), buffer.getLong());
   }
 
   /**
@@ -208,12 +254,50 @@ public class ExternalIdentityEntity {
   }
 
   /**
+   * Retorna o instante de revogação do vínculo.
+   *
+   * @return instante UTC ou {@code null}
+   */
+  public Instant getRevokedAt() {
+    return revokedAt;
+  }
+
+  /**
    * Registra o uso somente depois de validação e conclusão da autenticação.
    *
    * @param lastUsedAt instante UTC obrigatório
    */
   public void setLastUsedAt(Instant lastUsedAt) {
     this.lastUsedAt = Objects.requireNonNull(lastUsedAt, "lastUsedAt must not be null");
+  }
+
+  /**
+   * Reativa para o mesmo proprietário uma identidade externa novamente comprovada.
+   *
+   * @param newVerifiedAt instante da nova validação criptográfica
+   * @param newActivatedAt instante da reativação
+   */
+  public void reactivate(Instant newVerifiedAt, Instant newActivatedAt) {
+    if (status != ExternalIdentityStatusEnum.REVOKED) {
+      throw new IllegalStateException("Only a revoked external identity can be reactivated");
+    }
+    verifiedAt = Objects.requireNonNull(newVerifiedAt, "newVerifiedAt must not be null");
+    activatedAt = Objects.requireNonNull(newActivatedAt, "newActivatedAt must not be null");
+    revokedAt = null;
+    status = ExternalIdentityStatusEnum.ACTIVE;
+  }
+
+  /**
+   * Revoga o vínculo sem apagar sua propriedade histórica e a proteção de unicidade.
+   *
+   * @param occurredAt instante UTC da revogação
+   */
+  public void revoke(Instant occurredAt) {
+    if (status != ExternalIdentityStatusEnum.ACTIVE) {
+      throw new IllegalStateException("Only an active external identity can be revoked");
+    }
+    status = ExternalIdentityStatusEnum.REVOKED;
+    revokedAt = Objects.requireNonNull(occurredAt, "occurredAt must not be null");
   }
 
   /**
@@ -241,5 +325,13 @@ public class ExternalIdentityEntity {
    */
   public long getVersion() {
     return version;
+  }
+
+  private static byte[] encodeReference(UUID value) {
+    Objects.requireNonNull(value, "reference must not be null");
+    return ByteBuffer.allocate(16)
+        .putLong(value.getMostSignificantBits())
+        .putLong(value.getLeastSignificantBits())
+        .array();
   }
 }

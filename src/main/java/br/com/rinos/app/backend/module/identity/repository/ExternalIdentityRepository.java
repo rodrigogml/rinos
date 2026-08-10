@@ -61,7 +61,27 @@ public interface ExternalIdentityRepository
       Long userId,
       ExternalIdentityStatusEnum status);
 
+  /**
+   * Lista vínculos do usuário em ordem persistente para apresentação estável.
+   *
+   * @param userId proprietário dos vínculos
+   * @param status estado selecionado
+   * @return vínculos ordenados pelo identificador interno, que não é exposto
+   */
+  List<ExternalIdentityEntity> findByUserIdAndStatusOrderById(
+      Long userId,
+      ExternalIdentityStatusEnum status);
+
   boolean existsByUserIdAndStatus(Long userId, ExternalIdentityStatusEnum status);
+
+  /**
+   * Conta métodos externos utilizáveis individualmente para a invariant do último método.
+   *
+   * @param userId proprietário dos vínculos
+   * @param status estado selecionado
+   * @return quantidade de vínculos correspondentes
+   */
+  long countByUserIdAndStatus(Long userId, ExternalIdentityStatusEnum status);
 
   boolean existsByUserIdAndProviderAndStatus(
       Long userId,
@@ -87,4 +107,23 @@ public interface ExternalIdentityRepository
   List<ExternalIdentityEntity> findByUserIdAndStatusForUpdate(
       @Param("userId") Long userId,
       @Param("status") ExternalIdentityStatusEnum status);
+
+  /**
+   * Bloqueia um vínculo pertencente ao usuário por sua referência pública opaca.
+   *
+   * @param userId proprietário autenticado
+   * @param reference referência binária
+   * @return vínculo correspondente ou vazio
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+      SELECT identity
+      FROM ExternalIdentityEntity identity
+      JOIN FETCH identity.user
+      WHERE identity.user.id = :userId
+        AND identity.reference = :reference
+      """)
+  Optional<ExternalIdentityEntity> findByUserIdAndReferenceForUpdate(
+      @Param("userId") Long userId,
+      @Param("reference") byte[] reference);
 }

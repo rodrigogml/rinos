@@ -9,5 +9,6 @@ package br.com.rinos.app.backend.module.identity.enums;
 public enum ExternalIdentityStatusEnum {
 
   PENDING,
-  ACTIVE
+  ACTIVE,
+  REVOKED
 }
