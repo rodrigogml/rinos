@@ -53,7 +53,7 @@ validação e evento sanitizado são suficientes. O Rinos não solicita escopos 
 | options | POST com CSRF; usuário autenticado e reautenticado; challenge temporário associado à sessão/cerimônia |
 | browser | `navigator.credentials.create` com user verification requerida/preferida conforme política aprovada |
 | response | attestation e client data Base64URL; limite de payload antes de parsing |
-| persistence | adapter valida origem, RP ID, challenge e credential antes de inserir |
+| persistence | Spring valida origem, RP ID, challenge e credential; adapters persistem owner/credential nas tabelas globais sem substituir material imutável |
 
 ### Authentication
 
@@ -75,6 +75,18 @@ validação e evento sanitizado são suficientes. O Rinos não solicita escopos 
 | contador/backup state anormal | decisão de risco; nunca revogar outros métodos automaticamente |
 
 Nenhuma chave privada, PIN ou biometria é recebida pelo Rinos.
+
+### Persistência adaptada
+
+`SpringWebAuthnUserRepositoryAdapter` implementa `PublicKeyCredentialUserEntityRepository`: resolve somente usuário
+global `ACTIVE`, preserva um `userHandle` aleatório e estável e nunca cria ou exclui `identity_user`.
+`SpringWebAuthnCredentialRepositoryAdapter` implementa `UserCredentialRepository`: reconstrói `CredentialRecord`
+somente para credential e usuário ativos, conserva tipo, ID, chave COSE, user verification, transports, flags de
+backup, attestation, label e datas, e permite em saves posteriores apenas contador, backup state e último uso.
+
+Os métodos `delete(...)` dos adapters técnicos rejeitam a operação. Revogação não é uma exclusão física e precisa
+passar pela gestão do Rinos para aplicar último método utilizável, garantia administrativa, reautenticação e evento
+sanitizado. Essa barreira também impede que endpoints genéricos contornem invariantes do domínio.
 
 ## SMTP: OTP e Notificações
 

@@ -15,4 +15,9 @@ public interface PasskeyUserRepository extends JpaRepository<PasskeyUserEntity, 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT passkeyUser FROM PasskeyUserEntity passkeyUser WHERE passkeyUser.user.id = :userId")
   Optional<PasskeyUserEntity> findByUserIdForUpdate(@Param("userId") Long userId);
+
+  /** Bloqueia o owner pelo handle estável antes de persistir uma credential do Spring. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT passkeyUser FROM PasskeyUserEntity passkeyUser WHERE passkeyUser.userHandle = :userHandle")
+  Optional<PasskeyUserEntity> findByUserHandleForUpdate(@Param("userHandle") byte[] userHandle);
 }

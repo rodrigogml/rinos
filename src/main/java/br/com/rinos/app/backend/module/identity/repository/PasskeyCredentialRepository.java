@@ -13,10 +13,18 @@ import jakarta.persistence.LockModeType;
 /** Persistência bloqueável do material público das passkeys. */
 public interface PasskeyCredentialRepository extends JpaRepository<PasskeyCredentialEntity, Long> {
   Optional<PasskeyCredentialEntity> findByCredentialId(byte[] credentialId);
+  List<PasskeyCredentialEntity> findByPasskeyUserUserHandleAndStatusOrderById(
+      byte[] userHandle, PasskeyCredentialStatusEnum status);
   List<PasskeyCredentialEntity> findByPasskeyUserUserIdOrderById(Long userId);
   long countByPasskeyUserUserIdAndStatus(Long userId, PasskeyCredentialStatusEnum status);
   long countByPasskeyUserUserIdAndStatusAndUvInitializedTrue(Long userId, PasskeyCredentialStatusEnum status);
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT credential FROM PasskeyCredentialEntity credential WHERE credential.passkeyUser.user.id = :userId AND credential.reference = :reference")
   Optional<PasskeyCredentialEntity> findByUserIdAndReferenceForUpdate(@Param("userId") Long userId, @Param("reference") byte[] reference);
+
+  /** Bloqueia a credential pelo identificador WebAuthn antes de atualizar seu estado de uso. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT credential FROM PasskeyCredentialEntity credential WHERE credential.credentialId = :credentialId")
+  Optional<PasskeyCredentialEntity> findByCredentialIdForUpdate(
+      @Param("credentialId") byte[] credentialId);
 }

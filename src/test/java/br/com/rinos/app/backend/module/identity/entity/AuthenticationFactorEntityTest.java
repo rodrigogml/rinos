@@ -55,7 +55,7 @@ class AuthenticationFactorEntityTest {
     byte[] credentialId = new byte[] {1, 2};
     PasskeyCredentialEntity credential = new PasskeyCredentialEntity(owner, UUID.randomUUID(),
         "public-key", credentialId, new byte[] {3}, 0, true, true, false,
-        "internal,usb", new byte[] {4}, new byte[] {5}, "Notebook");
+        "internal,smart-card,usb", new byte[] {4}, new byte[] {5}, "Notebook");
     credentialId[0] = 9;
     credential.recordUse(1, true, NOW);
     credential.revoke(NOW.plusSeconds(1));

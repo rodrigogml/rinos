@@ -35,7 +35,8 @@ import jakarta.persistence.Version;
     @UniqueConstraint(name = "uk_identity_passkey_credential_id", columnNames = "credentialId")},
     indexes = @Index(name = "idx_identity_passkey_credential_user_state", columnList = "idPasskeyUser, status"))
 public class PasskeyCredentialEntity {
-  private static final Pattern TRANSPORTS = Pattern.compile("[a-z]+(?:,[a-z]+)*");
+  private static final Pattern TRANSPORTS = Pattern.compile(
+      "[a-z]+(?:-[a-z]+)*(?:,[a-z]+(?:-[a-z]+)*)*");
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id", nullable = false) private Long id;
   @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "idPasskeyUser", nullable = false) private PasskeyUserEntity passkeyUser;
   @Column(name = "reference", nullable = false, length = 16, columnDefinition = "BINARY(16)") private byte[] reference;
