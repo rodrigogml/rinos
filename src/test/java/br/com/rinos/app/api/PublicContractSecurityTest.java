@@ -24,6 +24,7 @@ import br.com.rinos.app.api.dto.AuthenticationFlowIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationProofIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationSessionPreparationRequestDTO;
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
+import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationActivationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
@@ -89,6 +90,7 @@ class PublicContractSecurityTest {
       AuthenticationProofIssueRequestDTO.class,
       AuthenticationSessionPreparationRequestDTO.class,
       ExternalRegistrationCompletionRequestDTO.class,
+      PasskeyAuthenticationRequestDTO.class,
       RegistrationActivationRequestDTO.class,
       RegistrationCancellationConfirmationDTO.class,
       RegistrationCancellationRequestDTO.class,
@@ -253,6 +255,8 @@ class PublicContractSecurityTest {
             reference,
             List.of("terms-v1"),
             CORRELATION_ID),
+        new PasskeyAuthenticationRequestDTO(
+            new byte[32], EXPIRES_AT.minusSeconds(1), CORRELATION_ID),
         new AuthenticationSessionPreparationRequestDTO(
             reference,
             AuthenticationFlowPurposeEnum.SIGN_IN,

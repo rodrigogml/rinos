@@ -50,6 +50,11 @@ indisponibilidade e rejeição. O componente mantém o método alternativo dispo
 WebAuthn, devolve o foco após falha e anuncia mensagens localizadas sem expor detalhes da credencial. Esses eventos
 servem para feedback e telemetria; autorização continua dependendo exclusivamente da conclusão validada.
 
+Na conclusão concreta, o Rinos registra `RFWPasskeyAuthenticationProviderAdapter`. Ele aceita somente a autenticação
+WebAuthn e a authority de fator produzidas pelo Spring, reduz a prova ao handle e encaminha a decisão ao mesmo
+orquestrador usado pelos demais métodos. MFA, consentimento legal e publicação da sessão permanecem centralizados;
+nenhum endpoint WebAuthn concede acesso diretamente.
+
 A gestão da senha local usa a capability opcional `PASSWORD_MANAGEMENT` e o
 `RFWPasswordManagementProvider`. O renderer publica somente os estados ausente, configurada ou comprometida e datas
 seguras; nunca recebe hash. A criação ou substituição exige reautenticação antes de abrir o formulário, envia senha e

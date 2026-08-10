@@ -103,6 +103,113 @@ class AuthenticationOrchestrationServiceTest {
   }
 
   @Test
+  void start_shouldTreatVerifiedPasskeyAsPhishingResistantAndReachReady() {
+    AuthenticationFlowVerifiedMethodVO passkey =
+        new AuthenticationFlowVerifiedMethodVO(AuthenticationMethodEnum.PASSKEY, NOW, true);
+    AuthenticationFlowSnapshotVO snapshot = new AuthenticationFlowSnapshotVO(
+        AuthenticationOperationStatusEnum.OPEN,
+        91L,
+        41L,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationMethodEnum.PASSKEY,
+        AuthenticationAssuranceEnum.MULTI_FACTOR,
+        Set.of(AuthenticationMethodEnum.TOTP),
+        List.of(passkey),
+        false,
+        EXPIRES_AT,
+        CORRELATION_ID);
+    when(flowService.issue(
+        eq(41L),
+        eq(AuthenticationFlowPurposeEnum.SIGN_IN),
+        eq(AuthenticationMethodEnum.PASSKEY),
+        eq(AuthenticationAssuranceEnum.MULTI_FACTOR),
+        anySet(), anyList(), eq(false), eq(NOW), eq(EXPIRES_AT), eq(CORRELATION_ID)))
+        .thenReturn(new IssuedAuthenticationFlowVO(
+            SIGN_IN_REFERENCE, EXPIRES_AT, CORRELATION_ID));
+    when(flowService.snapshot(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(snapshot);
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenReturn(new LegalRequirementStatusVO(List.of(), List.of()));
+
+    AuthenticationOrchestrationDecisionVO result = service.start(
+        41L,
+        AuthenticationMethodEnum.PASSKEY,
+        AuthenticationAssuranceEnum.MULTI_FACTOR,
+        Set.of(AuthenticationMethodEnum.TOTP),
+        false,
+        NOW,
+        true,
+        NOW,
+        EXPIRES_AT,
+        CORRELATION_ID);
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.READY);
+    assertThat(result.achievedAssurance())
+        .isEqualTo(AuthenticationAssuranceEnum.PHISHING_RESISTANT);
+    assertThat(result.verifiedMethods()).containsExactly(passkey);
+  }
+
+  @Test
+  void start_shouldMoveVerifiedPasskeyToLegalGateWithoutPublishingPrincipal() {
+    AuthenticationFlowVerifiedMethodVO passkey =
+        new AuthenticationFlowVerifiedMethodVO(AuthenticationMethodEnum.PASSKEY, NOW, true);
+    AuthenticationFlowSnapshotVO snapshot = new AuthenticationFlowSnapshotVO(
+        AuthenticationOperationStatusEnum.OPEN,
+        91L,
+        41L,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        AuthenticationMethodEnum.PASSKEY,
+        AuthenticationAssuranceEnum.MULTI_FACTOR,
+        Set.of(),
+        List.of(passkey),
+        false,
+        EXPIRES_AT,
+        CORRELATION_ID);
+    when(flowService.issue(
+        eq(41L),
+        eq(AuthenticationFlowPurposeEnum.SIGN_IN),
+        eq(AuthenticationMethodEnum.PASSKEY),
+        eq(AuthenticationAssuranceEnum.MULTI_FACTOR),
+        anySet(), anyList(), eq(false), eq(NOW), eq(EXPIRES_AT), eq(CORRELATION_ID)))
+        .thenReturn(new IssuedAuthenticationFlowVO(
+            SIGN_IN_REFERENCE, EXPIRES_AT, CORRELATION_ID));
+    when(flowService.snapshot(
+        SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(snapshot);
+    when(legalConsentService.evaluateRequiredConsents(41L, NOW))
+        .thenReturn(new LegalRequirementStatusVO(List.of(8L), List.of(8L)));
+    when(flowService.cancel(SIGN_IN_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(flowResult(AuthenticationOperationStatusEnum.INVALIDATED));
+    when(flowService.issue(
+        eq(41L),
+        eq(AuthenticationFlowPurposeEnum.LEGAL_CONSENT),
+        eq(AuthenticationMethodEnum.PASSKEY),
+        eq(AuthenticationAssuranceEnum.MULTI_FACTOR),
+        anySet(), anyList(), eq(false), eq(NOW), eq(EXPIRES_AT), eq(CORRELATION_ID)))
+        .thenReturn(new IssuedAuthenticationFlowVO(
+            "legal-passkey-reference", EXPIRES_AT, CORRELATION_ID));
+
+    AuthenticationOrchestrationDecisionVO result = service.start(
+        41L,
+        AuthenticationMethodEnum.PASSKEY,
+        AuthenticationAssuranceEnum.MULTI_FACTOR,
+        Set.of(),
+        false,
+        NOW,
+        true,
+        NOW,
+        EXPIRES_AT,
+        CORRELATION_ID);
+
+    assertThat(result.status())
+        .isEqualTo(AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED);
+    assertThat(result.continuationReference()).isEqualTo("legal-passkey-reference");
+    assertThat(result.userId()).isNull();
+    assertThat(result.missingLegalDocumentIds()).containsExactly(8L);
+  }
+
+  @Test
   void start_shouldMoveVerifiedEvidenceToAnOpaqueLegalContinuation() {
     stubSignInIssueAndSnapshot(AuthenticationAssuranceEnum.SINGLE_FACTOR, snapshot(
         AuthenticationAssuranceEnum.SINGLE_FACTOR,

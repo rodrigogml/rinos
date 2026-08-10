@@ -212,10 +212,22 @@ O adapter Rinos não será registrado antes da entrega do schema e da facade rea
 
 **RFW/Spring contracts**: endpoints WebAuthn, `RFWPasskeyComponent`,
 `PublicKeyCredentialUserEntityRepository`, `UserCredentialRepository` e `RFWPasskeyManagementProvider`<br>
-**Rinos facades propostas**: `PasskeyAuthenticationFacade` e `PasskeyManagementFacade`
+**Rinos facades**: `PasskeyAuthenticationFacade` e, na etapa de gestão, `PasskeyManagementFacade`
 
 O adapter de persistence converte sem perda entre `CredentialRecord` e `PasskeyCredential`. O endpoint de assertion
 devolve uma prova validada para o orquestrador RFW; não redireciona como autenticado antes dos gates do Rinos.
+
+`RFWPasskeyAuthenticationProviderAdapter` aceita exclusivamente `WebAuthnAuthentication` com a authority
+`FACTOR_WEBAUTHN`, extrai apenas o `userHandle` do principal validado e descarta qualquer autenticação genérica. A
+`PasskeyAuthenticationFacade` resolve novamente o owner e seus métodos ativos, rejeita prova futura ou mais antiga
+que a validade configurada do desafio e inicia o orquestrador com `PASSKEY` e `userVerification=true`. A garantia
+phishing-resistant pode satisfazer uma exigência multifator, mas não contorna o gate legal nem o lifecycle oficial da
+sessão.
+
+O `SpringWebAuthnUserDetailsService` existe somente porque o provider WebAuthn do Spring exige essa resolução depois
+da validação da credential. Ele devolve usuário global ativo, nenhuma authority de aplicação e uma senha sintética
+aleatória, diferente a cada leitura; portanto não cria uma credencial alternativa utilizável pelo provider de senha
+do Spring.
 
 Operações de gestão:
 

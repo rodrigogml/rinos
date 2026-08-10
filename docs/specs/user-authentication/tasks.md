@@ -344,7 +344,12 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 > A origem exclusiva das propriedades, a validação fail-fast e a aplicação efetiva de user verification no RFW estão
 > registradas em [`evidence/4.2.2/README.md`](./evidence/4.2.2/README.md). Produção e localhost usam perfis de RP
 > distintos; a verificação local é exigida no cadastro e no login.
-- [ ] 4.2.3 Integrar assertion validada ao orquestrador, MFA e gate legal
+- [x] 4.2.3 Integrar assertion validada ao orquestrador, MFA e gate legal
+
+> [!NOTE]
+> O adapter de tipo estrito, a redução ao handle, a revalidação transacional e a passagem pelos gates comuns estão
+> registrados em [`evidence/4.2.3/README.md`](./evidence/4.2.3/README.md). O endpoint WebAuthn não publica sessão e
+> autenticações genéricas ou sem `FACTOR_WEBAUTHN` são rejeitadas.
 - [ ] 4.2.4 Implementar cadastro, nomeação, listagem, último uso e revogação individual
 - [ ] 4.2.5 Auditar anomalias sem revogar automaticamente credenciais independentes
 - [ ] 4.2.6 Testar registro/login descobrível, origem/RP inválidos, replay, cancelamento e revogação
