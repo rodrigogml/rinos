@@ -321,7 +321,12 @@ Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 > A política contextual, a defesa de mesmo canal, o consumo transacional e o provider RFW estão registrados em
 > [`evidence/4.1.5/README.md`](./evidence/4.1.5/README.md). Passkey somente ingressará nesse catálogo quando seu
 > verificador real for entregue na fase 4.2; exigências administrativas continuam sem conceder qualquer autorização.
-- [ ] 4.1.6 Testar vetores RFC, rotação de chave, concorrência, expiração, limites e apresentação única
+- [x] 4.1.6 Testar vetores RFC, rotação de chave, concorrência, expiração, limites e apresentação única
+
+> [!NOTE]
+> A matriz consolidada e os comandos reproduzíveis estão em
+> [`evidence/4.1.6/README.md`](./evidence/4.1.6/README.md). Ela cobre os seis vetores SHA-1 do RFC 6238 e reutiliza os
+> testes MySQL reais de consumo concorrente dos três fatores, sem duplicar cenários já protegidos.
 
 ### 4.2 Implementar passkeys sobre Spring Security WebAuthn `[C]`
 

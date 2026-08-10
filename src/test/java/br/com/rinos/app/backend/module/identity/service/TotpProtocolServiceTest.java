@@ -14,6 +14,9 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import br.com.rinos.app.backend.module.identity.vo.ProtectedTotpEnrollmentVO;
 import br.com.rinos.app.config.AuthenticationKeyringPropertiesConfig;
@@ -29,19 +32,23 @@ class TotpProtocolServiceTest {
   private static final UUID REFERENCE = UUID.fromString("6e89f399-c679-495c-8c42-b17f2db18996");
   private static final String RFC_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
-  @Test
-  void acceptedStep_shouldUseRfwWindowAndReturnExactMatchedStep() {
+  @ParameterizedTest(name = "epoch {0} aceita o passo RFC {2}")
+  @MethodSource("rfc6238Sha1Vectors")
+  void acceptedStep_shouldMatchRfc6238Sha1Vectors(
+      long epochSecond,
+      String code,
+      long expectedStep) {
     TotpProtocolService service = service();
     ProtectedTotpEnrollmentVO enrollment = service.create(USER_ID, REFERENCE, "user@example.test");
 
-    var accepted = service.acceptedStep(
+    java.util.OptionalLong accepted = service.acceptedStep(
         USER_ID,
         REFERENCE,
         enrollment.encryptedSecret(),
-        "287082",
-        Instant.ofEpochSecond(60));
+        code,
+        Instant.ofEpochSecond(epochSecond));
 
-    assertThat(accepted).hasValue(1L);
+    assertThat(accepted).hasValue(expectedStep);
   }
 
   @Test
@@ -73,6 +80,16 @@ class TotpProtocolServiceTest {
             RFC_SECRET,
             "otpauth://totp/Rinos:user@example.test?secret=" + RFC_SECRET));
     return new TotpProtocolService(enrollmentService, properties, keyring());
+  }
+
+  private static java.util.stream.Stream<Arguments> rfc6238Sha1Vectors() {
+    return java.util.stream.Stream.of(
+        Arguments.of(59L, "287082", 1L),
+        Arguments.of(1_111_111_109L, "081804", 37_037_036L),
+        Arguments.of(1_111_111_111L, "050471", 37_037_037L),
+        Arguments.of(1_234_567_890L, "005924", 41_152_263L),
+        Arguments.of(2_000_000_000L, "279037", 66_666_666L),
+        Arguments.of(20_000_000_000L, "353130", 666_666_666L));
   }
 
   private static AuthenticationKeyringService keyring() {
