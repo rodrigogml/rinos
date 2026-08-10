@@ -1176,6 +1176,13 @@ class RFWPlatformIntegrationTest {
           assertThat(context).hasSingleBean(RFWExternalIdentityProvider.class);
           assertThat(context.getBean(RFWExternalIdentityProvider.class))
               .isSameAs(context.getBean(RFWGoogleIdentityProvider.class));
+          RFWAuthenticationPropertiesConfig.GoogleConfig googleConfig = context
+              .getBean(RFWAuthenticationPropertiesConfig.class)
+              .google();
+          assertThat(googleConfig.clientId()).isEqualTo("test-client");
+          assertThat(googleConfig.issuer()).isEqualTo("https://accounts.google.com");
+          assertThat(googleConfig.timeout()).isEqualTo(java.time.Duration.ofMillis(750));
+          assertThat(googleConfig.clockSkew()).isEqualTo(java.time.Duration.ofSeconds(45));
           assertThat(context.getBean(RFWAccessCapabilityService.class)
               .getAvailableCapabilities())
               .contains(RFWAccessCapabilityEnum.EXTERNAL_IDENTITY);

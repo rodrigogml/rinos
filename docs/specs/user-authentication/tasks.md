@@ -374,7 +374,12 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 
 Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Interface INT-WEB-AUTH-001/008
 
-- [ ] 4.3.1 Integrar provider RFW validando assinatura, issuer, audience, nonce, validade e skew
+- [x] 4.3.1 Integrar provider RFW validando assinatura, issuer, audience, nonce, validade e skew
+
+> [!NOTE]
+> A composição condicional do provider real, a fronteira que impede o ID token de alcançar o domínio e os testes de
+> assinatura, issuer, audience, nonce, validade e tolerância estão registrados em
+> [`evidence/4.3.1/README.md`](./evidence/4.3.1/README.md).
 - [ ] 4.3.2 Localizar exclusivamente por `issuer + sub` e rejeitar associação automática por e-mail
 - [ ] 4.3.3 Integrar login ao orquestrador, MFA administrativo e gate legal
 - [ ] 4.3.4 Implementar vínculo explícito, conflito único e desvínculo com último método
