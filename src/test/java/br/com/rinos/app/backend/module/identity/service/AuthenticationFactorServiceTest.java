@@ -90,6 +90,41 @@ class AuthenticationFactorServiceTest {
   }
 
   @Test
+  void passkeyRevoke_shouldRevokeOnlySelectedCredential_whenAnotherMethodRemains() {
+    PasskeyCredentialRepository credentials = mock(PasskeyCredentialRepository.class);
+    PasskeyCredentialEntity credential = credential();
+    when(credentials.findByUserIdAndReferenceForUpdate(any(), any()))
+        .thenReturn(Optional.of(credential));
+    AuthenticationMethodInventoryService inventory = mock(AuthenticationMethodInventoryService.class);
+    when(inventory.inspect(11L))
+        .thenReturn(new AuthenticationMethodInventoryVO(true, false, 2, 0, false, 2));
+    PasskeyCredentialService service = new PasskeyCredentialService(
+        users,
+        mock(PasskeyUserRepository.class),
+        credentials,
+        inventory,
+        references,
+        audit);
+    UUID correlationId = UUID.randomUUID();
+
+    FactorOperationStatusEnum result = service.revoke(
+        11L, credential.getReference(), false, correlationId, NOW);
+
+    assertThat(result).isEqualTo(FactorOperationStatusEnum.REVOKED);
+    assertThat(credential.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.REVOKED);
+    verify(audit).record(
+        user,
+        null,
+        correlationId,
+        IdentityEventTypeEnum.AUTHENTICATION_METHOD_REMOVED,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        "PASSKEY",
+        NOW);
+  }
+
+  @Test
   void passkeyRename_shouldChangeOnlyLabelAndAuditOwnedActiveCredential() {
     PasskeyCredentialRepository credentials = mock(PasskeyCredentialRepository.class);
     PasskeyCredentialEntity credential = credential();

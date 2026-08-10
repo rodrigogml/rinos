@@ -67,6 +67,18 @@ class AuthenticationProtocolPropertiesValidatorConfigTest {
   }
 
   @Test
+  void validator_shouldRejectStartup_whenRelyingPartyContainsAUrl() {
+    PasskeyConfig passkey = passkey(
+        "https://app.rinos.com.br", "https://app.rinos.com.br",
+        PasskeyUserVerification.REQUIRED);
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class,
+        validator(10, passkey)::afterSingletonsInstantiated);
+
+    assertEquals("RP ID WebAuthn inválido.", exception.getMessage());
+  }
+
+  @Test
   void validator_shouldRejectStartup_whenRemoteOriginUsesHttp() {
     PasskeyConfig passkey = passkey(
         "app.rinos.com.br", "http://app.rinos.com.br", PasskeyUserVerification.REQUIRED);

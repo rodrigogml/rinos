@@ -363,7 +363,12 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 > A rejeição anterior à mutação, os motivos sanitizados, a persistência independente do evento e a ausência de
 > revogação automática estão registrados em [`evidence/4.2.5/README.md`](./evidence/4.2.5/README.md). Contador
 > positivo repetido ou regressivo é tratado como risco; contador permanentemente zero permanece compatível.
-- [ ] 4.2.6 Testar registro/login descobrível, origem/RP inválidos, replay, cancelamento e revogação
+- [x] 4.2.6 Testar registro/login descobrível, origem/RP inválidos, replay, cancelamento e revogação
+
+> [!NOTE]
+> A matriz de cadastro, descoberta anônima, configuração de RP/origin, consumo único, cancelamento seguro e revogação
+> seletiva está registrada em [`evidence/4.2.6/README.md`](./evidence/4.2.6/README.md). A prova descobrível reutilizável
+> foi incorporada ao RFW Platform e validada isoladamente.
 
 ### 4.3 Implementar login e gestão da identidade Google `[C]`
 
