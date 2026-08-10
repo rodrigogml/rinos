@@ -23,10 +23,15 @@ import org.mockito.ArgumentCaptor;
 
 import br.com.rinos.app.api.dto.AuthenticationOrchestrationStartDTO;
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
+import br.com.rinos.app.api.enums.AuthenticationOperationStatusEnum;
+import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.api.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.api.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.facade.AuthenticationOrchestrationFacade;
+import br.com.rinos.app.api.facade.AuthenticationFlowFacade;
+import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
 import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -45,6 +50,7 @@ class PasskeyAuthenticationFacadeImplTest {
   private static final byte[] USER_HANDLE = new byte[32];
   private PasskeyUserRepository passkeyUsers;
   private AuthenticationMethodAvailabilityService availability;
+  private AuthenticationFlowFacade flows;
   private AuthenticationOrchestrationFacade orchestration;
   private PasskeyAuthenticationFacadeImpl facade;
 
@@ -52,11 +58,13 @@ class PasskeyAuthenticationFacadeImplTest {
   void setUp() {
     passkeyUsers = mock(PasskeyUserRepository.class);
     availability = mock(AuthenticationMethodAvailabilityService.class);
+    flows = mock(AuthenticationFlowFacade.class);
     orchestration = mock(AuthenticationOrchestrationFacade.class);
     facade = new PasskeyAuthenticationFacadeImpl(
         passkeyUsers,
         availability,
         new AuthenticationSecondFactorPolicyService(),
+        flows,
         orchestration,
         new AuthenticationMfaPropertiesConfig(
             Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)),
@@ -111,6 +119,71 @@ class PasskeyAuthenticationFacadeImplTest {
         AuthenticationMethodEnum.TOTP, AuthenticationMethodEnum.RECOVERY_CODE);
     assertThat(command.persistentLoginRequested()).isFalse();
     assertThat(command.expiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
+  }
+
+  @Test
+  void authenticateSecondFactor_shouldAdvanceOnlyWhenPasskeyOwnsOpenFlow() {
+    UserEntity user = mock(UserEntity.class);
+    when(user.getId()).thenReturn(41L);
+    when(user.getStatus()).thenReturn(UserStatusEnum.ACTIVE);
+    PasskeyUserEntity owner = mock(PasskeyUserEntity.class);
+    when(owner.getUser()).thenReturn(user);
+    when(passkeyUsers.findByUserHandle(any())).thenReturn(Optional.of(owner));
+    when(flows.inspectFlow("opaque-flow", AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(new AuthenticationFlowResultVO(
+            AuthenticationOperationStatusEnum.OPEN,
+            null,
+            41L,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            AuthenticationMethodEnum.GOOGLE,
+            AuthenticationAssuranceEnum.MULTI_FACTOR,
+            Set.of(AuthenticationMethodEnum.PASSKEY),
+            false,
+            NOW.plus(Duration.ofMinutes(5)),
+            CORRELATION_ID));
+    when(orchestration.advance(any())).thenReturn(terminal(
+        AuthenticationOrchestrationStatusEnum.REJECTED));
+
+    facade.authenticateSecondFactor(new PasskeySecondFactorAuthenticationRequestDTO(
+        "opaque-flow", USER_HANDLE, NOW, CORRELATION_ID)).toCompletableFuture().join();
+
+    ArgumentCaptor<br.com.rinos.app.api.dto.AuthenticationOrchestrationAdvanceDTO> captor =
+        ArgumentCaptor.forClass(
+            br.com.rinos.app.api.dto.AuthenticationOrchestrationAdvanceDTO.class);
+    verify(orchestration).advance(captor.capture());
+    assertThat(captor.getValue().reference()).isEqualTo("opaque-flow");
+    assertThat(captor.getValue().method()).isEqualTo(AuthenticationMethodEnum.PASSKEY);
+    assertThat(captor.getValue().userVerification()).isTrue();
+  }
+
+  @Test
+  void authenticateSecondFactor_shouldRejectPasskeyOwnedByAnotherUser() {
+    UserEntity user = mock(UserEntity.class);
+    when(user.getId()).thenReturn(42L);
+    when(user.getStatus()).thenReturn(UserStatusEnum.ACTIVE);
+    PasskeyUserEntity owner = mock(PasskeyUserEntity.class);
+    when(owner.getUser()).thenReturn(user);
+    when(passkeyUsers.findByUserHandle(any())).thenReturn(Optional.of(owner));
+    when(flows.inspectFlow("opaque-flow", AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(new AuthenticationFlowResultVO(
+            AuthenticationOperationStatusEnum.OPEN,
+            null,
+            41L,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            AuthenticationMethodEnum.GOOGLE,
+            AuthenticationAssuranceEnum.MULTI_FACTOR,
+            Set.of(AuthenticationMethodEnum.PASSKEY),
+            false,
+            NOW.plus(Duration.ofMinutes(5)),
+            CORRELATION_ID));
+
+    AuthenticationOrchestrationResultVO result = facade.authenticateSecondFactor(
+        new PasskeySecondFactorAuthenticationRequestDTO(
+            "opaque-flow", USER_HANDLE, NOW, CORRELATION_ID))
+        .toCompletableFuture().join();
+
+    assertThat(result.status()).isEqualTo(AuthenticationOrchestrationStatusEnum.REJECTED);
+    verify(orchestration, never()).advance(any());
   }
 
   private static PasskeyAuthenticationRequestDTO request(Instant validatedAt) {

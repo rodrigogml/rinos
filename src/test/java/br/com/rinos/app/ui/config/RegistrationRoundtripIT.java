@@ -77,6 +77,7 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import br.com.rinos.app.api.dto.RegistrationStartRequestDTO;
 import br.com.rinos.app.api.enums.RegistrationStartStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
+import br.com.rinos.app.api.facade.GoogleAuthenticationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.facade.RegistrationActivationFacade;
@@ -1317,6 +1318,17 @@ class RegistrationRoundtripIT {
     }
 
     @Bean
+    GoogleAuthenticationFacade googleAuthenticationFacade() {
+      return request -> java.util.concurrent.CompletableFuture.completedFuture(
+          br.com.rinos.app.api.vo.GoogleAuthenticationResultVO.identityNotFound());
+    }
+
+    @Bean
+    RFWAuthenticationOutcomeAdapter authenticationOutcomeAdapter() {
+      return new RFWAuthenticationOutcomeAdapter();
+    }
+
+    @Bean
     ExternalRegistrationFacade externalRegistrationFacade(
         ExternalRegistrationCompletionService completion) {
       return new ExternalRegistrationFacadeImpl(completion);
@@ -1354,8 +1366,11 @@ class RegistrationRoundtripIT {
 
     @Bean
     RFWExternalIdentityResolverAdapter externalIdentityResolver(
-        GoogleIdentityResolutionFacade resolution) {
-      return new RFWExternalIdentityResolverAdapter(resolution);
+        GoogleAuthenticationFacade authentication,
+        GoogleIdentityResolutionFacade resolution,
+        RFWAuthenticationOutcomeAdapter outcomeAdapter) {
+      return new RFWExternalIdentityResolverAdapter(
+          authentication, resolution, outcomeAdapter);
     }
 
     @Bean

@@ -3,6 +3,7 @@ package br.com.rinos.app.api.facade;
 import java.util.concurrent.CompletionStage;
 
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
 import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
 
 /**
@@ -21,4 +22,13 @@ public interface PasskeyAuthenticationFacade {
    */
   CompletionStage<AuthenticationOrchestrationResultVO> authenticate(
       PasskeyAuthenticationRequestDTO request);
+
+  /**
+   * Confirma que a passkey pertence ao dono do fluxo e a registra como prova local verificada.
+   *
+   * @param request assertion reduzida e referencia opaca corrente
+   * @return decisao publica do orquestrador
+   */
+  CompletionStage<AuthenticationOrchestrationResultVO> authenticateSecondFactor(
+      PasskeySecondFactorAuthenticationRequestDTO request);
 }

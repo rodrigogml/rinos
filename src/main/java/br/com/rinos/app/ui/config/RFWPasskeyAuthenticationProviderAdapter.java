@@ -13,6 +13,7 @@ import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenti
 import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
 import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.api.facade.PasskeyAuthenticationFacade;
 import br.eng.rodrigogml.rfw.authentication.provider.RFWPasskeyAuthenticationProvider;
@@ -68,6 +69,39 @@ public class RFWPasskeyAuthenticationProviderAdapter
           correlationId);
       return facade.authenticate(request)
           .thenApply(result -> outcomeAdapter.map(result, AuthenticationFlowPurposeEnum.SIGN_IN))
+          .exceptionally(failure -> unavailable(correlationId, failure));
+    } catch (RuntimeException failure) {
+      return completed(unavailable(correlationId, failure));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public CompletionStage<RFWAuthenticationOutcomeVO> authenticateSecondFactor(
+      RFWValidatedPasskeyAuthenticationVO validatedAuthentication,
+      String challengeReference) {
+    UUID correlationId = UUID.randomUUID();
+    if (challengeReference == null || challengeReference.isBlank()
+        || validatedAuthentication == null
+        || !(validatedAuthentication.authentication()
+            instanceof WebAuthnAuthentication authentication)
+        || !hasWebAuthnFactor(authentication)) {
+      return completed(rejected());
+    }
+    PublicKeyCredentialUserEntity principal = authentication.getPrincipal();
+    if (principal == null || principal.getId() == null) {
+      return completed(rejected());
+    }
+    try {
+      PasskeySecondFactorAuthenticationRequestDTO request =
+          new PasskeySecondFactorAuthenticationRequestDTO(
+              challengeReference,
+              principal.getId().getBytes(),
+              validatedAuthentication.validatedAt(),
+              correlationId);
+      return facade.authenticateSecondFactor(request)
+          .thenApply(result -> outcomeAdapter.map(
+              result, AuthenticationFlowPurposeEnum.SIGN_IN))
           .exceptionally(failure -> unavailable(correlationId, failure));
     } catch (RuntimeException failure) {
       return completed(unavailable(correlationId, failure));

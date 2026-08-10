@@ -26,6 +26,7 @@ import com.vaadin.flow.spring.annotation.EnableVaadin;
 
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
+import br.com.rinos.app.api.facade.GoogleAuthenticationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
@@ -36,6 +37,7 @@ import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 import br.com.rinos.app.config.SecurityConfig;
 import br.com.rinos.app.ui.config.RFWExternalIdentityResolverAdapter;
 import br.com.rinos.app.ui.config.RFWExternalRegistrationProviderAdapter;
+import br.com.rinos.app.ui.config.RFWAuthenticationOutcomeAdapter;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
@@ -72,6 +74,7 @@ import br.eng.rodrigogml.rfw.authentication.vo.RFWVerifiedExternalIdentityVO;
 })
 @Import({
     RinosAccessComponentFactory.class,
+    RFWAuthenticationOutcomeAdapter.class,
     RFWExternalIdentityResolverAdapter.class,
     RFWExternalRegistrationProviderAdapter.class,
     SecurityConfig.class,
@@ -258,6 +261,17 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
               request.providerId(),
               request.email(),
               Instant.parse("2099-08-02T15:00:00Z")));
+    }
+
+    /**
+     * Mantém o harness de cadastro no caminho de identidade estável ainda não vinculada.
+     *
+     * @return decisão interna que permite continuar o cadastro externo
+     */
+    @Bean
+    GoogleAuthenticationFacade googleAuthenticationFacade() {
+      return request -> CompletableFuture.completedFuture(
+          br.com.rinos.app.api.vo.GoogleAuthenticationResultVO.identityNotFound());
     }
 
     /**

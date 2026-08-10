@@ -24,6 +24,7 @@ class AuthenticationSecondFactorPolicyServiceTest {
             AuthenticationMethodEnum.RECOVERY_CODE));
 
     assertThat(result).containsExactlyInAnyOrder(
+        AuthenticationMethodEnum.PASSKEY,
         AuthenticationMethodEnum.TOTP,
         AuthenticationMethodEnum.EMAIL_CODE,
         AuthenticationMethodEnum.RECOVERY_CODE);
@@ -34,16 +35,33 @@ class AuthenticationSecondFactorPolicyServiceTest {
     Set<AuthenticationMethodEnum> result = service.permittedMethods(
         AuthenticationMethodEnum.GOOGLE,
         Set.of(AuthenticationMethodEnum.GOOGLE, AuthenticationMethodEnum.TOTP,
-            AuthenticationMethodEnum.EMAIL_CODE, AuthenticationMethodEnum.RECOVERY_CODE));
+            AuthenticationMethodEnum.EMAIL_CODE, AuthenticationMethodEnum.RECOVERY_CODE,
+            AuthenticationMethodEnum.PASSKEY));
 
     assertThat(result).containsExactlyInAnyOrder(
+        AuthenticationMethodEnum.PASSKEY,
         AuthenticationMethodEnum.TOTP,
         AuthenticationMethodEnum.RECOVERY_CODE);
   }
 
   @Test
-  void requiresMultiFactor_shouldIgnoreUnavailableFuturePasskeyVerifier() {
+  void requiresMultiFactor_shouldNotEnableVoluntaryMfaForIsolatedPasskey() {
     assertThat(service.requiresMultiFactor(Set.of(AuthenticationMethodEnum.PASSKEY))).isFalse();
     assertThat(service.requiresMultiFactor(Set.of(AuthenticationMethodEnum.EMAIL_CODE))).isTrue();
+  }
+
+  @Test
+  void administrativePermittedMethods_shouldOfferOnlyTotpOrVerifiedPasskeyAfterGoogle() {
+    Set<AuthenticationMethodEnum> result = service.administrativePermittedMethods(
+        AuthenticationMethodEnum.GOOGLE,
+        Set.of(
+            AuthenticationMethodEnum.GOOGLE,
+            AuthenticationMethodEnum.TOTP,
+            AuthenticationMethodEnum.PASSKEY,
+            AuthenticationMethodEnum.EMAIL_CODE,
+            AuthenticationMethodEnum.RECOVERY_CODE));
+
+    assertThat(result).containsExactlyInAnyOrder(
+        AuthenticationMethodEnum.TOTP, AuthenticationMethodEnum.PASSKEY);
   }
 }

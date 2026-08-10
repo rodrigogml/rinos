@@ -385,7 +385,13 @@ Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Int
 > [!NOTE]
 > A resolução transacional sem parâmetro ou consulta de e-mail, a distinção interna de vínculo ausente e a rejeição de
 > vínculo/usuário inativo estão registradas em [`evidence/4.3.2/README.md`](./evidence/4.3.2/README.md).
-- [ ] 4.3.3 Integrar login ao orquestrador, MFA administrativo e gate legal
+- [x] 4.3.3 Integrar login ao orquestrador, MFA administrativo e gate legal
+
+> [!NOTE]
+> O primeiro fator Google, a exclusão do mesmo canal de e-mail, a alternativa WebAuthn vinculada ao owner do fluxo e
+> o gate legal comum estão registrados em [`evidence/4.3.3/README.md`](./evidence/4.3.3/README.md). Autenticação não
+> concede autorização; a futura feature de acesso administrativo deve solicitar a garantia TOTP/passkey aqui
+> estabelecida.
 - [ ] 4.3.4 Implementar vínculo explícito, conflito único e desvínculo com último método
 - [ ] 4.3.5 Garantir ausência de access/refresh token persistente e fallback independente
 - [ ] 4.3.6 Testar JWKS/Google indisponível, replay, e-mail coincidente, bloqueio e concorrência de vínculo

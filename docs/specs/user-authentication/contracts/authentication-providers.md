@@ -200,7 +200,7 @@ O adapter Rinos não será registrado antes da entrega do schema e da facade rea
 
 **RFW contracts**: `RFWExternalIdentityProvider`, `RFWExternalIdentityResolver` e
 `RFWExternalIdentityManagementProvider`<br>
-**Rinos facades propostas**: `GoogleAuthenticationFacade` e `ExternalIdentityManagementFacade`
+**Rinos facades**: `GoogleAuthenticationFacade` e, na etapa de gestão, `ExternalIdentityManagementFacade`
 
 - O provider técnico valida o ID token e entrega `RFWVerifiedExternalIdentityVO`.
 - O Rinos localiza login por `issuer + subject`.
@@ -213,6 +213,16 @@ composta e entrega usuário interno apenas quando vínculo e identidade global e
 distinguido internamente para permitir a continuação segura de um novo cadastro; vínculo pendente ou usuário não ativo
 é rejeitado. O serviço não recebe e-mail e não possui acesso a busca por e-mail, portanto mudança do e-mail Google ou
 coincidência com uma conta Rinos não altera a chave de login nem cria associação.
+
+`GoogleAuthenticationFacade` recompõe os métodos ativos e entrega `GOOGLE` como primeiro fator ao mesmo
+`AuthenticationOrchestrationFacade` usado por senha e passkey. O e-mail Google e o mapa de claims não atravessam
+essa fachada. Vínculo ativo inválido recebe rejeição neutra; somente vínculo realmente ausente retorna ao adapter a
+decisão interna que permite continuar o cadastro externo. O outcome do orquestrador preserva desafio MFA, gate legal
+ou conclusão ainda não publicada pelo lifecycle.
+
+No catálogo adicional de um fluxo Google, `EMAIL_CODE` é sempre removido. TOTP, recovery code e passkey podem atender
+o 2FA voluntário; uma exigência administrativa futura deve escolher somente TOTP ou passkey com user verification e
+continua dependendo da feature de autorização para identificar o ator. Autenticação não cria papel ou permissão.
 
 ## Passkey Authentication and Management
 
@@ -229,6 +239,11 @@ devolve uma prova validada para o orquestrador RFW; não redireciona como autent
 que a validade configurada do desafio e inicia o orquestrador com `PASSKEY` e `userVerification=true`. A garantia
 phishing-resistant pode satisfazer uma exigência multifator, mas não contorna o gate legal nem o lifecycle oficial da
 sessão.
+
+Quando uma passkey é escolhida como segundo fator, o RFW mantém a referência opaca do fluxo separada da assertion e
+chama `authenticateSecondFactor(...)`. O Rinos resolve novamente o owner pelo `userHandle`, inspeciona o fluxo aberto
+e somente avança `PASSKEY` com `userVerification=true` quando ambos pertencem ao mesmo usuário. Dono divergente,
+referência fechada, método não permitido ou prova fora da validade são rejeitados sem abrir um novo login.
 
 O `SpringWebAuthnUserDetailsService` existe somente porque o provider WebAuthn do Spring exige essa resolução depois
 da validação da credential. Ele devolve usuário global ativo, nenhuma authority de aplicação e uma senha sintética

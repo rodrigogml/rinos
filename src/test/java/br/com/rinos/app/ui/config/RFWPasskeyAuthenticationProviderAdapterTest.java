@@ -23,6 +23,7 @@ import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentia
 import org.springframework.security.web.webauthn.authentication.WebAuthnAuthentication;
 
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
 import br.com.rinos.app.api.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.facade.PasskeyAuthenticationFacade;
@@ -113,5 +114,49 @@ class RFWPasskeyAuthenticationProviderAdapterTest {
 
     assertThat(outcome.status()).isEqualTo(RFWAccessStatusEnum.REJECTED);
     verify(facade, never()).authenticate(any());
+  }
+
+  @Test
+  void authenticateSecondFactor_shouldPreserveOpaqueFlowAndValidatedOwner() {
+    byte[] handle = new byte[32];
+    handle[0] = 21;
+    var principal = ImmutablePublicKeyCredentialUserEntity.builder()
+        .id(new Bytes(handle))
+        .name("person@example.test")
+        .displayName("person@example.test")
+        .build();
+    WebAuthnAuthentication authentication = new WebAuthnAuthentication(
+        principal,
+        List.of(FactorGrantedAuthority.fromAuthority(
+            FactorGrantedAuthority.WEBAUTHN_AUTHORITY)));
+    PasskeyAuthenticationFacade facade = mock(PasskeyAuthenticationFacade.class);
+    when(facade.authenticateSecondFactor(any())).thenReturn(
+        CompletableFuture.completedFuture(new AuthenticationOrchestrationResultVO(
+            AuthenticationOrchestrationStatusEnum.LEGAL_CONSENT_REQUIRED,
+            "legal-flow",
+            null,
+            AuthenticationAssuranceEnum.PHISHING_RESISTANT,
+            Set.of(),
+            List.of(),
+            Set.of("11"),
+            false,
+            NOW.plusSeconds(300),
+            UUID.randomUUID())));
+    RFWPasskeyAuthenticationProviderAdapter adapter =
+        new RFWPasskeyAuthenticationProviderAdapter(
+            facade, new RFWAuthenticationOutcomeAdapter());
+
+    var outcome = adapter.authenticateSecondFactor(
+        new RFWValidatedPasskeyAuthenticationVO(authentication, NOW), "opaque-flow")
+        .toCompletableFuture().join();
+
+    ArgumentCaptor<PasskeySecondFactorAuthenticationRequestDTO> captor =
+        ArgumentCaptor.forClass(PasskeySecondFactorAuthenticationRequestDTO.class);
+    verify(facade).authenticateSecondFactor(captor.capture());
+    assertThat(captor.getValue().challengeReference()).isEqualTo("opaque-flow");
+    assertThat(captor.getValue().userHandle()).containsExactly(handle);
+    assertThat(captor.getValue().validatedAt()).isEqualTo(NOW);
+    assertThat(outcome.status()).isEqualTo(
+        RFWAccessStatusEnum.AUTHENTICATION_CONSENT_REQUIRED);
   }
 }

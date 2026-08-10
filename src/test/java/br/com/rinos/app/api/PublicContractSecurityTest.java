@@ -24,7 +24,9 @@ import br.com.rinos.app.api.dto.AuthenticationFlowIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationProofIssueRequestDTO;
 import br.com.rinos.app.api.dto.AuthenticationSessionPreparationRequestDTO;
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
+import br.com.rinos.app.api.dto.GoogleAuthenticationRequestDTO;
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationActivationRequestDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
@@ -57,6 +59,7 @@ import br.com.rinos.app.api.vo.AuthenticationSessionLifecycleResultVO;
 import br.com.rinos.app.api.vo.AuthenticatedSessionVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionRequestVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
+import br.com.rinos.app.api.vo.GoogleAuthenticationResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentContentVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.api.vo.PersistentLoginResultVO;
@@ -90,7 +93,9 @@ class PublicContractSecurityTest {
       AuthenticationProofIssueRequestDTO.class,
       AuthenticationSessionPreparationRequestDTO.class,
       ExternalRegistrationCompletionRequestDTO.class,
+      GoogleAuthenticationRequestDTO.class,
       PasskeyAuthenticationRequestDTO.class,
+      PasskeySecondFactorAuthenticationRequestDTO.class,
       RegistrationActivationRequestDTO.class,
       RegistrationCancellationConfirmationDTO.class,
       RegistrationCancellationRequestDTO.class,
@@ -106,6 +111,7 @@ class PublicContractSecurityTest {
       AuthenticationProofResultVO.class,
       AuthenticationSessionLifecycleResultVO.class,
       AuthenticatedSessionVO.class,
+      GoogleAuthenticationResultVO.class,
       GoogleIdentityResolutionRequestVO.class,
       GoogleIdentityResolutionResultVO.class,
       LegalDocumentContentVO.class,
@@ -257,6 +263,10 @@ class PublicContractSecurityTest {
             CORRELATION_ID),
         new PasskeyAuthenticationRequestDTO(
             new byte[32], EXPIRES_AT.minusSeconds(1), CORRELATION_ID),
+        new PasskeySecondFactorAuthenticationRequestDTO(
+            reference, new byte[32], EXPIRES_AT.minusSeconds(1), CORRELATION_ID),
+        new GoogleAuthenticationRequestDTO(
+            issuer, subject, EXPIRES_AT.minusSeconds(1), CORRELATION_ID),
         new AuthenticationSessionPreparationRequestDTO(
             reference,
             AuthenticationFlowPurposeEnum.SIGN_IN,

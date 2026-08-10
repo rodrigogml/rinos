@@ -15,13 +15,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.rinos.app.api.dto.AuthenticationOrchestrationStartDTO;
+import br.com.rinos.app.api.dto.AuthenticationOrchestrationAdvanceDTO;
 import br.com.rinos.app.api.dto.PasskeyAuthenticationRequestDTO;
+import br.com.rinos.app.api.dto.PasskeySecondFactorAuthenticationRequestDTO;
 import br.com.rinos.app.api.enums.AuthenticationAssuranceEnum;
 import br.com.rinos.app.api.enums.AuthenticationMethodEnum;
 import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.facade.AuthenticationOrchestrationFacade;
+import br.com.rinos.app.api.facade.AuthenticationFlowFacade;
 import br.com.rinos.app.api.facade.PasskeyAuthenticationFacade;
 import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
+import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyUserRepository;
@@ -48,6 +52,7 @@ public class PasskeyAuthenticationFacadeImpl implements PasskeyAuthenticationFac
   private final PasskeyUserRepository passkeyUsers;
   private final AuthenticationMethodAvailabilityService methodAvailability;
   private final AuthenticationSecondFactorPolicyService secondFactorPolicy;
+  private final AuthenticationFlowFacade flowFacade;
   private final AuthenticationOrchestrationFacade orchestrationFacade;
   private final AuthenticationMfaPropertiesConfig mfaProperties;
   private final Clock clock;
@@ -58,9 +63,10 @@ public class PasskeyAuthenticationFacadeImpl implements PasskeyAuthenticationFac
       PasskeyUserRepository passkeyUsers,
       AuthenticationMethodAvailabilityService methodAvailability,
       AuthenticationSecondFactorPolicyService secondFactorPolicy,
+      AuthenticationFlowFacade flowFacade,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties) {
-    this(passkeyUsers, methodAvailability, secondFactorPolicy, orchestrationFacade,
+    this(passkeyUsers, methodAvailability, secondFactorPolicy, flowFacade, orchestrationFacade,
         mfaProperties, Clock.systemUTC());
   }
 
@@ -69,12 +75,14 @@ public class PasskeyAuthenticationFacadeImpl implements PasskeyAuthenticationFac
       PasskeyUserRepository passkeyUsers,
       AuthenticationMethodAvailabilityService methodAvailability,
       AuthenticationSecondFactorPolicyService secondFactorPolicy,
+      AuthenticationFlowFacade flowFacade,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties,
       Clock clock) {
     this.passkeyUsers = passkeyUsers;
     this.methodAvailability = methodAvailability;
     this.secondFactorPolicy = secondFactorPolicy;
+    this.flowFacade = flowFacade;
     this.orchestrationFacade = orchestrationFacade;
     this.mfaProperties = mfaProperties;
     this.clock = clock;
@@ -127,6 +135,47 @@ public class PasskeyAuthenticationFacadeImpl implements PasskeyAuthenticationFac
     } catch (RuntimeException unavailable) {
       LOGGER.warn(
           "Autenticação por passkey indisponível: correlationId={}, failureType={}",
+          request.correlationId(),
+          unavailable.getClass().getSimpleName());
+      return completed(terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Transactional
+  public CompletionStage<AuthenticationOrchestrationResultVO> authenticateSecondFactor(
+      PasskeySecondFactorAuthenticationRequestDTO request) {
+    if (request == null) {
+      throw new NullPointerException("request must not be null");
+    }
+    Instant now = clock.instant();
+    if (request.validatedAt().isAfter(now)
+        || request.validatedAt().isBefore(now.minus(mfaProperties.challengeValidity()))) {
+      return completed(terminal(AuthenticationOrchestrationStatusEnum.REJECTED));
+    }
+    try {
+      PasskeyUserEntity owner = passkeyUsers.findByUserHandle(request.userHandle()).orElse(null);
+      AuthenticationFlowResultVO flow = flowFacade.inspectFlow(
+          request.challengeReference(),
+          br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum.SIGN_IN,
+          now);
+      if (owner == null || owner.getUser().getStatus() != UserStatusEnum.ACTIVE
+          || flow.status() != br.com.rinos.app.api.enums.AuthenticationOperationStatusEnum.OPEN
+          || flow.userId() == null
+          || !flow.userId().equals(owner.getUser().getId())
+          || !flow.permittedMethods().contains(AuthenticationMethodEnum.PASSKEY)) {
+        return completed(terminal(AuthenticationOrchestrationStatusEnum.REJECTED));
+      }
+      return completed(orchestrationFacade.advance(new AuthenticationOrchestrationAdvanceDTO(
+          request.challengeReference(),
+          AuthenticationMethodEnum.PASSKEY,
+          request.validatedAt(),
+          true,
+          now)));
+    } catch (RuntimeException unavailable) {
+      LOGGER.warn(
+          "Segundo fator por passkey indisponivel: correlationId={}, failureType={}",
           request.correlationId(),
           unavailable.getClass().getSimpleName());
       return completed(terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE));

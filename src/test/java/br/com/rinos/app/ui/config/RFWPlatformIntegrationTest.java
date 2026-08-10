@@ -62,6 +62,7 @@ import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
+import br.com.rinos.app.api.facade.GoogleAuthenticationFacade;
 import br.com.rinos.app.api.facade.GoogleIdentityResolutionFacade;
 import br.com.rinos.app.api.facade.AuthenticationConsentFacade;
 import br.com.rinos.app.api.facade.HumanVerificationPolicyFacade;
@@ -1158,7 +1159,9 @@ class RFWPlatformIntegrationTest {
   @Test
   void login_shouldRenderGoogleStart_whenIntegrationAndHostResolverArePresent() {
     RFWExternalIdentityResolverAdapter resolver = new RFWExternalIdentityResolverAdapter(
-        mock(GoogleIdentityResolutionFacade.class));
+        mock(GoogleAuthenticationFacade.class),
+        mock(GoogleIdentityResolutionFacade.class),
+        new RFWAuthenticationOutcomeAdapter());
     contextRunner
         .withBean(RFWExternalIdentityResolverAdapter.class, () -> resolver)
         .withPropertyValues(
@@ -1212,6 +1215,9 @@ class RFWPlatformIntegrationTest {
    */
   @Test
   void externalRegistration_shouldRenderMinimizedLegalContinuation_whenGoogleRequiresConsent() {
+    GoogleAuthenticationFacade authenticationFacade = mock(GoogleAuthenticationFacade.class);
+    when(authenticationFacade.authenticate(any())).thenReturn(CompletableFuture.completedFuture(
+        br.com.rinos.app.api.vo.GoogleAuthenticationResultVO.identityNotFound()));
     GoogleIdentityResolutionFacade resolutionFacade = mock(GoogleIdentityResolutionFacade.class);
     Instant expiresAt = Instant.parse("2026-08-01T15:00:00Z");
     when(resolutionFacade.resolve(any())).thenReturn(CompletableFuture.completedFuture(
@@ -1221,7 +1227,9 @@ class RFWPlatformIntegrationTest {
             "verified@example.com",
             expiresAt)));
     RFWExternalIdentityResolverAdapter resolver = new RFWExternalIdentityResolverAdapter(
-        resolutionFacade);
+        authenticationFacade,
+        resolutionFacade,
+        new RFWAuthenticationOutcomeAdapter());
     ExternalRegistrationFacade completionFacade = mock(ExternalRegistrationFacade.class);
     RinosUserPrincipalVO principal = new RinosUserPrincipalVO(41L, "verified@example.com");
     when(completionFacade.complete(any())).thenReturn(CompletableFuture.completedFuture(
