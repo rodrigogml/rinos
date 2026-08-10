@@ -198,7 +198,7 @@ versionado em `application.properties.model`. Nenhuma será duplicada em tabela 
 | Sessão | durações normal/persistente, inatividade, intervalo mínimo de atualização da atividade, cookie e reautenticação de 15 minutos |
 | Abuso | três falhas em 15 minutos por e-mail informado ou IP, permanência de Turnstile por 15 minutos sem nova falha, limites progressivos e retenção curta |
 | Notificações | cooldown de 24 horas para falhas repetidas e reconhecimento de navegador em sessões retidas nos 30 dias anteriores |
-| MFA | validade e tentativas de desafios/OTP, parâmetros TOTP e quantidade de códigos de recuperação |
+| MFA | validade e tentativas de desafios/OTP, parâmetros TOTP e quantidade fixa de 10 códigos de recuperação |
 | Criptografia local | keyring versionado para AEAD de TOTP e MAC de OTP; chave ativa e chaves de leitura anteriores |
 | Passkey | RP ID `app.rinos.com.br`, nome do RP e origins permitidas de produção/desenvolvimento conforme perfil explícito |
 | Integrações | Google, Turnstile e SMTP já definidos pelos respectivos contratos RFW/Rinos |

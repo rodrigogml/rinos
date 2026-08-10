@@ -401,6 +401,19 @@ textual não o devolvem. A validade e o máximo de tentativas vêm de `rinos.aut
 janela e parâmetros dos protocolos RFW pertencem exclusivamente a `rfw.authentication.second-factor`, sem segunda
 origem no Rinos.
 
+`RecoveryCodeManagementFacade` usa `RFWRecoveryCodeService` para produzir exatamente 10 códigos distintos e criar
+um Argon2id independente para cada valor. A configuração
+`rfw.authentication.second-factor.recovery-code-count` permanece a fonte do protocolo, mas o Rinos falha no startup
+se ela divergir de 10, pois essa quantidade faz parte do contrato funcional. A geração bloqueia o usuário ativo,
+invalida o conjunto anterior e persiste o novo conjunto numa única transação; somente depois do commit a fachada
+devolve os códigos legíveis. Não existe consulta capaz de reapresentá-los, e `toString()` dos valores transitórios os
+redige. O consumo percorre apenas hashes `AVAILABLE` do conjunto ativo sob a ordem de lock usuário → conjunto →
+códigos e possui um único vencedor concorrente; o último uso muda o conjunto para `EXHAUSTED`.
+
+A fachada pública está pronta para a apresentação de uso único já suportada pela RFW. O vínculo do consumo ao fluxo
+de autenticação e a seleção contextual de `RECOVERY_CODE` pertencem à tarefa 4.1.5; o adapter de gestão autenticada
+será conectado à tela na tarefa 5.4.1, preservando a reautenticação sensível existente.
+
 Para senha, `getPasswordCredential()` devolve somente `RFWPasswordCredentialVO`: estado `ABSENT`, `CONFIGURED` ou
 `COMPROMISED`, datas públicas e versão concorrente. `changePassword(...)` recebe `RFWPasswordChangeRequestDTO` com
 senha e confirmação transitórias e `expectedVersion`; não recebe nem devolve hash. O provider deve revalidar a

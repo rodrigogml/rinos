@@ -309,7 +309,12 @@ Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 > A reutilização de `AuthenticationProof`, o vínculo ao e-mail atual, os limites e o despacho pós-commit estão
 > registrados em [`evidence/4.1.3/README.md`](./evidence/4.1.3/README.md). O adapter contextual da RFW será composto
 > na tarefa 4.1.5, depois que TOTP, e-mail e recovery codes estiverem disponíveis sob a mesma política.
-- [ ] 4.1.4 Implementar geração de 10 recovery codes, hash individual, consumo e substituição total
+- [x] 4.1.4 Implementar geração de 10 recovery codes, hash individual, consumo e substituição total
+
+> [!NOTE]
+> A geração fixa, a apresentação única, os hashes Argon2id independentes, a substituição atômica e o consumo
+> concorrente estão registrados em [`evidence/4.1.4/README.md`](./evidence/4.1.4/README.md). A composição com o fluxo
+> de autenticação permanece na tarefa 4.1.5 e a ligação do provider à tela de gestão permanece na tarefa 5.4.1.
 - [ ] 4.1.5 Implementar seleção de fator por contexto e invariantes administrativas/mesmo canal
 - [ ] 4.1.6 Testar vetores RFC, rotação de chave, concorrência, expiração, limites e apresentação única
 

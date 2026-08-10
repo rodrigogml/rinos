@@ -33,6 +33,7 @@ import br.com.rinos.app.backend.module.identity.repository.TotpFactorRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationMethodInventoryVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
+import br.eng.rodrigogml.rfw.authentication.service.RFWRecoveryCodeService;
 
 @DisplayName("Invariantes transacionais dos fatores")
 class AuthenticationFactorServiceTest {
@@ -124,9 +125,12 @@ class AuthenticationFactorServiceTest {
     when(sets.findByUserIdAndStatusForUpdate(11L, RecoveryCodeSetStatusEnum.ACTIVE))
         .thenReturn(Optional.of(set));
     when(codes.findByCodeSetIdForUpdate(21L)).thenReturn(List.of(first, second));
-    RecoveryCodeService service = new RecoveryCodeService(users, sets, codes, references);
+    RFWRecoveryCodeService protocol = mock(RFWRecoveryCodeService.class);
+    when(protocol.findMatchingIndex("first-code", List.of("first-hash"))).thenReturn(0);
+    RecoveryCodeService service = new RecoveryCodeService(
+        users, sets, codes, references, audit, protocol);
 
-    FactorOperationStatusEnum result = service.consume(11L, "first-hash"::equals, NOW.plusSeconds(1));
+    FactorOperationStatusEnum result = service.consume(11L, "first-code", NOW.plusSeconds(1));
 
     assertThat(result).isEqualTo(FactorOperationStatusEnum.EXHAUSTED);
     assertThat(first.getStatus()).isEqualTo(RecoveryCodeStatusEnum.USED);

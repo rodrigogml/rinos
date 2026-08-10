@@ -223,7 +223,6 @@ sempre o e-mail principal confirmado no instante da emissão.
 |-------|------|-------------|-------|
 | `id` | `BIGINT` | PK, auto increment | |
 | `idUser` | `BIGINT` | NOT NULL, FK | |
-| `idAuthenticationFlow` | `BIGINT` | NULL, FK, UK | Fluxo que originou a preparação; `SET NULL` após sua retenção |
 | `reference` | `BINARY(16)` | NOT NULL, UK | Identifica o conjunto sem autenticar |
 | `status` | `VARCHAR(24)` | NOT NULL | `ACTIVE`, `INVALIDATED`, `EXHAUSTED` |
 | `activeMarker` | `BOOLEAN` | NULL | `TRUE` somente no conjunto ativo |
@@ -234,7 +233,8 @@ sempre o e-mail principal confirmado no instante da emissão.
 | `version` | `BIGINT` | NOT NULL | `@Version` |
 
 UK em `(idUser, activeMarker)` e lock do usuário impedem dois conjuntos ativos concorrentes; conjuntos encerrados usam
-`NULL` e preservam o histórico permitido.
+`NULL` e preservam o histórico permitido. O conjunto pertence ao usuário, não a um fluxo: a geração ocorre na gestão
+autenticada, enquanto o consumo é associado ao fluxo somente pela orquestração que o autorizou.
 
 ## Entity: RecoveryCode
 
@@ -250,7 +250,10 @@ UK em `(idUser, activeMarker)` e lock do usuário impedem dois conjuntos ativos 
 | `usedAt` | `TIMESTAMP(6)` | NULL | UTC |
 | `createdAt` | `TIMESTAMP(6)` | NOT NULL | UTC |
 
-UK em `(idRecoveryCodeSet, ordinal)`. O código bruto nunca é persistido ou reapresentado.
+UK em `(idRecoveryCodeSet, ordinal)`. O código bruto nunca é persistido ou reapresentado. A geração produz exatamente
+10 valores distintos e grava um Argon2id independente para cada um. Substituição bloqueia o usuário, invalida todos
+os códigos ainda disponíveis e fecha o conjunto anterior na mesma transação que cria o novo. Consumo bloqueia usuário,
+conjunto e códigos nessa ordem; o último código aceito fecha o conjunto como `EXHAUSTED`.
 
 ## Entity: PasskeyUser
 

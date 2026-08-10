@@ -2,6 +2,7 @@ package br.com.rinos.app.backend.module.identity.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -29,18 +30,26 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
+import br.com.rinos.app.backend.module.identity.entity.RecoveryCodeSetEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.FactorOperationStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.RecoveryCodeSetStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.RecoveryCodeStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.service.IdentityReferenceService;
+import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.RecoveryCodeService;
+import br.com.rinos.app.backend.module.identity.vo.IssuedRecoveryCodeSetVO;
+import br.com.rinos.app.config.PasswordHashPropertiesConfig;
+import br.com.rinos.app.config.PasswordSecurityConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.eng.rodrigogml.rfw.authentication.config.RFWAuthenticationPropertiesConfig.SecondFactorConfig;
+import br.eng.rodrigogml.rfw.authentication.service.RFWRecoveryCodeService;
 
 /** Valida unicidade e consumo concorrente dos fatores contra MySQL 9. */
 @DisplayName("Persistência dos fatores de autenticação")
@@ -63,21 +72,34 @@ class AuthenticationFactorRepositoryIT {
       UserRepository users = context.getBean(UserRepository.class);
       RecoveryCodeSetRepository sets = context.getBean(RecoveryCodeSetRepository.class);
       RecoveryCodeRepository codes = context.getBean(RecoveryCodeRepository.class);
-      RecoveryCodeService service = new RecoveryCodeService(users, sets, codes, new IdentityReferenceService());
+      PasswordEncoder encoder = new PasswordSecurityConfig().rinosPasswordEncoder(
+          new PasswordHashPropertiesConfig(19_456, 2, 1, 16, 32));
+      RFWRecoveryCodeService protocol = new RFWRecoveryCodeService(
+          new SecondFactorConfig(6, 30, 1, 6, 10), encoder);
+      RecoveryCodeService service = new RecoveryCodeService(
+          users, sets, codes, new IdentityReferenceService(),
+          mock(IdentityAuditService.class), protocol);
       Long userId = transaction(context).execute(status -> users.saveAndFlush(new UserEntity(
           "recovery@example.test", "recovery@example.test", UserStatusEnum.ACTIVE)).getId());
-      List<String> hashes = java.util.stream.IntStream.rangeClosed(1, 10)
-          .mapToObj(index -> "hash-" + index).toList();
-      transaction(context).executeWithoutResult(status -> service.replace(userId, hashes, NOW));
+      IssuedRecoveryCodeSetVO issued = transaction(context).execute(status -> service.generate(
+          userId, UUID.randomUUID(), NOW));
+      String rawCode = issued.codes().getFirst();
 
       List<FactorOperationStatusEnum> results = compete(() -> transaction(context).execute(status ->
-          service.consume(userId, "hash-1"::equals, NOW.plusSeconds(1))));
+          service.consume(userId, rawCode, NOW.plusSeconds(1))));
 
       assertThat(results).containsExactlyInAnyOrder(
           FactorOperationStatusEnum.USED, FactorOperationStatusEnum.REJECTED);
       transaction(context).executeWithoutResult(status -> {
-        var active = sets.findByUserIdAndStatus(userId, RecoveryCodeSetStatusEnum.ACTIVE).orElseThrow();
+        RecoveryCodeSetEntity active = sets.findByUserIdAndStatus(
+            userId, RecoveryCodeSetStatusEnum.ACTIVE).orElseThrow();
         assertThat(codes.countByCodeSetIdAndStatus(active.getId(), RecoveryCodeStatusEnum.AVAILABLE)).isEqualTo(9);
+        assertThat(codes.findByCodeSetIdForUpdate(active.getId()))
+            .hasSize(10)
+            .allSatisfy(code -> {
+              assertThat(code.getCodeHash()).startsWith("{argon2id}$argon2id$");
+              assertThat(issued.codes()).doesNotContain(code.getCodeHash());
+            });
       });
     });
   }

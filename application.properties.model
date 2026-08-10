@@ -151,6 +151,7 @@ rfw.authentication.second-factor.totp-digits=6
 rfw.authentication.second-factor.totp-period-seconds=30
 rfw.authentication.second-factor.totp-window=1
 rfw.authentication.second-factor.email-code-digits=6
+# Contrato fixo do Rinos; qualquer valor diferente de 10 impede a inicialização.
 rfw.authentication.second-factor.recovery-code-count=10
 
 # Google Identity Services fornecido pelo RFW Platform
