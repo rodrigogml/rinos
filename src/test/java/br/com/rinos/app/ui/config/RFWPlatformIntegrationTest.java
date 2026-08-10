@@ -58,6 +58,7 @@ import com.vaadin.flow.server.VaadinSession;
 import br.com.rinos.app.RinosApplication;
 import br.com.rinos.app.api.dto.RegistrationCancellationConfirmationDTO;
 import br.com.rinos.app.api.dto.RegistrationCancellationRequestDTO;
+import br.com.rinos.app.api.enums.AuthenticationOrchestrationStatusEnum;
 import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
@@ -73,15 +74,18 @@ import br.com.rinos.app.api.facade.RegistrationCancellationFacade;
 import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.facade.ReauthenticationFacade;
+import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.api.vo.GoogleIdentityResolutionResultVO;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
+import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationConfirmationResultVO;
 import br.com.rinos.app.api.vo.RegistrationCancellationRequestResultVO;
 import br.com.rinos.app.ui.module.identity.component.RinosAccessComponentFactory;
 import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
 import br.eng.rodrigogml.rfw.config.RFWAutoConfiguration;
+import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalIdentityRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWPasswordAuthenticationRequestDTO;
 import br.eng.rodrigogml.rfw.logging.config.RFWLoggingAutoConfiguration;
@@ -101,6 +105,7 @@ import br.eng.rodrigogml.rfw.authentication.google.RFWGoogleIdentityProvider;
 import br.eng.rodrigogml.rfw.authentication.service.RFWAccessCapabilityService;
 import br.eng.rodrigogml.rfw.authentication.service.RFWAuthenticationSessionService;
 import br.eng.rodrigogml.rfw.authentication.turnstile.RFWTurnstileVerificationService;
+import br.eng.rodrigogml.rfw.authentication.vo.RFWAccessErrorVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWActivationConsentChallengeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWAuthenticationOutcomeVO;
 import br.eng.rodrigogml.rfw.authentication.vo.RFWHumanVerificationRequestVO;
@@ -1207,6 +1212,87 @@ class RFWPlatformIntegrationTest {
               .singleElement()
               .satisfies(google -> assertThat(google.getElement().getTag())
                   .isEqualTo("rfw-google-sign-in"));
+        });
+  }
+
+  /**
+   * Comprova que uma indisponibilidade externa não altera nem bloqueia o provider local.
+   */
+  @Test
+  void login_shouldKeepPasswordAvailable_afterExternalIdentityFailure() {
+    RFWExternalIdentityProvider externalProvider = mock(RFWExternalIdentityProvider.class);
+    when(externalProvider.getProviderId()).thenReturn("google");
+    when(externalProvider.authenticate(any())).thenReturn(CompletableFuture.completedFuture(
+        RFWAuthenticationOutcomeVO.rejected(
+            RFWAccessErrorVO.of(
+                "ui.access.error.externalIdentityUnavailable"))));
+
+    PasswordAuthenticationFacade passwordFacade = mock(PasswordAuthenticationFacade.class);
+    when(passwordFacade.authenticate(any())).thenReturn(CompletableFuture.completedFuture(
+        new PasswordAuthenticationResultVO(
+            new AuthenticationOrchestrationResultVO(
+                AuthenticationOrchestrationStatusEnum.REJECTED,
+                null,
+                null,
+                null,
+                Set.of(),
+                List.of(),
+                Set.of(),
+                false,
+                null,
+                null),
+            false,
+            Duration.ZERO)));
+    RFWPasswordAuthenticationProvider passwordProvider =
+        new RFWPasswordAuthenticationProviderAdapter(
+            passwordFacade,
+            ignored -> "203.0.113.10",
+            new RFWAuthenticationOutcomeAdapter());
+
+    contextRunner
+        .withBean(RFWExternalIdentityProvider.class, () -> externalProvider)
+        .withBean(RFWPasswordAuthenticationProvider.class, () -> passwordProvider)
+        .withPropertyValues("rfw.authentication.google.client-id=test-client")
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          LegalDocumentFacade legalDocumentFacade = mock(LegalDocumentFacade.class);
+          when(legalDocumentFacade.findCurrentDocuments()).thenReturn(List.of());
+          RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
+              context.getBean(RFWAccessComponentFactory.class),
+              legalDocumentFacade);
+          VaadinService service = mock(VaadinService.class);
+          when(service.getDeploymentConfiguration())
+              .thenReturn(mock(DeploymentConfiguration.class));
+          VaadinSession session = new TestVaadinSession(service);
+          VaadinSession.setCurrent(session);
+          session.lock();
+          try {
+            UI ui = new UI();
+            ui.getInternals().setSession(session);
+            UI.setCurrent(ui);
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse()));
+            RFWAccessComponent component = hostFactory.create("indisponível");
+            ui.add(component);
+
+            component.submitExternalIdentity(new RFWExternalIdentityRequestDTO(
+                "google", "ephemeral-id-token", "ephemeral-nonce"));
+
+            assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
+            assertThat(component.getCurrentOutcome().error().messageKey())
+                .isEqualTo("ui.access.error.externalIdentityUnavailable");
+
+            component.submitPasswordAuthentication(new RFWPasswordAuthenticationRequestDTO(
+                "person@example.test", "Password1!", false, null));
+
+            verify(passwordFacade).authenticate(any());
+            assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.SIGN_IN);
+            assertThat(component.getCurrentOutcome().error().messageKey())
+                .isEqualTo("authentication.credentials.invalid");
+          } finally {
+            session.unlock();
+          }
         });
   }
 

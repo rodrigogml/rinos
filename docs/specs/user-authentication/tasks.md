@@ -399,7 +399,12 @@ Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Int
 > revogação com último método e o roundtrip MySQL estão registrados em
 > [`evidence/4.3.4/README.md`](./evidence/4.3.4/README.md). O adapter descarta e-mail, tokens e claims não necessários;
 > a próxima tarefa formaliza a ausência de persistência desses tokens e o fallback independente.
-- [ ] 4.3.5 Garantir ausência de access/refresh token persistente e fallback independente
+- [x] 4.3.5 Garantir ausência de access/refresh token persistente e fallback independente
+
+> [!NOTE]
+> O gate do catálogo MySQL restringe o vínculo externo a metadados estáveis e o teste do componente de acesso
+> comprova que uma falha do Google preserva o login local por senha. Comandos e limites estão registrados em
+> [`evidence/4.3.5/README.md`](./evidence/4.3.5/README.md).
 - [ ] 4.3.6 Testar JWKS/Google indisponível, replay, e-mail coincidente, bloqueio e concorrência de vínculo
 
 ### 4.4 Completar recuperação, notificações e limpeza `[C]`

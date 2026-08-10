@@ -101,6 +101,35 @@ class AuthenticationDatabaseSchemaIT {
   }
 
   /**
+   * Impede que credenciais reutilizáveis ou o mapa de claims do Google entrem no modelo persistente.
+   *
+   * @throws SQLException quando o catálogo não pode ser inspecionado
+   */
+  @Test
+  void externalIdentity_shouldPersistOnlyStableIdentityMetadata() throws SQLException {
+    assertThat(readColumnNames("identity_externalIdentity"))
+        .containsExactly(
+            "id",
+            "idUser",
+            "reference",
+            "provider",
+            "issuer",
+            "subject",
+            "status",
+            "verifiedAt",
+            "activatedAt",
+            "lastUsedAt",
+            "revokedAt",
+            "createdAt",
+            "updatedAt",
+            "version")
+        .noneMatch(column -> {
+          String normalized = column.toLowerCase(java.util.Locale.ROOT);
+          return normalized.contains("token") || normalized.contains("claim");
+        });
+  }
+
+  /**
    * Comprova que o update não transforma métodos históricos em fatores comprovados.
    *
    * @throws SQLException quando o estado migrado não pode ser consultado
@@ -535,6 +564,33 @@ class AuthenticationDatabaseSchemaIT {
         assertThat(result.getString("column_type")).isEqualTo(columnType);
         assertThat(result.getString("is_nullable")).isEqualTo(nullable);
         assertThat(result.next()).isFalse();
+      }
+    }
+  }
+
+  /**
+   * Lê as colunas na ordem física declarada pelo DDL.
+   *
+   * @param table tabela física conhecida
+   * @return nomes das colunas em ordem ordinal
+   * @throws SQLException quando o catálogo não pode ser consultado
+   */
+  private List<String> readColumnNames(String table) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
+            ORDER BY ordinal_position
+            """)) {
+      statement.setString(1, table);
+      try (ResultSet result = statement.executeQuery()) {
+        List<String> columns = new java.util.ArrayList<>();
+        while (result.next()) {
+          columns.add(result.getString("column_name"));
+        }
+        return List.copyOf(columns);
       }
     }
   }
