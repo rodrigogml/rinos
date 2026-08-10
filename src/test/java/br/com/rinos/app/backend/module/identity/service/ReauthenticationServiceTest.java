@@ -2,6 +2,7 @@ package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -149,6 +150,34 @@ class ReauthenticationServiceTest {
         auditService,
         new AuthenticationMfaPropertiesConfig(
             Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)));
+  }
+
+  @Test
+  void isRecentlyAuthorized_shouldRevalidateCurrentSessionAndMethod_withoutIssuingChallenge() {
+    Instant recent = AUTHENTICATED_AT.plus(Duration.ofMinutes(10));
+
+    boolean authorized = service.isRecentlyAuthorized(
+        USER_ID,
+        SESSION_REFERENCE,
+        ReauthenticationOperationEnum.RENAME_PASSKEY,
+        recent);
+
+    assertThat(authorized).isTrue();
+    verify(flowService, never()).issue(
+        any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any());
+  }
+
+  @Test
+  void isRecentlyAuthorized_shouldRejectStaleGuarantee_withoutCreatingContinuation() {
+    boolean authorized = service.isRecentlyAuthorized(
+        USER_ID,
+        SESSION_REFERENCE,
+        ReauthenticationOperationEnum.REVOKE_PASSKEY,
+        NOW);
+
+    assertThat(authorized).isFalse();
+    verify(flowService, never()).issue(
+        any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any());
   }
 
   @Test

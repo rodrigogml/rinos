@@ -3,21 +3,28 @@ package br.com.rinos.app.backend.module.identity.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.web.webauthn.api.AuthenticatorTransport;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
@@ -30,8 +37,12 @@ import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.PasskeyCredentialStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.ReauthenticationOperationEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyCredentialRepository;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyUserRepository;
+import br.com.rinos.app.backend.module.identity.vo.PasskeyCredentialRegistrationVO;
+import br.com.rinos.app.backend.module.identity.vo.PasskeyCredentialSummaryVO;
+import br.eng.rodrigogml.rfw.authentication.principal.RFWAuthenticationSessionPrincipal;
 
 @DisplayName("Adapter Spring WebAuthn das credentials globais")
 class SpringWebAuthnCredentialRepositoryAdapterTest {
@@ -40,6 +51,8 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
   private static final Instant USED_AT = CREATED_AT.plusSeconds(30);
   private PasskeyUserRepository owners;
   private PasskeyCredentialRepository credentials;
+  private PasskeyCredentialService passkeyService;
+  private ReauthenticationService reauthenticationService;
   private SpringWebAuthnCredentialRepositoryAdapter adapter;
   private PasskeyUserEntity owner;
 
@@ -47,16 +60,33 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
   void setUp() {
     owners = mock(PasskeyUserRepository.class);
     credentials = mock(PasskeyCredentialRepository.class);
+    passkeyService = mock(PasskeyCredentialService.class);
+    reauthenticationService = mock(ReauthenticationService.class);
     adapter = new SpringWebAuthnCredentialRepositoryAdapter(
         owners,
         credentials,
-        new IdentityReferenceService(),
+        passkeyService,
+        reauthenticationService,
         Clock.fixed(USED_AT, ZoneOffset.UTC));
     UserEntity user = new UserEntity(
         "person@example.test", "person@example.test", UserStatusEnum.ACTIVE);
     ReflectionTestUtils.setField(user, "id", 41L);
     owner = new PasskeyUserEntity(user, bytes(32, (byte) 2));
     ReflectionTestUtils.setField(owner, "id", 51L);
+    UUID sessionReference = UUID.fromString("58a06f7d-c288-45fb-ab2f-7773a4abac14");
+    SecurityContextHolder.getContext().setAuthentication(
+        UsernamePasswordAuthenticationToken.authenticated(
+            new SessionPrincipal(sessionReference.toString()), null, List.of()));
+    when(reauthenticationService.isRecentlyAuthorized(
+        41L,
+        sessionReference,
+        ReauthenticationOperationEnum.REGISTER_PASSKEY,
+        USED_AT)).thenReturn(true);
+  }
+
+  @AfterEach
+  void clearContext() {
+    SecurityContextHolder.clearContext();
   }
 
   @Test
@@ -109,22 +139,42 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
         .thenReturn(Optional.empty());
     when(owners.findByUserHandleForUpdate(record.getUserEntityUserId().getBytes()))
         .thenReturn(Optional.of(owner));
+    UUID reference = UUID.fromString("59bece81-3eca-47ac-8472-35164cff502a");
+    when(passkeyService.register(eq(41L), any(), any(), any(), eq(USED_AT)))
+        .thenReturn(new PasskeyCredentialSummaryVO(
+            reference, "Notebook", PasskeyCredentialStatusEnum.ACTIVE, CREATED_AT, null));
 
     adapter.save(record);
 
-    ArgumentCaptor<PasskeyCredentialEntity> saved =
-        ArgumentCaptor.forClass(PasskeyCredentialEntity.class);
-    verify(credentials).saveAndFlush(saved.capture());
-    PasskeyCredentialEntity value = saved.getValue();
-    assertThat(value.getPasskeyUser()).isSameAs(owner);
-    assertThat(value.getCredentialId()).containsExactly(record.getCredentialId().getBytes());
-    assertThat(value.getPublicKey()).containsExactly(record.getPublicKey().getBytes());
-    assertThat(value.getTransports()).isEqualTo("hybrid,internal,smart-card");
-    assertThat(value.getAttestationObject())
+    ArgumentCaptor<PasskeyCredentialRegistrationVO> material =
+        ArgumentCaptor.forClass(PasskeyCredentialRegistrationVO.class);
+    verify(passkeyService).register(eq(41L), any(), material.capture(), any(), eq(USED_AT));
+    assertThat(material.getValue().credentialId())
+        .containsExactly(record.getCredentialId().getBytes());
+    assertThat(material.getValue().publicKey()).containsExactly(record.getPublicKey().getBytes());
+    assertThat(material.getValue().transports()).isEqualTo("hybrid,internal,smart-card");
+    assertThat(material.getValue().attestationObject())
         .containsExactly(record.getAttestationObject().getBytes());
-    assertThat(value.getAttestationClientDataJson())
+    assertThat(material.getValue().attestationClientDataJson())
         .containsExactly(record.getAttestationClientDataJSON().getBytes());
-    assertThat(value.getLastUsedAt()).isEqualTo(USED_AT);
+    verify(passkeyService).recordUse(41L, reference, 7L, false, USED_AT);
+  }
+
+  @Test
+  void save_shouldRejectNewCredential_whenRecentAuthenticationIsMissing() {
+    CredentialRecord record = record(7L, false, null, bytes(4, (byte) 4));
+    when(credentials.findByCredentialIdForUpdate(record.getCredentialId().getBytes()))
+        .thenReturn(Optional.empty());
+    when(owners.findByUserHandleForUpdate(record.getUserEntityUserId().getBytes()))
+        .thenReturn(Optional.of(owner));
+    when(reauthenticationService.isRecentlyAuthorized(
+        any(), any(), any(), any())).thenReturn(false);
+
+    assertThatThrownBy(() -> adapter.save(record))
+        .isInstanceOf(SecurityException.class)
+        .hasMessageContaining("Recent authentication");
+    verify(passkeyService, never())
+        .register(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -220,5 +270,9 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
     byte[] result = new byte[length];
     java.util.Arrays.fill(result, value);
     return result;
+  }
+
+  private record SessionPrincipal(String sessionReference)
+      implements RFWAuthenticationSessionPrincipal {
   }
 }

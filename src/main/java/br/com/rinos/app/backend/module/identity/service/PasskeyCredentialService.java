@@ -59,8 +59,21 @@ public class PasskeyCredentialService {
     return FactorOperationStatusEnum.USED;
   }
   @Transactional
-  public PasskeyCredentialSummaryVO rename(Long userId, UUID reference, String label) {
-    lockUser(userId); PasskeyCredentialEntity value = locked(userId, reference); value.rename(label); return summary(value);
+  public PasskeyCredentialSummaryVO rename(
+      Long userId,
+      UUID reference,
+      String label,
+      UUID correlationId,
+      Instant occurredAt) {
+    UserEntity user = lockUser(userId);
+    PasskeyCredentialEntity value = locked(userId, reference);
+    value.rename(label);
+    event(
+        user,
+        correlationId,
+        IdentityEventTypeEnum.AUTHENTICATION_METHOD_RENAMED,
+        occurredAt);
+    return summary(value);
   }
   @Transactional
   public FactorOperationStatusEnum revoke(Long userId, UUID reference,

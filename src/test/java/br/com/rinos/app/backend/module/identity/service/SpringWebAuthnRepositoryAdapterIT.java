@@ -1,12 +1,15 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Set;
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +27,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.web.webauthn.api.AuthenticatorTransport;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
@@ -35,10 +40,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.ReauthenticationOperationEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyCredentialRepository;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyUserRepository;
+import br.com.rinos.app.backend.module.identity.repository.IdentityEventRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.eng.rodrigogml.rfw.authentication.principal.RFWAuthenticationSessionPrincipal;
 
 /** Valida o roundtrip dos contratos Spring WebAuthn contra o schema global MySQL 9. */
 @DisplayName("Adapters Spring WebAuthn no MySQL")
@@ -69,17 +78,41 @@ class SpringWebAuthnRepositoryAdapterIT {
         .execute(dataSource);
   }
 
+  @AfterEach
+  void clearSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
+
   @Test
   void adapters_shouldRoundTripAndUpdateOnlyAssertionState() {
     contextRunner().run(context -> {
       UserRepository users = context.getBean(UserRepository.class);
       PasskeyUserRepository owners = context.getBean(PasskeyUserRepository.class);
       PasskeyCredentialRepository credentials = context.getBean(PasskeyCredentialRepository.class);
+      IdentityEventRepository events = context.getBean(IdentityEventRepository.class);
+      PasskeyCredentialService passkeyService = new PasskeyCredentialService(
+          users,
+          owners,
+          credentials,
+          mock(AuthenticationMethodInventoryService.class),
+          new IdentityReferenceService(),
+          new IdentityAuditService(events));
+      ReauthenticationService reauthenticationService = mock(ReauthenticationService.class);
+      java.util.UUID sessionReference = java.util.UUID.fromString(
+          "58a06f7d-c288-45fb-ab2f-7773a4abac14");
+      when(reauthenticationService.isRecentlyAuthorized(
+          1L,
+          sessionReference,
+          ReauthenticationOperationEnum.REGISTER_PASSKEY,
+          USED_AT)).thenReturn(true);
+      SecurityContextHolder.getContext().setAuthentication(
+          UsernamePasswordAuthenticationToken.authenticated(
+              new SessionPrincipal(sessionReference.toString()), null, java.util.List.of()));
       SpringWebAuthnUserRepositoryAdapter userAdapter = new SpringWebAuthnUserRepositoryAdapter(
           users, owners, new EmailNormalizationService());
       SpringWebAuthnCredentialRepositoryAdapter credentialAdapter =
           new SpringWebAuthnCredentialRepositoryAdapter(
-              owners, credentials, new IdentityReferenceService(),
+              owners, credentials, passkeyService, reauthenticationService,
               java.time.Clock.fixed(USED_AT, java.time.ZoneOffset.UTC));
       byte[] userHandle = bytes(32, (byte) 2);
       byte[] credentialId = bytes(16, (byte) 3);
@@ -116,6 +149,9 @@ class SpringWebAuthnRepositoryAdapterIT {
       assertThat(updated.getLastUsed()).isEqualTo(USED_AT);
       assertThat(credentials.count()).isEqualTo(1L);
       assertThat(owners.count()).isEqualTo(1L);
+      assertThat(events.findAll()).singleElement().satisfies(event ->
+          assertThat(event.getEventType()).isEqualTo(
+              IdentityEventTypeEnum.AUTHENTICATION_METHOD_ADDED));
     });
   }
 
@@ -178,5 +214,9 @@ class SpringWebAuthnRepositoryAdapterIT {
   @EntityScan(basePackageClasses = UserEntity.class)
   @EnableJpaRepositories(basePackageClasses = UserRepository.class)
   static class RepositoryTestConfig {
+  }
+
+  private record SessionPrincipal(String sessionReference)
+      implements RFWAuthenticationSessionPrincipal {
   }
 }

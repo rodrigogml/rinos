@@ -350,7 +350,13 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 > O adapter de tipo estrito, a redução ao handle, a revalidação transacional e a passagem pelos gates comuns estão
 > registrados em [`evidence/4.2.3/README.md`](./evidence/4.2.3/README.md). O endpoint WebAuthn não publica sessão e
 > autenticações genéricas ou sem `FACTOR_WEBAUTHN` são rejeitadas.
-- [ ] 4.2.4 Implementar cadastro, nomeação, listagem, último uso e revogação individual
+- [x] 4.2.4 Implementar cadastro, nomeação, listagem, último uso e revogação individual
+
+> [!NOTE]
+> O provider autenticado, a dupla validação de reautenticação no RFW/backend, a projeção segura, a auditoria e
+> as invariantes de revogação estão registrados em
+> [`evidence/4.2.4/README.md`](./evidence/4.2.4/README.md). O cadastro somente persiste depois de uma sessão ativa
+> comprovar garantia recente; a revogação é lógica e não afeta credenciais independentes.
 - [ ] 4.2.5 Auditar anomalias sem revogar automaticamente credenciais independentes
 - [ ] 4.2.6 Testar registro/login descobrível, origem/RP inválidos, replay, cancelamento e revogação
 

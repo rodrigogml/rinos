@@ -59,6 +59,7 @@ class RFWAuthenticationSessionLifecycleProviderAdapterTest {
         .isEqualTo(new RFWAuthenticatedPrincipalAdapter(
             new RinosUserPrincipalVO(41L, "person@example.test"), SESSION_REFERENCE));
     assertThat(preparation.authentication().getDetails()).isNull();
+    assertThat(preparation.authentication().getName()).isEqualTo("person@example.test");
     assertThat(preparation.authentication().getAuthorities())
         .extracting(Object::toString)
         .containsExactly("ROLE_USER");

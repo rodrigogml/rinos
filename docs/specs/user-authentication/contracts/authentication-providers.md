@@ -229,6 +229,20 @@ da validação da credential. Ele devolve usuário global ativo, nenhuma authori
 aleatória, diferente a cada leitura; portanto não cria uma credencial alternativa utilizável pelo provider de senha
 do Spring.
 
+O principal autenticado implementa `Principal` apenas para que os endpoints WebAuthn autenticados resolvam o e-mail
+vigente pelo contrato padrão do Spring; seu `toString()` continua redigido. No cadastro, o renderer RFW executa a
+operação sensível `register-passkey` antes de abrir a cerimônia. A persistência não confia nesse gate visual:
+`SpringWebAuthnCredentialRepositoryAdapter` extrai somente a referência da sessão do principal, revalida no banco a
+identidade ativa e a garantia recente para a mesma operação e somente então delega o registro ao
+`PasskeyCredentialService`. Cadastro rejeitado não cria credential nem evento.
+
+`PasskeyManagementFacade` recebe identidade, sessão e instante exclusivamente do adapter autenticado
+`RFWPasskeyManagementProviderAdapter`. Listagem comprova a sessão corrente; nomeação e revogação repetem a
+decisão de garantia recente no backend e bloqueiam o usuário e a credential própria na mesma transação. A fachada
+expõe somente UUID de gestão, label, criação, último uso e estado. Credential ID, chave, contador e attestation
+nunca atravessam a API ou o provider RFW. Renomear e cadastrar geram auditoria sanitizada; revogar conserva as
+invariantes de último método e impede imediatamente novas resoluções pelo repository WebAuthn.
+
 Operações de gestão:
 
 | Operation | Precondition | Effect |

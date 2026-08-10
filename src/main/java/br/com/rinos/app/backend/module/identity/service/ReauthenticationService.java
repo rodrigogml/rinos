@@ -172,6 +172,47 @@ public class ReauthenticationService {
   }
 
   /**
+   * Revalida, sem emitir novo desafio, se a sessao corrente ainda possui garantia recente para
+   * uma operacao sensivel.
+   *
+   * <p>Este metodo existe para a propria operacao repetir a decisao no backend depois que a
+   * interface concluiu a reautenticacao. A decisao considera novamente o estado da sessao, os
+   * metodos ainda utilizaveis e a validade configurada.
+   *
+   * @param userId identidade autenticada
+   * @param currentSessionReference referencia opaca da sessao corrente
+   * @param operation operacao sensivel executada em seguida
+   * @param occurredAt instante UTC da revalidacao
+   * @return {@code true} somente quando a garantia permanece recente e compativel
+   */
+  @Transactional
+  public boolean isRecentlyAuthorized(
+      Long userId,
+      UUID currentSessionReference,
+      ReauthenticationOperationEnum operation,
+      Instant occurredAt) {
+    Objects.requireNonNull(operation, "operation must not be null");
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    UserEntity user = lockActiveUser(userId);
+    if (user == null || currentSessionReference == null) {
+      return false;
+    }
+    AuthSessionEntity session = sessionRepository.findByUserIdAndPublicReferenceForUpdate(
+        user.getId(), referenceService.encode(currentSessionReference)).orElse(null);
+    if (!isUsable(session, occurredAt)) {
+      return false;
+    }
+    ReauthenticationPolicyDecisionVO decision = reauthenticationPolicy.evaluate(
+        operation,
+        session.getAssuranceLevel(),
+        session.getLastStrongAuthAt(),
+        sessionMethods(session),
+        availabilityService.availableMethods(user.getId()),
+        occurredAt);
+    return decision.status() == ReauthenticationPolicyStatusEnum.ALREADY_RECENT;
+  }
+
+  /**
    * Valida e consome a prova transitória, liberando uma única retomada.
    *
    * <p>O verificador do método e o consumo executam na mesma transação. O material da prova não

@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,15 +18,21 @@ import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
 import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCose;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.rinos.app.backend.module.identity.entity.PasskeyCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.enums.PasskeyCredentialStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.ReauthenticationOperationEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyCredentialRepository;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyUserRepository;
+import br.com.rinos.app.backend.module.identity.vo.PasskeyCredentialRegistrationVO;
+import br.com.rinos.app.backend.module.identity.vo.PasskeyCredentialSummaryVO;
+import br.eng.rodrigogml.rfw.authentication.principal.RFWAuthenticationSessionPrincipal;
 
 /**
  * Adapta os registros de credential WebAuthn validados pelo Spring ao modelo global do Rinos.
@@ -43,7 +50,8 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
 
   private final PasskeyUserRepository passkeyUsers;
   private final PasskeyCredentialRepository credentials;
-  private final IdentityReferenceService references;
+  private final PasskeyCredentialService passkeyService;
+  private final ReauthenticationService reauthenticationService;
   private final Clock clock;
 
   /** Cria o adapter com relógio UTC para valores omitidos pelo update do protocolo. */
@@ -51,19 +59,27 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
   public SpringWebAuthnCredentialRepositoryAdapter(
       PasskeyUserRepository passkeyUsers,
       PasskeyCredentialRepository credentials,
-      IdentityReferenceService references) {
-    this(passkeyUsers, credentials, references, Clock.systemUTC());
+      @Lazy PasskeyCredentialService passkeyService,
+      @Lazy ReauthenticationService reauthenticationService) {
+    this(
+        passkeyUsers,
+        credentials,
+        passkeyService,
+        reauthenticationService,
+        Clock.systemUTC());
   }
 
   /** Cria uma instância com relógio controlável para testes. */
   SpringWebAuthnCredentialRepositoryAdapter(
       PasskeyUserRepository passkeyUsers,
       PasskeyCredentialRepository credentials,
-      IdentityReferenceService references,
+      PasskeyCredentialService passkeyService,
+      ReauthenticationService reauthenticationService,
       Clock clock) {
     this.passkeyUsers = passkeyUsers;
     this.credentials = credentials;
-    this.references = references;
+    this.passkeyService = passkeyService;
+    this.reauthenticationService = reauthenticationService;
     this.clock = clock;
   }
 
@@ -113,9 +129,19 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
         record.getUserEntityUserId().getBytes())
         .filter(candidate -> candidate.getUser().getStatus() == UserStatusEnum.ACTIVE)
         .orElseThrow(() -> new IllegalArgumentException("Active WebAuthn owner is required"));
-    PasskeyCredentialEntity credential = new PasskeyCredentialEntity(
-        owner,
-        references.generate(),
+    Instant registeredAt = clock.instant();
+    UUID sessionReference = currentSessionReference();
+    if (sessionReference == null || !reauthenticationService.isRecentlyAuthorized(
+        owner.getUser().getId(),
+        sessionReference,
+        ReauthenticationOperationEnum.REGISTER_PASSKEY,
+        registeredAt)) {
+      throw new SecurityException("Recent authentication is required for passkey registration");
+    }
+    PasskeyCredentialSummaryVO registered = passkeyService.register(
+        owner.getUser().getId(),
+        owner.getUserHandle(),
+        new PasskeyCredentialRegistrationVO(
         record.getCredentialType().getValue(),
         credentialId,
         record.getPublicKey().getBytes(),
@@ -126,12 +152,31 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
         transports(record.getTransports()),
         record.getAttestationObject().getBytes(),
         record.getAttestationClientDataJSON().getBytes(),
-        record.getLabel());
+        record.getLabel()),
+        UUID.randomUUID(),
+        registeredAt);
     if (record.getLastUsed() != null) {
-      credential.recordUse(
-          record.getSignatureCount(), record.isBackupState(), record.getLastUsed());
+      passkeyService.recordUse(
+          owner.getUser().getId(),
+          registered.reference(),
+          record.getSignatureCount(),
+          record.isBackupState(),
+          record.getLastUsed());
     }
-    credentials.saveAndFlush(credential);
+  }
+
+  private static UUID currentSessionReference() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !authentication.isAuthenticated()
+        || !(authentication.getPrincipal()
+            instanceof RFWAuthenticationSessionPrincipal principal)) {
+      return null;
+    }
+    try {
+      return UUID.fromString(principal.sessionReference());
+    } catch (NullPointerException | IllegalArgumentException invalid) {
+      return null;
+    }
   }
 
   /**

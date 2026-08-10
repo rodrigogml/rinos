@@ -21,6 +21,8 @@ import br.com.rinos.app.backend.module.identity.entity.RecoveryCodeSetEntity;
 import br.com.rinos.app.backend.module.identity.entity.TotpFactorEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.FactorOperationStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
 import br.com.rinos.app.backend.module.identity.enums.PasskeyCredentialStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.RecoveryCodeSetStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.RecoveryCodeStatusEnum;
@@ -85,6 +87,37 @@ class AuthenticationFactorServiceTest {
 
     assertThat(result).isEqualTo(FactorOperationStatusEnum.ADMIN_FACTOR_REQUIRED);
     assertThat(credential.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.ACTIVE);
+  }
+
+  @Test
+  void passkeyRename_shouldChangeOnlyLabelAndAuditOwnedActiveCredential() {
+    PasskeyCredentialRepository credentials = mock(PasskeyCredentialRepository.class);
+    PasskeyCredentialEntity credential = credential();
+    when(credentials.findByUserIdAndReferenceForUpdate(any(), any()))
+        .thenReturn(Optional.of(credential));
+    PasskeyCredentialService service = new PasskeyCredentialService(
+        users,
+        mock(PasskeyUserRepository.class),
+        credentials,
+        mock(AuthenticationMethodInventoryService.class),
+        references,
+        audit);
+    UUID correlationId = UUID.randomUUID();
+
+    service.rename(11L, credential.getReference(), "Chave principal", correlationId, NOW);
+
+    assertThat(credential.getLabel()).isEqualTo("Chave principal");
+    assertThat(credential.getPublicKey()).containsExactly((byte) 2);
+    verify(audit).record(
+        user,
+        null,
+        correlationId,
+        IdentityEventTypeEnum.AUTHENTICATION_METHOD_RENAMED,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        "PASSKEY",
+        NOW);
   }
 
   @Test

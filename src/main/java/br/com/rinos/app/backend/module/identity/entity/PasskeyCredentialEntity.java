@@ -99,7 +99,12 @@ public class PasskeyCredentialEntity {
   public Instant getLastUsedAt() { return lastUsedAt; }
   public Instant getRevokedAt() { return revokedAt; }
   public long getVersion() { return version; }
-  public void rename(String label) { this.label = text(label, 100, "label"); }
+  public void rename(String label) {
+    if (status != PasskeyCredentialStatusEnum.ACTIVE) {
+      throw new IllegalStateException("passkey credential is not active");
+    }
+    this.label = text(label, 100, "label");
+  }
   public void recordUse(long newSignatureCount, boolean backupState, Instant occurredAt) {
     if (status != PasskeyCredentialStatusEnum.ACTIVE || newSignatureCount < signatureCount) throw new IllegalStateException("passkey credential cannot accept this assertion state");
     signatureCount = newSignatureCount;
