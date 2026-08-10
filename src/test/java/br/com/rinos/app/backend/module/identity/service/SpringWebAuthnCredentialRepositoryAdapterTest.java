@@ -36,6 +36,7 @@ import br.com.rinos.app.backend.module.identity.entity.PasskeyCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.PasskeyCredentialStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.PasskeyRiskReasonEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.ReauthenticationOperationEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyCredentialRepository;
@@ -53,6 +54,7 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
   private PasskeyCredentialRepository credentials;
   private PasskeyCredentialService passkeyService;
   private ReauthenticationService reauthenticationService;
+  private PasskeyRiskAuditService riskAuditService;
   private SpringWebAuthnCredentialRepositoryAdapter adapter;
   private PasskeyUserEntity owner;
 
@@ -62,11 +64,13 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
     credentials = mock(PasskeyCredentialRepository.class);
     passkeyService = mock(PasskeyCredentialService.class);
     reauthenticationService = mock(ReauthenticationService.class);
+    riskAuditService = mock(PasskeyRiskAuditService.class);
     adapter = new SpringWebAuthnCredentialRepositoryAdapter(
         owners,
         credentials,
         passkeyService,
         reauthenticationService,
+        riskAuditService,
         Clock.fixed(USED_AT, ZoneOffset.UTC));
     UserEntity user = new UserEntity(
         "person@example.test", "person@example.test", UserStatusEnum.ACTIVE);
@@ -200,7 +204,55 @@ class SpringWebAuthnCredentialRepositoryAdapterTest {
 
     assertThatThrownBy(() -> adapter.save(replacement))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("WebAuthn credential immutable material changed");
+        .hasMessage("WebAuthn credential assertion was rejected");
+    verify(riskAuditService).record(
+        eq(41L),
+        eq(PasskeyRiskReasonEnum.IMMUTABLE_MATERIAL_MISMATCH),
+        any(),
+        eq(USED_AT));
+    assertThat(current.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.ACTIVE);
+  }
+
+  @Test
+  void save_shouldAuditCounterReplay_withoutRevokingIndependentCredentials() {
+    PasskeyCredentialEntity current = entity();
+    when(credentials.findByCredentialIdForUpdate(current.getCredentialId()))
+        .thenReturn(Optional.of(current));
+    CredentialRecord replay = record(7L, false, USED_AT, current.getPublicKey());
+
+    assertThatThrownBy(() -> adapter.save(replay))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("WebAuthn credential assertion was rejected");
+
+    verify(riskAuditService).record(
+        eq(41L),
+        eq(PasskeyRiskReasonEnum.SIGNATURE_COUNTER_REGRESSION),
+        any(),
+        eq(USED_AT));
+    assertThat(current.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.ACTIVE);
+    assertThat(current.getSignatureCount()).isEqualTo(7L);
+    verify(credentials, never()).delete(any());
+  }
+
+  @Test
+  void save_shouldAuditUseOfRevokedCredential_withoutChangingItsState() {
+    PasskeyCredentialEntity revoked = entity();
+    revoked.revoke(USED_AT);
+    when(credentials.findByCredentialIdForUpdate(revoked.getCredentialId()))
+        .thenReturn(Optional.of(revoked));
+    CredentialRecord assertion = record(8L, false, USED_AT, revoked.getPublicKey());
+
+    assertThatThrownBy(() -> adapter.save(assertion))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("WebAuthn credential assertion was rejected");
+
+    verify(riskAuditService).record(
+        eq(41L),
+        eq(PasskeyRiskReasonEnum.CREDENTIAL_NOT_USABLE),
+        any(),
+        eq(USED_AT));
+    assertThat(revoked.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.REVOKED);
+    assertThat(revoked.getSignatureCount()).isEqualTo(7L);
   }
 
   @Test

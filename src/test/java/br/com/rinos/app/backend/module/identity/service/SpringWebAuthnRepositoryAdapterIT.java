@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
@@ -36,6 +38,7 @@ import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCose;
 import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -90,13 +93,15 @@ class SpringWebAuthnRepositoryAdapterIT {
       PasskeyUserRepository owners = context.getBean(PasskeyUserRepository.class);
       PasskeyCredentialRepository credentials = context.getBean(PasskeyCredentialRepository.class);
       IdentityEventRepository events = context.getBean(IdentityEventRepository.class);
+      IdentityAuditService identityAuditService = context.getBean(IdentityAuditService.class);
+      PasskeyRiskAuditService riskAuditService = context.getBean(PasskeyRiskAuditService.class);
       PasskeyCredentialService passkeyService = new PasskeyCredentialService(
           users,
           owners,
           credentials,
           mock(AuthenticationMethodInventoryService.class),
           new IdentityReferenceService(),
-          new IdentityAuditService(events));
+          identityAuditService);
       ReauthenticationService reauthenticationService = mock(ReauthenticationService.class);
       java.util.UUID sessionReference = java.util.UUID.fromString(
           "58a06f7d-c288-45fb-ab2f-7773a4abac14");
@@ -112,7 +117,7 @@ class SpringWebAuthnRepositoryAdapterIT {
           users, owners, new EmailNormalizationService());
       SpringWebAuthnCredentialRepositoryAdapter credentialAdapter =
           new SpringWebAuthnCredentialRepositoryAdapter(
-              owners, credentials, passkeyService, reauthenticationService,
+              owners, credentials, passkeyService, reauthenticationService, riskAuditService,
               java.time.Clock.fixed(USED_AT, java.time.ZoneOffset.UTC));
       byte[] userHandle = bytes(32, (byte) 2);
       byte[] credentialId = bytes(16, (byte) 3);
@@ -149,9 +154,19 @@ class SpringWebAuthnRepositoryAdapterIT {
       assertThat(updated.getLastUsed()).isEqualTo(USED_AT);
       assertThat(credentials.count()).isEqualTo(1L);
       assertThat(owners.count()).isEqualTo(1L);
-      assertThat(events.findAll()).singleElement().satisfies(event ->
-          assertThat(event.getEventType()).isEqualTo(
-              IdentityEventTypeEnum.AUTHENTICATION_METHOD_ADDED));
+
+      assertThatThrownBy(() -> transaction(context).executeWithoutResult(status ->
+          credentialAdapter.save(record(userHandle, credentialId, 8L, true, USED_AT))))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("WebAuthn credential assertion was rejected");
+      CredentialRecord preserved = transaction(context).execute(status ->
+          credentialAdapter.findByCredentialId(new Bytes(credentialId)));
+      assertThat(preserved.getSignatureCount()).isEqualTo(8L);
+      assertThat(credentials.count()).isEqualTo(1L);
+      assertThat(events.findAll()).extracting(event -> event.getEventType())
+          .containsExactlyInAnyOrder(
+              IdentityEventTypeEnum.AUTHENTICATION_METHOD_ADDED,
+              IdentityEventTypeEnum.PASSKEY_RISK_DETECTED);
     });
   }
 
@@ -213,7 +228,22 @@ class SpringWebAuthnRepositoryAdapterIT {
   @Configuration(proxyBeanMethods = false)
   @EntityScan(basePackageClasses = UserEntity.class)
   @EnableJpaRepositories(basePackageClasses = UserRepository.class)
+  @EnableTransactionManagement
   static class RepositoryTestConfig {
+
+    /** Disponibiliza a auditoria real dentro das transacoes do teste MySQL. */
+    @Bean
+    IdentityAuditService identityAuditService(IdentityEventRepository events) {
+      return new IdentityAuditService(events);
+    }
+
+    /** Disponibiliza o boundary `REQUIRES_NEW` real para comprovar a evidencia independente. */
+    @Bean
+    PasskeyRiskAuditService passkeyRiskAuditService(
+        UserRepository users,
+        IdentityAuditService audit) {
+      return new PasskeyRiskAuditService(users, audit);
+    }
   }
 
   private record SessionPrincipal(String sessionReference)

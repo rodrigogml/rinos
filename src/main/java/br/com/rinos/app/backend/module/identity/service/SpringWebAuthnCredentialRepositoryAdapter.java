@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyCredentialEntity;
 import br.com.rinos.app.backend.module.identity.entity.PasskeyUserEntity;
 import br.com.rinos.app.backend.module.identity.enums.PasskeyCredentialStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.PasskeyRiskReasonEnum;
 import br.com.rinos.app.backend.module.identity.enums.ReauthenticationOperationEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.PasskeyCredentialRepository;
@@ -52,6 +53,7 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
   private final PasskeyCredentialRepository credentials;
   private final PasskeyCredentialService passkeyService;
   private final ReauthenticationService reauthenticationService;
+  private final PasskeyRiskAuditService riskAuditService;
   private final Clock clock;
 
   /** Cria o adapter com relógio UTC para valores omitidos pelo update do protocolo. */
@@ -60,12 +62,14 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
       PasskeyUserRepository passkeyUsers,
       PasskeyCredentialRepository credentials,
       @Lazy PasskeyCredentialService passkeyService,
-      @Lazy ReauthenticationService reauthenticationService) {
+      @Lazy ReauthenticationService reauthenticationService,
+      @Lazy PasskeyRiskAuditService riskAuditService) {
     this(
         passkeyUsers,
         credentials,
         passkeyService,
         reauthenticationService,
+        riskAuditService,
         Clock.systemUTC());
   }
 
@@ -75,11 +79,13 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
       PasskeyCredentialRepository credentials,
       PasskeyCredentialService passkeyService,
       ReauthenticationService reauthenticationService,
+      PasskeyRiskAuditService riskAuditService,
       Clock clock) {
     this.passkeyUsers = passkeyUsers;
     this.credentials = credentials;
     this.passkeyService = passkeyService;
     this.reauthenticationService = reauthenticationService;
+    this.riskAuditService = riskAuditService;
     this.clock = clock;
   }
 
@@ -130,6 +136,9 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
         .filter(candidate -> candidate.getUser().getStatus() == UserStatusEnum.ACTIVE)
         .orElseThrow(() -> new IllegalArgumentException("Active WebAuthn owner is required"));
     Instant registeredAt = clock.instant();
+    if (record.isBackupState() && !record.isBackupEligible()) {
+      rejectAnomaly(owner.getUser().getId(), PasskeyRiskReasonEnum.BACKUP_STATE_INCONSISTENT);
+    }
     UUID sessionReference = currentSessionReference();
     if (sessionReference == null || !reauthenticationService.isRecentlyAuthorized(
         owner.getUser().getId(),
@@ -191,10 +200,18 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
   }
 
   private void updateCurrent(PasskeyCredentialEntity current, CredentialRecord record) {
-    if (!isUsable(current)
-        || !Arrays.equals(current.getPasskeyUser().getUserHandle(),
-            record.getUserEntityUserId().getBytes())
-        || !current.getCredentialType().equals(record.getCredentialType().getValue())
+    Long userId = current.getPasskeyUser().getUser().getId();
+    if (!isUsable(current)) {
+      rejectAnomaly(userId, PasskeyRiskReasonEnum.CREDENTIAL_NOT_USABLE);
+    }
+    if (!Arrays.equals(current.getPasskeyUser().getUserHandle(),
+        record.getUserEntityUserId().getBytes())) {
+      rejectAnomaly(userId, PasskeyRiskReasonEnum.OWNER_MISMATCH);
+    }
+    if (record.isBackupState() && !record.isBackupEligible()) {
+      rejectAnomaly(userId, PasskeyRiskReasonEnum.BACKUP_STATE_INCONSISTENT);
+    }
+    if (!current.getCredentialType().equals(record.getCredentialType().getValue())
         || !Arrays.equals(current.getPublicKey(), record.getPublicKey().getBytes())
         || current.isUvInitialized() != record.isUvInitialized()
         || current.isBackupEligible() != record.isBackupEligible()
@@ -203,7 +220,13 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
         || !Arrays.equals(current.getAttestationClientDataJson(),
             record.getAttestationClientDataJSON().getBytes())
         || !current.getLabel().equals(record.getLabel())) {
-      throw new IllegalStateException("WebAuthn credential immutable material changed");
+      rejectAnomaly(userId, PasskeyRiskReasonEnum.IMMUTABLE_MATERIAL_MISMATCH);
+    }
+    long previousSignatureCount = current.getSignatureCount();
+    long newSignatureCount = record.getSignatureCount();
+    if (newSignatureCount < previousSignatureCount
+        || (previousSignatureCount > 0 && newSignatureCount == previousSignatureCount)) {
+      rejectAnomaly(userId, PasskeyRiskReasonEnum.SIGNATURE_COUNTER_REGRESSION);
     }
     Instant lastUsed = record.getLastUsed();
     if (record.getSignatureCount() != current.getSignatureCount()
@@ -214,6 +237,11 @@ public class SpringWebAuthnCredentialRepositoryAdapter implements UserCredential
           record.isBackupState(),
           lastUsed == null ? clock.instant() : lastUsed);
     }
+  }
+
+  private void rejectAnomaly(Long userId, PasskeyRiskReasonEnum reason) {
+    riskAuditService.record(userId, reason, UUID.randomUUID(), clock.instant());
+    throw new IllegalStateException("WebAuthn credential assertion was rejected");
   }
 
   private static boolean isUsable(PasskeyCredentialEntity credential) {

@@ -357,7 +357,12 @@ Ref: Spec FR-AUTH-PK-*; Contract External Services §WebAuthn; Interface INT-WEB
 > as invariantes de revogação estão registrados em
 > [`evidence/4.2.4/README.md`](./evidence/4.2.4/README.md). O cadastro somente persiste depois de uma sessão ativa
 > comprovar garantia recente; a revogação é lógica e não afeta credenciais independentes.
-- [ ] 4.2.5 Auditar anomalias sem revogar automaticamente credenciais independentes
+- [x] 4.2.5 Auditar anomalias sem revogar automaticamente credenciais independentes
+
+> [!NOTE]
+> A rejeição anterior à mutação, os motivos sanitizados, a persistência independente do evento e a ausência de
+> revogação automática estão registrados em [`evidence/4.2.5/README.md`](./evidence/4.2.5/README.md). Contador
+> positivo repetido ou regressivo é tratado como risco; contador permanentemente zero permanece compatível.
 - [ ] 4.2.6 Testar registro/login descobrível, origem/RP inválidos, replay, cancelamento e revogação
 
 ### 4.3 Implementar login e gestão da identidade Google `[C]`

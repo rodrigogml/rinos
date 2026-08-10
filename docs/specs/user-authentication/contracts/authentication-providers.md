@@ -243,6 +243,13 @@ expõe somente UUID de gestão, label, criação, último uso e estado. Credenti
 nunca atravessam a API ou o provider RFW. Renomear e cadastrar geram auditoria sanitizada; revogar conserva as
 invariantes de último método e impede imediatamente novas resoluções pelo repository WebAuthn.
 
+Uma assertion que tente usar credential inativa, trocar seu owner ou material imutável, repetir/regredir um contador
+positivo ou apresentar estado de backup impossível é rejeitada antes de alterar a credential. A ocorrência gera
+`PASSKEY_RISK_DETECTED` em transação independente, com motivo catalogado e correlação aleatória, sem material
+WebAuthn, nome ou identificador público da credential. Essa detecção não revoga automaticamente a passkey observada,
+outras credenciais, sessões ou métodos independentes. Contadores permanentemente iguais a zero continuam aceitos,
+pois representam autenticadores que não oferecem contador confiável.
+
 Operações de gestão:
 
 | Operation | Precondition | Effect |
