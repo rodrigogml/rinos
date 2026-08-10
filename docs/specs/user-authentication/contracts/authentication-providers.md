@@ -208,6 +208,12 @@ O adapter Rinos não será registrado antes da entrega do schema e da facade rea
 - Para vínculo autenticado, a requisição inclui operação de reautenticação já aprovada e confirmação explícita.
 - `link`/`unlink` aplicam unicidade e invariantes do último método em transação.
 
+`GoogleAuthenticationIdentityService` recebe somente issuer e subject já validados, bloqueia o vínculo pela chave
+composta e entrega usuário interno apenas quando vínculo e identidade global estão ativos. Vínculo ausente é
+distinguido internamente para permitir a continuação segura de um novo cadastro; vínculo pendente ou usuário não ativo
+é rejeitado. O serviço não recebe e-mail e não possui acesso a busca por e-mail, portanto mudança do e-mail Google ou
+coincidência com uma conta Rinos não altera a chave de login nem cria associação.
+
 ## Passkey Authentication and Management
 
 **RFW/Spring contracts**: endpoints WebAuthn, `RFWPasskeyComponent`,

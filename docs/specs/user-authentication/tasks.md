@@ -380,7 +380,11 @@ Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Int
 > A composição condicional do provider real, a fronteira que impede o ID token de alcançar o domínio e os testes de
 > assinatura, issuer, audience, nonce, validade e tolerância estão registrados em
 > [`evidence/4.3.1/README.md`](./evidence/4.3.1/README.md).
-- [ ] 4.3.2 Localizar exclusivamente por `issuer + sub` e rejeitar associação automática por e-mail
+- [x] 4.3.2 Localizar exclusivamente por `issuer + sub` e rejeitar associação automática por e-mail
+
+> [!NOTE]
+> A resolução transacional sem parâmetro ou consulta de e-mail, a distinção interna de vínculo ausente e a rejeição de
+> vínculo/usuário inativo estão registradas em [`evidence/4.3.2/README.md`](./evidence/4.3.2/README.md).
 - [ ] 4.3.3 Integrar login ao orquestrador, MFA administrativo e gate legal
 - [ ] 4.3.4 Implementar vínculo explícito, conflito único e desvínculo com último método
 - [ ] 4.3.5 Garantir ausência de access/refresh token persistente e fallback independente
