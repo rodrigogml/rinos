@@ -189,6 +189,30 @@ class AuthenticationFlowServiceTest {
         .containsExactly(AuthenticationMethodEnum.PASSWORD, AuthenticationMethodEnum.TOTP);
   }
 
+  @Test
+  void registerFailure_shouldInvalidateFlowAtSharedLimit() {
+    String reference = tokenService.generate();
+    AuthenticationFlowEntity flow = flow(reference, ISSUED_AT.plusSeconds(300));
+    when(flowRepository.findByReferenceHashForUpdate(any(byte[].class)))
+        .thenReturn(Optional.of(flow));
+
+    AuthenticationOperationStatusEnum first = service.registerFailure(
+        reference,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        2,
+        ISSUED_AT.plusSeconds(10));
+    AuthenticationOperationStatusEnum second = service.registerFailure(
+        reference,
+        AuthenticationFlowPurposeEnum.SIGN_IN,
+        2,
+        ISSUED_AT.plusSeconds(20));
+
+    assertThat(first).isEqualTo(AuthenticationOperationStatusEnum.OPEN);
+    assertThat(second).isEqualTo(AuthenticationOperationStatusEnum.INVALIDATED);
+    assertThat(flow.getFailureCount()).isEqualTo(2);
+    assertThat(flow.getStatus()).isEqualTo(AuthenticationFlowStatusEnum.INVALIDATED);
+  }
+
   private AuthenticationFlowEntity flow(String reference, Instant expiresAt) {
     AuthenticationFlowEntity flow = new AuthenticationFlowEntity(
         user,

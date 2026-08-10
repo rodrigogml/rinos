@@ -2,7 +2,6 @@ package br.com.rinos.app.backend.module.identity.facade;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -27,6 +26,7 @@ import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
 import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationSecondFactorPolicyService;
 import br.com.rinos.app.backend.module.identity.service.PasswordCredentialAuthenticationService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
@@ -47,15 +47,10 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
   private static final Logger LOGGER = LoggerFactory.getLogger(
       PasswordAuthenticationFacadeImpl.class);
 
-  private static final Set<br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum>
-      MFA_ACTIVATION_METHODS = Set.of(
-          br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.TOTP,
-          br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.EMAIL_CODE,
-          br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.RECOVERY_CODE);
-
   private final PasswordCredentialAuthenticationService credentialAuthenticationService;
   private final AuthenticationAbuseProtectionService abuseProtectionService;
   private final AuthenticationMethodAvailabilityService methodAvailabilityService;
+  private final AuthenticationSecondFactorPolicyService secondFactorPolicy;
   private final AuthenticationOrchestrationFacade orchestrationFacade;
   private final AuthenticationMfaPropertiesConfig mfaProperties;
   private final Clock clock;
@@ -66,9 +61,11 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       PasswordCredentialAuthenticationService credentialAuthenticationService,
       AuthenticationAbuseProtectionService abuseProtectionService,
       AuthenticationMethodAvailabilityService methodAvailabilityService,
+      AuthenticationSecondFactorPolicyService secondFactorPolicy,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties) {
     this(credentialAuthenticationService, abuseProtectionService, methodAvailabilityService,
+        secondFactorPolicy,
         orchestrationFacade,
         mfaProperties, Clock.systemUTC());
   }
@@ -78,12 +75,14 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       PasswordCredentialAuthenticationService credentialAuthenticationService,
       AuthenticationAbuseProtectionService abuseProtectionService,
       AuthenticationMethodAvailabilityService methodAvailabilityService,
+      AuthenticationSecondFactorPolicyService secondFactorPolicy,
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties,
       Clock clock) {
     this.credentialAuthenticationService = credentialAuthenticationService;
     this.abuseProtectionService = abuseProtectionService;
     this.methodAvailabilityService = methodAvailabilityService;
+    this.secondFactorPolicy = secondFactorPolicy;
     this.orchestrationFacade = orchestrationFacade;
     this.mfaProperties = mfaProperties;
     this.clock = clock;
@@ -112,16 +111,14 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       long userId = verifiedUser.getAsLong();
       Set<br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum> available =
           methodAvailabilityService.availableMethods(userId);
-      EnumSet<AuthenticationMethodEnum> permitted = EnumSet.noneOf(AuthenticationMethodEnum.class);
-      available.stream()
-          .filter(method -> method
-              != br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.PASSWORD)
-          .filter(method -> method
-              != br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.GOOGLE)
+      Set<br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum> backendPermitted =
+          secondFactorPolicy.permittedMethods(
+              br.com.rinos.app.backend.module.identity.enums.AuthenticationMethodEnum.PASSWORD,
+              available);
+      Set<AuthenticationMethodEnum> permitted = backendPermitted.stream()
           .map(method -> AuthenticationMethodEnum.valueOf(method.name()))
-          .forEach(permitted::add);
-      AuthenticationAssuranceEnum requiredAssurance = available.stream()
-          .anyMatch(MFA_ACTIVATION_METHODS::contains)
+          .collect(java.util.stream.Collectors.toUnmodifiableSet());
+      AuthenticationAssuranceEnum requiredAssurance = secondFactorPolicy.requiresMultiFactor(available)
               ? AuthenticationAssuranceEnum.MULTI_FACTOR
               : AuthenticationAssuranceEnum.SINGLE_FACTOR;
       return completed(new PasswordAuthenticationResultVO(

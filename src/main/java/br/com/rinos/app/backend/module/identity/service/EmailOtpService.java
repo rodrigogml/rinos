@@ -226,6 +226,7 @@ public class EmailOtpService {
         flowReference, AuthenticationFlowPurposeEnum.SIGN_IN, occurredAt);
     if (flow.status() != AuthenticationOperationStatusEnum.OPEN
         || !Objects.equals(flow.userId(), user.getId())
+        || flow.primaryMethod() == AuthenticationMethodEnum.GOOGLE
         || !flow.permittedMethods().contains(AuthenticationMethodEnum.EMAIL_CODE)) {
       return null;
     }

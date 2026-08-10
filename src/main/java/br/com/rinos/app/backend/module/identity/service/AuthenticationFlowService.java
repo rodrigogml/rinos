@@ -230,6 +230,42 @@ public class AuthenticationFlowService {
   }
 
   /**
+   * Registra uma tentativa rejeitada e encerra o fluxo ao atingir o limite compartilhado.
+   *
+   * @param reference referência opaca do fluxo
+   * @param expectedPurpose finalidade esperada
+   * @param maximumFailures quantidade máxima de falhas no fluxo
+   * @param occurredAt instante UTC da tentativa
+   * @return estado aberto, invalidado, expirado ou rejeitado
+   */
+  @Transactional
+  public AuthenticationOperationStatusEnum registerFailure(
+      String reference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      int maximumFailures,
+      Instant occurredAt) {
+    return applyFailureLimit(reference, expectedPurpose, maximumFailures, occurredAt, true);
+  }
+
+  /**
+   * Encerra o fluxo quando outro protocolo já contabilizou a falha que alcançou o limite.
+   *
+   * @param reference referência opaca do fluxo
+   * @param expectedPurpose finalidade esperada
+   * @param maximumFailures quantidade máxima de falhas no fluxo
+   * @param occurredAt instante UTC da tentativa
+   * @return estado aberto, invalidado, expirado ou rejeitado
+   */
+  @Transactional
+  public AuthenticationOperationStatusEnum enforceFailureLimit(
+      String reference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      int maximumFailures,
+      Instant occurredAt) {
+    return applyFailureLimit(reference, expectedPurpose, maximumFailures, occurredAt, false);
+  }
+
+  /**
    * Resolve somente o usuário proprietário para que a camada superior respeite a ordem de locks.
    */
   @Transactional(readOnly = true)
@@ -323,6 +359,35 @@ public class AuthenticationFlowService {
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
     AuthenticationFlowEntity flow = findLocked(reference);
     return access(flow, expectedPurpose, occurredAt, consume);
+  }
+
+  private AuthenticationOperationStatusEnum applyFailureLimit(
+      String reference,
+      AuthenticationFlowPurposeEnum expectedPurpose,
+      int maximumFailures,
+      Instant occurredAt,
+      boolean registerFailure) {
+    Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    if (maximumFailures <= 0) {
+      throw new IllegalArgumentException("maximumFailures must be positive");
+    }
+    AuthenticationFlowEntity flow = findLocked(reference);
+    if (flow == null || expectedPurpose == null || flow.getPurpose() != expectedPurpose) {
+      return AuthenticationOperationStatusEnum.REJECTED;
+    }
+    AuthenticationFlowInspectionVO terminal = terminalOrExpire(flow, occurredAt);
+    if (terminal != null) {
+      return terminal.status();
+    }
+    if (registerFailure) {
+      flow.registerFailure();
+    }
+    if (flow.getFailureCount() < maximumFailures) {
+      return AuthenticationOperationStatusEnum.OPEN;
+    }
+    invalidateOpenProofs(flow, occurredAt);
+    flow.invalidate(occurredAt);
+    return AuthenticationOperationStatusEnum.INVALIDATED;
   }
 
   private AuthenticationFlowInspectionVO access(

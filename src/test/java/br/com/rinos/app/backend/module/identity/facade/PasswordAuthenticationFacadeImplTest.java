@@ -32,6 +32,7 @@ import br.com.rinos.app.api.vo.AuthenticationOrchestrationResultVO;
 import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
+import br.com.rinos.app.backend.module.identity.service.AuthenticationSecondFactorPolicyService;
 import br.com.rinos.app.backend.module.identity.service.PasswordCredentialAuthenticationService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
@@ -58,6 +59,7 @@ class PasswordAuthenticationFacadeImplTest {
         credentials,
         abuseProtection,
         availability,
+        new AuthenticationSecondFactorPolicyService(),
         orchestration,
         new AuthenticationMfaPropertiesConfig(
             Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)),
@@ -110,8 +112,7 @@ class PasswordAuthenticationFacadeImplTest {
     verify(orchestration).start(captor.capture());
     assertThat(captor.getValue().requiredAssurance())
         .isEqualTo(AuthenticationAssuranceEnum.SINGLE_FACTOR);
-    assertThat(captor.getValue().permittedMethods())
-        .containsExactly(AuthenticationMethodEnum.PASSKEY);
+    assertThat(captor.getValue().permittedMethods()).isEmpty();
     assertThat(captor.getValue().expiresAt()).isEqualTo(NOW.plusSeconds(300));
   }
 
@@ -134,7 +135,6 @@ class PasswordAuthenticationFacadeImplTest {
     assertThat(captor.getValue().requiredAssurance())
         .isEqualTo(AuthenticationAssuranceEnum.MULTI_FACTOR);
     assertThat(captor.getValue().permittedMethods()).containsExactlyInAnyOrder(
-        AuthenticationMethodEnum.PASSKEY,
         AuthenticationMethodEnum.TOTP,
         AuthenticationMethodEnum.RECOVERY_CODE);
     assertThat(captor.getValue().persistentLoginRequested()).isTrue();

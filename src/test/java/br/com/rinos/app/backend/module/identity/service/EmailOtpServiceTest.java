@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -181,6 +182,30 @@ class EmailOtpServiceTest {
 
     assertThat(service.verify(FLOW_REFERENCE, "000000", NOW))
         .isEqualTo(EmailOtpVerificationStatusEnum.ATTEMPTS_EXHAUSTED);
+  }
+
+  @Test
+  void issueAndVerify_shouldRejectEmailChannelAfterGooglePrimaryFactor() {
+    when(flows.snapshot(FLOW_REFERENCE, AuthenticationFlowPurposeEnum.SIGN_IN, NOW))
+        .thenReturn(new AuthenticationFlowSnapshotVO(
+            AuthenticationOperationStatusEnum.OPEN,
+            71L,
+            11L,
+            AuthenticationFlowPurposeEnum.SIGN_IN,
+            AuthenticationMethodEnum.GOOGLE,
+            AuthenticationAssuranceEnum.MULTI_FACTOR,
+            Set.of(AuthenticationMethodEnum.EMAIL_CODE),
+            List.of(),
+            false,
+            NOW.plusSeconds(300),
+            UUID.fromString("e1db5d63-aeb5-4b5a-a450-1a751988cf2b")));
+
+    assertThat(service.issue(FLOW_REFERENCE, false, NOW).status())
+        .isEqualTo(EmailOtpEmissionStatusEnum.REJECTED);
+    assertThat(service.verify(FLOW_REFERENCE, "123456", NOW))
+        .isEqualTo(EmailOtpVerificationStatusEnum.REJECTED);
+    verify(codes, never()).generate();
+    verify(proofService, never()).consumeMac(any(), any(), any(), any(), any(), any(Integer.class), any());
   }
 
   @Test

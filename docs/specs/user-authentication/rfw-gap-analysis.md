@@ -44,11 +44,14 @@ de challenge simples.
 
 ## Gap AUTH-RFW-003: fator por e-mail não possui emissão, seleção e reenvio
 
-**Evidence**: `RFWSecondFactorProvider` somente verifica. Trocar o método permitido no renderer não chama o backend
-para emitir OTP, e não há operação de reenvio com nova validade.
+**Delivery status**: concluído na baseline `911aa5d94c88d4760aed7c72e34bc56ee57284fb`.
 
-**Required evolution**: provider para iniciar/selecionar/reemitir método do desafio e outcome com destino mascarado,
-expiração, limitação e indisponibilidade. A UI deve renovar a prova sem conservar código anterior.
+**Evidence**: `RFWSecondFactorProvider` oferece `getEmissionMethods()`, `begin(...)`, `resend(...)` e `verify(...)`.
+O componente chama a emissão somente após seleção explícita, preserva métodos sem emissão e mantém o challenge
+corrente diante de rejeição ou limitação.
+
+**Delivered evolution**: provider para iniciar/selecionar/reemitir método do desafio e outcome com destino mascarado,
+expiração, limitação e indisponibilidade. A UI renova a prova sem conservar código anterior.
 
 **Compatibility**: TOTP e recovery code podem continuar verificáveis sem emissão; e-mail só aparece quando o provider
 de emissão estiver presente.

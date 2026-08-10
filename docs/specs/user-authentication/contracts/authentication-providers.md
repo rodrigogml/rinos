@@ -113,8 +113,8 @@ token ou origem.
 
 **RFW contracts**: `RFWSecondFactorProvider`, `RFWSecondFactorEmissionRequestDTO`,
 `RFWSecondFactorEmissionOutcomeVO` e `RFWSecondFactorEmissionVO`<br>
-**Rinos facades**: `EmailOtpFacade` para emissão/consumo por e-mail; `SecondFactorFacade` será a composição contextual
-da tarefa 4.1.5
+**Rinos facades**: `EmailOtpFacade` para emissão por e-mail e `SecondFactorFacade` para seleção, consumo e avanço
+contextual do fluxo
 
 ### Begin/resend
 
@@ -128,7 +128,8 @@ TOTP e recovery code não exigem emissão. E-mail emite um OTP novo após commit
 mascarado, validade e primeiro instante de reenvio. A UI só oferece e-mail quando
 `RFWSecondFactorProvider.getEmissionMethods()` o declara e só chama `begin(...)` depois da seleção explícita. Um
 `resend(...)` bem-sucedido substitui atomicamente a prova anterior; limitação usa erro público com `retryAfter`, e
-indisponibilidade não afirma entrega. Passkey abre opções WebAuthn vinculadas ao mesmo fluxo.
+indisponibilidade não afirma entrega. Passkey somente ingressa no catálogo quando o verificador WebAuthn da fase 4.2
+estiver registrado; uma credencial persistida sem provider executável não é anunciada pela UI.
 
 O contrato concreto de e-mail conserva a referência do próprio fluxo como `challengeReference`; o reenvio troca a
 prova protegida sob essa mesma continuação, de modo que o código anterior deixa de corresponder imediatamente. O
@@ -149,8 +150,16 @@ um reenvio concorrente posterior.
 | `method` | yes | método permitido e vinculado ao usuário do fluxo |
 | `proof` | conditional | código efêmero para TOTP/e-mail/recovery; ausente no callback WebAuthn |
 
-O resultado final pode autenticar, exigir aceite legal, rejeitar com tentativas restantes não enumeráveis ou limitar.
-Nenhuma falha cria sessão parcial.
+Antes do consumo, o backend bloqueia usuário e fluxo, recompõe os métodos atualmente ativos e intersecta essa lista
+com a fotografia originalmente permitida. TOTP, e-mail e recovery code usam a mesma fronteira; o último recovery
+code (`EXHAUSTED`) ainda vale para a tentativa que o consumiu. Após primeiro fator Google, `EMAIL_CODE` é removido do
+catálogo e também rejeitado pela autoridade do OTP, mesmo diante de continuação antiga ou inconsistente.
+
+Consumo da prova e avanço do fluxo compartilham uma transação. Se o fator for válido, mas o orquestrador não puder
+produzir challenge posterior, gate legal ou `READY`, o consumo é revertido. Falhas de TOTP/recovery incrementam o
+limite compartilhado do fluxo; o OTP por e-mail já incrementa esse contador em sua comparação e não é contado duas
+vezes. Ao atingir o máximo configurado, fluxo e provas abertas são invalidados. O resultado final pode autenticar,
+exigir aceite legal ou rejeitar de forma neutra; nenhuma falha cria sessão parcial.
 
 ## Legal Consent after Authentication
 
@@ -410,8 +419,8 @@ devolve os códigos legíveis. Não existe consulta capaz de reapresentá-los, e
 redige. O consumo percorre apenas hashes `AVAILABLE` do conjunto ativo sob a ordem de lock usuário → conjunto →
 códigos e possui um único vencedor concorrente; o último uso muda o conjunto para `EXHAUSTED`.
 
-A fachada pública está pronta para a apresentação de uso único já suportada pela RFW. O vínculo do consumo ao fluxo
-de autenticação e a seleção contextual de `RECOVERY_CODE` pertencem à tarefa 4.1.5; o adapter de gestão autenticada
+A fachada pública está pronta para a apresentação de uso único já suportada pela RFW. O consumo de
+`RECOVERY_CODE` já está vinculado atomicamente ao fluxo pelo `SecondFactorFacade`; o adapter de gestão autenticada
 será conectado à tela na tarefa 5.4.1, preservando a reautenticação sensível existente.
 
 Para senha, `getPasswordCredential()` devolve somente `RFWPasswordCredentialVO`: estado `ABSENT`, `CONFIGURED` ou

@@ -314,8 +314,13 @@ Ref: Spec FR-AUTH-MFA-* e FR-AUTH-REC-009..011; Interface INT-WEB-AUTH-002/006
 > [!NOTE]
 > A geração fixa, a apresentação única, os hashes Argon2id independentes, a substituição atômica e o consumo
 > concorrente estão registrados em [`evidence/4.1.4/README.md`](./evidence/4.1.4/README.md). A composição com o fluxo
-> de autenticação permanece na tarefa 4.1.5 e a ligação do provider à tela de gestão permanece na tarefa 5.4.1.
-- [ ] 4.1.5 Implementar seleção de fator por contexto e invariantes administrativas/mesmo canal
+> de autenticação foi concluída na tarefa 4.1.5; a ligação do provider à tela de gestão permanece na tarefa 5.4.1.
+- [x] 4.1.5 Implementar seleção de fator por contexto e invariantes administrativas/mesmo canal
+
+> [!NOTE]
+> A política contextual, a defesa de mesmo canal, o consumo transacional e o provider RFW estão registrados em
+> [`evidence/4.1.5/README.md`](./evidence/4.1.5/README.md). Passkey somente ingressará nesse catálogo quando seu
+> verificador real for entregue na fase 4.2; exigências administrativas continuam sem conceder qualquer autorização.
 - [ ] 4.1.6 Testar vetores RFC, rotação de chave, concorrência, expiração, limites e apresentação única
 
 ### 4.2 Implementar passkeys sobre Spring Security WebAuthn `[C]`
