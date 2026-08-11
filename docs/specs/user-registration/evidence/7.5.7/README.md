@@ -1,14 +1,14 @@
 # Evidência da tarefa 7.5.7
 
-**Data da decisão**: 2026-08-02<br>
-**Decisão vigente**: **NO-GO para produção**
+**Data da decisão:** 2026-08-02  
+**Decisão vigente:** **NO-GO para produção**
 
 ## Autoridade do gate
 
 As subtarefas que impedem release são marcadas diretamente com `[release-blocker]` no
 `tasks.md`. O profile Maven `release` lê esse arquivo durante a fase `validate` e falha quando
-qualquer marcador estiver aberto (`[ ]`), em andamento (`[~]`) ou bloqueado (`[!]`). Não existe
-uma segunda lista de permissão no POM.
+qualquer marcador estiver aberto (`[ ]`, `[~]` ou `[!]`). Não existe uma segunda lista de
+permissão no POM.
 
 O procedimento operacional documentado exige:
 
@@ -21,18 +21,21 @@ um artefato aprovado para produção.
 
 ## Bloqueadores abertos
 
-Após a implementação da recuperação mínima e o fechamento da matriz automatizada, permanecem 12 gates abertos:
+Após a implementação da recuperação mínima, da matriz automatizada e da calibração no servidor-alvo,
+permanecem 10 gates abertos:
 
 | Grupo | IDs | Condição para GO |
-|-------|-----|------------------|
-| Documentos jurídicos | 6.0.3, 6.0.4, 6.0.5 | Inventário e fornecedores reais, revisão/autorizacão jurídica e publicação versionada |
+|---|---|---|
+| Documentos jurídicos | 6.0.3, 6.0.4, 6.0.5 | Inventário e fornecedores reais, revisão/autorização jurídica e publicação versionada |
 | Acesso inicial | 7.2.6 | Acesso real ao Painel validado sem tenant ou concessão automática |
 | Acessibilidade e usabilidade humana | 7.3.2, 7.3.3, 7.3.5, 7.3.6, 7.3.7 | Teclado, leitor de tela, dez participantes, metas 9/10 e triagem dos achados concluídos |
 | Integração real | 7.4.2 | Smoke SMTP real concluído depois dos gates locais já comprovados |
-| Ambiente de release | 7.5.5, 7.5.6 | JAR validado atrás do proxy real e Argon2id calibrado no perfil do servidor-alvo |
+
+O ambiente de release (`7.5.5` e `7.5.6`) já foi validado, incluindo a calibração efetiva no
+Turing com `iterations=75`; nenhum gate desse grupo permanece aberto.
 
 Marcar a tarefa 7.5.7 como concluída significa que a decisão NO-GO foi registrada e passou a ser
-aplicada pelo build. Não significa que os 12 bloqueadores remanescentes foram satisfeitos.
+aplicada pelo build. Não significa que os 10 bloqueadores remanescentes foram satisfeitos.
 
 ## Validação executada
 
@@ -42,20 +45,10 @@ O lifecycle comum permanece utilizável:
 mvn -q -DskipTests validate
 ```
 
-```text
-Exit code: 0
-```
-
-O gate de release foi executado com bloqueadores abertos:
+O gate de release deve continuar falhando enquanto os bloqueadores permanecerem abertos:
 
 ```shell
 mvn -Prelease -DskipTests validate
-```
-
-```text
-BUILD FAILURE
-NO-GO: user-registration possui gates de release abertos.
-Exit code: 1
 ```
 
 O bloqueio ocorre antes de compilar ou empacotar, evitando promover pelo procedimento oficial um
