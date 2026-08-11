@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -60,6 +61,7 @@ public class RinosAccessComponentFactory {
    * @param accessComponentFactory factory da plataforma
    * @param legalDocumentFacade consulta jurídica pública
    */
+  @Autowired
   public RinosAccessComponentFactory(
       RFWAccessComponentFactory accessComponentFactory,
       LegalDocumentFacade legalDocumentFacade,
