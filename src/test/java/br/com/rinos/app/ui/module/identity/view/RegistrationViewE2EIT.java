@@ -52,7 +52,9 @@ class RegistrationViewE2EIT {
   static void startBrowser() {
     playwright = Playwright.create();
     browser = playwright.chromium().launch(
-        new BrowserType.LaunchOptions().setHeadless(true));
+        new BrowserType.LaunchOptions()
+            .setHeadless(true)
+            .setTimeout(30_000));
   }
 
   /**
