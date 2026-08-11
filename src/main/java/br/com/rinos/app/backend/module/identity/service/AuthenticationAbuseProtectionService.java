@@ -80,6 +80,21 @@ public class AuthenticationAbuseProtectionService {
   }
 
   /**
+   * Consulta exclusivamente a janela do identificador para decidir uma notificação de abuso.
+   *
+   * @param identifier identificador informado
+   * @param occurredAt instante da consulta
+   * @return {@code true} quando o limiar do identificador está vigente
+   */
+  @Transactional
+  public boolean isIdentifierTurnstileRequired(String identifier, Instant occurredAt) {
+    ProtectedAuthenticationKeyVO key = identifierKey(identifier);
+    return windowService.inspect(
+        key.digest(), key.keyVersion(), AuthenticationWindowOperationEnum.SIGN_IN, occurredAt)
+        .turnstileRequired();
+  }
+
+  /**
    * Consulta as dimensões disponíveis sem incrementar contadores.
    *
    * <p>Quando o identificador ainda não foi informado, somente a origem participa da decisão. Com

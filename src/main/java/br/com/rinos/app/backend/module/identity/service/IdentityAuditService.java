@@ -7,6 +7,8 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +17,12 @@ import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
 import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
+import br.com.rinos.app.backend.module.identity.enums.AuthenticationNotificationTemplateEnum;
 import br.com.rinos.app.backend.module.identity.repository.IdentityEventRepository;
 import br.com.rinos.app.backend.module.identity.vo.IdentityEventReferenceVO;
 import br.com.rinos.app.backend.module.identity.vo.IdentityTransitionVO;
+import br.com.rinos.app.backend.module.identity.vo.AuthenticationNotificationRequestedEvent;
+import br.com.rinos.app.config.AuthenticationNotificationPropertiesConfig;
 
 /**
  * Registra resultados técnicos do ciclo de identidade sem receber ou persistir PII e segredos.
@@ -36,6 +41,8 @@ public class IdentityAuditService {
   private static final Pattern REASON_CODE = Pattern.compile("[A-Z][A-Z0-9_]{0,63}");
 
   private final IdentityEventRepository repository;
+  private final ApplicationEventPublisher eventPublisher;
+  private final AuthenticationNotificationPropertiesConfig notificationProperties;
 
   /**
    * Cria o serviço sobre o registro append-only.
@@ -43,7 +50,18 @@ public class IdentityAuditService {
    * @param repository persistência dos eventos
    */
   public IdentityAuditService(IdentityEventRepository repository) {
+    this(repository, null, null);
+  }
+
+  /** Cria o serviço integrado ao publisher e à política de cooldown. */
+  @Autowired
+  public IdentityAuditService(
+      IdentityEventRepository repository,
+      ApplicationEventPublisher eventPublisher,
+      AuthenticationNotificationPropertiesConfig notificationProperties) {
     this.repository = repository;
+    this.eventPublisher = eventPublisher;
+    this.notificationProperties = notificationProperties;
   }
 
   /**
@@ -90,11 +108,70 @@ public class IdentityAuditService {
         originType,
         reason,
         occurredAt));
+    scheduleNotification(user, correlationId, eventType, reason, occurredAt);
     return new IdentityEventReferenceVO(
         event.getId(),
         correlationId,
         event.getEventType(),
         event.getOccurredAt());
+  }
+
+  private void scheduleNotification(
+      UserEntity user,
+      UUID correlationId,
+      IdentityEventTypeEnum eventType,
+      String reason,
+      Instant occurredAt) {
+    if (user == null || eventPublisher == null || notificationProperties == null) {
+      return;
+    }
+    AuthenticationNotificationTemplateEnum template = notificationTemplate(eventType, reason);
+    if (template == null) {
+      return;
+    }
+    IdentityEventTypeEnum notificationEvent = notificationEvent(template);
+    if (template == AuthenticationNotificationTemplateEnum.REPEATED_FAILURES
+        && repository.existsByUserIdAndEventTypeAndOccurredAtAfter(
+            user.getId(), notificationEvent,
+            occurredAt.minus(notificationProperties.failedLoginCooldown()))) {
+      return;
+    }
+    repository.saveAndFlush(new IdentityEventEntity(
+        user,
+        null,
+        toBytes(correlationId),
+        notificationEvent,
+        null,
+        null,
+        IdentityTransitionOriginEnum.SELF_SERVICE,
+        template.name(),
+        occurredAt));
+    eventPublisher.publishEvent(new AuthenticationNotificationRequestedEvent(
+        user, template, correlationId, occurredAt));
+  }
+
+  private static AuthenticationNotificationTemplateEnum notificationTemplate(
+      IdentityEventTypeEnum eventType,
+      String reason) {
+    return switch (eventType) {
+      case AUTHENTICATION_METHOD_ADDED, AUTHENTICATION_METHOD_RENAMED,
+          AUTHENTICATION_METHOD_REMOVED -> AuthenticationNotificationTemplateEnum.METHOD_CHANGED;
+      case PASSWORD_RECOVERY_COMPLETED -> AuthenticationNotificationTemplateEnum.RECOVERY_COMPLETED;
+      case AUTHENTICATION_REPEATED_FAILURES -> AuthenticationNotificationTemplateEnum.REPEATED_FAILURES;
+      case AUTHENTICATION_SESSION_CREATED -> reason != null && reason.startsWith("NEW_DEVICE")
+          ? AuthenticationNotificationTemplateEnum.NEW_SESSION : null;
+      default -> null;
+    };
+  }
+
+  private static IdentityEventTypeEnum notificationEvent(
+      AuthenticationNotificationTemplateEnum template) {
+    return switch (template) {
+      case NEW_SESSION -> IdentityEventTypeEnum.SECURITY_NOTIFICATION_NEW_SESSION;
+      case METHOD_CHANGED -> IdentityEventTypeEnum.SECURITY_NOTIFICATION_METHOD_CHANGED;
+      case RECOVERY_COMPLETED -> IdentityEventTypeEnum.SECURITY_NOTIFICATION_RECOVERY_COMPLETED;
+      case REPEATED_FAILURES -> IdentityEventTypeEnum.SECURITY_NOTIFICATION_REPEATED_FAILURES;
+    };
   }
 
   /**

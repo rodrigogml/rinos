@@ -27,7 +27,14 @@ import br.com.rinos.app.api.vo.PasswordAuthenticationResultVO;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationAbuseProtectionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodAvailabilityService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationSecondFactorPolicyService;
+import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
+import br.com.rinos.app.backend.module.identity.service.IdentityAuditService;
 import br.com.rinos.app.backend.module.identity.service.PasswordCredentialAuthenticationService;
+import br.com.rinos.app.backend.module.identity.entity.UserEntity;
+import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
+import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
+import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationAbuseDecisionVO;
 import br.com.rinos.app.config.AuthenticationMfaPropertiesConfig;
 
@@ -53,10 +60,12 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
   private final AuthenticationSecondFactorPolicyService secondFactorPolicy;
   private final AuthenticationOrchestrationFacade orchestrationFacade;
   private final AuthenticationMfaPropertiesConfig mfaProperties;
+  private final UserRepository userRepository;
+  private final EmailNormalizationService emailNormalizationService;
+  private final IdentityAuditService identityAuditService;
   private final Clock clock;
 
   /** Cria a fachada com relógio UTC. */
-  @Autowired
   public PasswordAuthenticationFacadeImpl(
       PasswordCredentialAuthenticationService credentialAuthenticationService,
       AuthenticationAbuseProtectionService abuseProtectionService,
@@ -67,7 +76,24 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
     this(credentialAuthenticationService, abuseProtectionService, methodAvailabilityService,
         secondFactorPolicy,
         orchestrationFacade,
-        mfaProperties, Clock.systemUTC());
+        mfaProperties, null, null, null, Clock.systemUTC());
+  }
+
+  /** Cria a fachada com o registro interno de falhas repetidas habilitado. */
+  @Autowired
+  public PasswordAuthenticationFacadeImpl(
+      PasswordCredentialAuthenticationService credentialAuthenticationService,
+      AuthenticationAbuseProtectionService abuseProtectionService,
+      AuthenticationMethodAvailabilityService methodAvailabilityService,
+      AuthenticationSecondFactorPolicyService secondFactorPolicy,
+      AuthenticationOrchestrationFacade orchestrationFacade,
+      AuthenticationMfaPropertiesConfig mfaProperties,
+      UserRepository userRepository,
+      EmailNormalizationService emailNormalizationService,
+      IdentityAuditService identityAuditService) {
+    this(credentialAuthenticationService, abuseProtectionService, methodAvailabilityService,
+        secondFactorPolicy, orchestrationFacade, mfaProperties, userRepository,
+        emailNormalizationService, identityAuditService, Clock.systemUTC());
   }
 
   /** Cria uma instância com relógio controlável para testes. */
@@ -79,12 +105,31 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       AuthenticationOrchestrationFacade orchestrationFacade,
       AuthenticationMfaPropertiesConfig mfaProperties,
       Clock clock) {
+    this(credentialAuthenticationService, abuseProtectionService, methodAvailabilityService,
+        secondFactorPolicy, orchestrationFacade, mfaProperties, null, null, null, clock);
+  }
+
+  /** Cria uma instância com relógio controlável e observabilidade completa. */
+  PasswordAuthenticationFacadeImpl(
+      PasswordCredentialAuthenticationService credentialAuthenticationService,
+      AuthenticationAbuseProtectionService abuseProtectionService,
+      AuthenticationMethodAvailabilityService methodAvailabilityService,
+      AuthenticationSecondFactorPolicyService secondFactorPolicy,
+      AuthenticationOrchestrationFacade orchestrationFacade,
+      AuthenticationMfaPropertiesConfig mfaProperties,
+      UserRepository userRepository,
+      EmailNormalizationService emailNormalizationService,
+      IdentityAuditService identityAuditService,
+      Clock clock) {
     this.credentialAuthenticationService = credentialAuthenticationService;
     this.abuseProtectionService = abuseProtectionService;
     this.methodAvailabilityService = methodAvailabilityService;
     this.secondFactorPolicy = secondFactorPolicy;
     this.orchestrationFacade = orchestrationFacade;
     this.mfaProperties = mfaProperties;
+    this.userRepository = userRepository;
+    this.emailNormalizationService = emailNormalizationService;
+    this.identityAuditService = identityAuditService;
     this.clock = clock;
   }
 
@@ -103,6 +148,10 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
       if (verifiedUser.isEmpty()) {
         AuthenticationAbuseDecisionVO abuse = abuseProtectionService.registerFailure(
             request.identifier(), request.canonicalOrigin(), now);
+        if (abuse.turnstileRequired()
+            && abuseProtectionService.isIdentifierTurnstileRequired(request.identifier(), now)) {
+          recordRepeatedFailureIfKnown(request.identifier(), request.correlationId(), now);
+        }
         return completed(new PasswordAuthenticationResultVO(
             terminal(AuthenticationOrchestrationStatusEnum.REJECTED),
             abuse.turnstileRequired(),
@@ -144,6 +193,33 @@ public class PasswordAuthenticationFacadeImpl implements PasswordAuthenticationF
           terminal(AuthenticationOrchestrationStatusEnum.UNAVAILABLE),
           false,
           java.time.Duration.ZERO));
+    }
+  }
+
+  private void recordRepeatedFailureIfKnown(
+      String identifier,
+      java.util.UUID correlationId,
+      Instant occurredAt) {
+    if (userRepository == null || emailNormalizationService == null || identityAuditService == null) {
+      return;
+    }
+    try {
+      String normalized = emailNormalizationService.normalize(identifier).normalizedEmail();
+      UserEntity user = userRepository.findByNormalizedEmailForUpdate(normalized).orElse(null);
+      if (user != null && user.getStatus() == UserStatusEnum.ACTIVE) {
+        identityAuditService.record(
+            user,
+            null,
+            correlationId,
+            IdentityEventTypeEnum.AUTHENTICATION_REPEATED_FAILURES,
+            null,
+            null,
+            IdentityTransitionOriginEnum.SELF_SERVICE,
+            "TURNSTILE_THRESHOLD",
+            occurredAt);
+      }
+    } catch (RuntimeException ignored) {
+      // Neutralidade pública prevalece quando a consulta de observabilidade falha.
     }
   }
 

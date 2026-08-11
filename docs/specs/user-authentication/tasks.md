@@ -428,7 +428,13 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 > [!NOTE]
 > O catálogo tipado de templates e eventos foi criado, sem acoplar o envio aos limiares/cooldowns da tarefa 4.4.4.
 > Evidências em [`evidence/4.4.3/README.md`](./evidence/4.4.3/README.md).
-- [ ] 4.4.4 Disparar notificações pós-commit conforme mudança/recuperação, limiar com cooldown de 24 horas ou navegador não reconhecido em 30 dias
+- [x] 4.4.4 Disparar notificações pós-commit conforme mudança/recuperação, limiar com cooldown de 24 horas ou navegador não reconhecido em 30 dias
+
+> [!NOTE]
+> Solicitações de notificação são registradas junto ao evento original e publicadas somente após commit. Mudança de
+> método e recuperação notificam uma vez por operação; novo navegador usa digest e retenção de 30 dias; falhas
+> repetidas consultam exclusivamente a janela do identificador e respeitam o cooldown configurado. Evidências em
+> [`evidence/4.4.4/README.md`](./evidence/4.4.4/README.md).
 - [x] 4.4.5 Estender limpeza diária para fluxos, provas, sessões, janelas e códigos expirados
 
 > [!NOTE]

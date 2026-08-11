@@ -100,6 +100,26 @@ public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, 
       """)
   List<AuthSessionEntity> findByUserIdForManagement(@Param("userId") Long userId);
 
+  /**
+   * Verifica se o digest do navegador já apareceu em sessão retida do usuário.
+   *
+   * @param userId identidade proprietária
+   * @param userAgentDigest digest do agente, nunca o valor bruto
+   * @param createdAfter início exclusivo da retenção
+   * @return {@code true} quando o navegador é reconhecido
+   */
+  @Query("""
+      SELECT CASE WHEN COUNT(session) > 0 THEN true ELSE false END
+      FROM AuthSessionEntity session
+      WHERE session.user.id = :userId
+        AND session.userAgentDigest = :userAgentDigest
+        AND session.createdAt > :createdAfter
+      """)
+  boolean existsRecognizedUserAgent(
+      @Param("userId") Long userId,
+      @Param("userAgentDigest") byte[] userAgentDigest,
+      @Param("createdAfter") Instant createdAfter);
+
   /** Bloqueia sessões ativas vencidas por qualquer limite temporal. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("""

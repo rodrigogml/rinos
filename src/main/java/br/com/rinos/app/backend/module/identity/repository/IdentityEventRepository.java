@@ -36,6 +36,19 @@ public interface IdentityEventRepository extends JpaRepository<IdentityEventEnti
   List<IdentityEventEntity> findByUserId(Long userId);
 
   /**
+   * Verifica se uma notificação do mesmo tipo já foi solicitada dentro do cooldown.
+   *
+   * @param userId identidade destinatária
+   * @param eventType evento de notificação
+   * @param occurredAfter início exclusivo da janela
+   * @return {@code true} quando há solicitação recente
+   */
+  boolean existsByUserIdAndEventTypeAndOccurredAtAfter(
+      Long userId,
+      IdentityEventTypeEnum eventType,
+      Instant occurredAfter);
+
+  /**
    * Lista reemissões recentes de uma pendência para aplicar a janela móvel.
    *
    * @param registrationId identificador interno do cadastro

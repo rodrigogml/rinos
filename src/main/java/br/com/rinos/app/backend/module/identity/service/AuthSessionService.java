@@ -140,11 +140,16 @@ public class AuthSessionService {
           method.userVerification()));
     }
     methodRepository.flush();
+    boolean newDevice = userAgentDigest == null
+        || !sessionRepository.existsRecognizedUserAgent(
+            user.getId(),
+            userAgentDigest,
+            authenticatedAt.minus(retentionProperties.terminalSessions()));
     audit(
         user,
         correlationId,
         IdentityEventTypeEnum.AUTHENTICATION_SESSION_CREATED,
-        primaryMethod.name(),
+        newDevice ? "NEW_DEVICE_" + primaryMethod.name() : primaryMethod.name(),
         authenticatedAt);
     return new IssuedAuthSessionVO(
         cookie(selector, validator), publicReference, absoluteExpiresAt, idleExpiresAt);
