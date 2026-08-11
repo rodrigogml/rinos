@@ -530,12 +530,15 @@ Ref: [Interface INT-WEB-AUTH-005](./interface-spec.md#int-web-auth-005--configur
 
 Ref: Interface INT-WEB-AUTH-006, INT-WEB-AUTH-007, INT-WEB-AUTH-008 e INT-WEB-AUTH-009
 
-- [ ] 5.4.1 Integrar enrollment/remoção de fatores e apresentação única de recovery codes
-- [ ] 5.4.2 Integrar cadastro, nomeação, listagem e revogação de passkeys
-- [ ] 5.4.3 Integrar criação/alteração de senha e vínculo/desvínculo Google
-- [ ] 5.4.4 Integrar reconhecimento e revogação de sessão atual, remota, outras ou todas
-- [ ] 5.4.5 Cobrir invariants, confirmação destrutiva, stale, foco, responsividade, i18n e telemetria
-- [ ] 5.4.6 Criar testes de componente, integração real, E2E e inspeção visual de todas as seções
+- [x] 5.4.1 Integrar enrollment/remoção de fatores e apresentação única de recovery codes
+- [x] 5.4.2 Integrar cadastro, nomeação, listagem e revogação de passkeys
+- [x] 5.4.3 Integrar criação/alteração de senha e vínculo/desvínculo Google
+- [x] 5.4.4 Integrar reconhecimento e revogação de sessão atual, remota, outras ou todas
+- [x] 5.4.5 Cobrir invariants, confirmação destrutiva, stale, foco, responsividade, i18n e telemetria
+- [x] 5.4.6 Criar testes de componente, integração real, E2E e inspeção visual de todas as seções
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/5.4/README.md`](./evidence/5.4/README.md).
 
 ### 5.5 Implementar reautenticação INT-WEB-AUTH-010 `[C]`
 
