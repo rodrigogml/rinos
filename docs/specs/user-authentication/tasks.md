@@ -544,12 +544,15 @@ Ref: Interface INT-WEB-AUTH-006, INT-WEB-AUTH-007, INT-WEB-AUTH-008 e INT-WEB-AU
 
 Ref: [Interface INT-WEB-AUTH-010](./interface-spec.md#int-web-auth-010--reautenticar-para-operação-sensível)
 
-- [ ] 5.5.1 Integrar modal RFW ao catálogo de métodos e à validade de 15 minutos
-- [ ] 5.5.2 Identificar a operação em linguagem humana sem expor `operationId`
-- [ ] 5.5.3 Garantir cancelamento/erro sem mutação e retomada única após revalidação
-- [ ] 5.5.4 Cobrir os onze estados, passwordless, mesmo canal, timeout e operação stale
-- [ ] 5.5.5 Aplicar foco, teclado, leitor de tela, responsividade, i18n e telemetria
-- [ ] 5.5.6 Criar testes de componente, integração, E2E e inspeção visual
+- [x] 5.5.1 Integrar modal RFW ao catálogo de métodos e à validade de 15 minutos
+- [x] 5.5.2 Identificar a operação em linguagem humana sem expor `operationId`
+- [x] 5.5.3 Garantir cancelamento/erro sem mutação e retomada única após revalidação
+- [x] 5.5.4 Cobrir os onze estados, passwordless, mesmo canal, timeout e operação stale
+- [x] 5.5.5 Aplicar foco, teclado, leitor de tela, responsividade, i18n e telemetria
+- [x] 5.5.6 Criar testes de componente, integração, E2E e inspeção visual
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/5.5/README.md`](./evidence/5.5/README.md).
 
 ---
 
@@ -566,7 +569,7 @@ Ref: Plan §Validation Strategy; Quickstart §Scenario 13
 -
   > [!WARNING]
   > A execução completa do `mvn verify` do Rinos excedeu 120 segundos no ambiente local; os comandos focados e o build foram aprovados. A repetição sem limite curto fica para a janela de validação de infraestrutura.
-- [ ] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
+- [x] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
 - [x] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
 -
   > [!NOTE]
