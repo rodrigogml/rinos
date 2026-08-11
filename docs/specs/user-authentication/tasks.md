@@ -606,11 +606,14 @@ Ref: Spec SC-AUTH-001..002, SC-AUTH-015..016; Quickstart §Scenario 14
 
 Ref: Plan §Configuration Ownership; README §Produção
 
-- [ ] 7.1.1 Completar `application.properties.model` e documentação de secrets/keyring sem versionar valores reais
-- [ ] 7.1.2 Documentar proxy reverso, headers confiáveis, sticky sessions, cookies, origins e RP ID
-- [ ] 7.1.3 Documentar calibração Argon2id, ativação de integrações e validações pré-deploy
-- [ ] 7.1.4 Documentar manutenção, retenção, métricas, alertas e resposta a falhas de migração/autenticação
-- [ ] 7.1.5 Validar exemplos, links, consistência com RFW showroom e procedimento em ambiente local
+- [x] 7.1.1 Completar `application.properties.model` e documentação de secrets/keyring sem versionar valores reais
+- [x] 7.1.2 Documentar proxy reverso, headers confiáveis, sticky sessions, cookies, origins e RP ID
+- [x] 7.1.3 Documentar calibração Argon2id, ativação de integrações e validações pré-deploy
+- [x] 7.1.4 Documentar manutenção, retenção, métricas, alertas e resposta a falhas de migração/autenticação
+- [x] 7.1.5 Validar exemplos, links, consistência com RFW showroom e procedimento em ambiente local
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/7.1/README.md`](./evidence/7.1/README.md).
 
 ### 7.2 Fechar feature e publicar checkpoint `[A]`
 
