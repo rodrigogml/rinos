@@ -441,7 +441,11 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 > O catálogo diário já executa, em lotes e transações independentes, a limpeza de fluxos, provas, sessões e janelas
 > de autenticação, além dos códigos de recuperação e demais artefatos de identidade. Evidências em
 > [`evidence/4.4.5/README.md`](./evidence/4.4.5/README.md).
-- [ ] 4.4.6 Testar neutralidade, falha SMTP, invalidação, retenção e execução idempotente da manutenção
+- [x] 4.4.6 Testar neutralidade, falha SMTP, invalidação, retenção e execução idempotente da manutenção
+
+> [!NOTE]
+> Os testes de recuperação, dispatcher, limpeza, liderança e integrações MySQL cobrem neutralidade, falha de SMTP,
+> invalidação, retenção e repetição segura dos jobs. Evidências em [`evidence/4.4.6/README.md`](./evidence/4.4.6/README.md).
 
 ---
 
