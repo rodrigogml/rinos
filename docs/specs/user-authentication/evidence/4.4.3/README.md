@@ -13,6 +13,8 @@ tarefa 4.4.4.
   `authentication-repeated-failures`.
 - `IdentityEventTypeEnum` declara os quatro eventos correspondentes de solicitação, sem material secreto.
 - `AuthenticationNotificationTemplateEnumTest` protege os identificadores de integração com o RFW.
+- Os oito recursos em `src/main/resources/mail/templates/` materializam assunto e corpo HTML para os quatro
+  identificadores. Os corpos são estáticos e não carregam IP, digest, token, senha ou outro segredo.
 
 ## Validação
 
