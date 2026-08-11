@@ -1,10 +1,10 @@
 # Evidência 7.5.6 — calibração Argon2id no servidor-alvo
 
-**Data da validação:** 2026-08-11  17:50–17:54 UTC  
-**Servidor:** Turing (`Linux amd64`)  
-**JVM:** `25.0.2`  
-**Processadores disponíveis:** 20  
-**Memória disponível observada:** 17.252.548 kB  
+**Data da validação:** 2026-08-11  17:50–17:54 UTC
+**Servidor:** Turing (`Linux amd64`)
+**JVM:** `25.0.2`
+**Processadores disponíveis:** 20
+**Memória disponível observada:** 17.252.548 kB
 
 ## Procedimento
 
