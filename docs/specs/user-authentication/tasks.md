@@ -516,12 +516,15 @@ Ref: Interface INT-WEB-AUTH-002, INT-WEB-AUTH-003 e INT-WEB-AUTH-004
 
 Ref: [Interface INT-WEB-AUTH-005](./interface-spec.md#int-web-auth-005--configurações-de-segurança)
 
-- [ ] 5.3.1 Criar rota autenticada `/user/security` a partir do Painel de Usuário
-- [ ] 5.3.2 Configurar `RFWSecuritySettingsComponent` com providers reais e seções por capability
-- [ ] 5.3.3 Implementar loading/empty/error/stale independentes e refresh após mutações
-- [ ] 5.3.4 Aplicar navegação, responsividade, acessibilidade, localização e foco do contrato
-- [ ] 5.3.5 Integrar telemetria sem identidade, origem ou metadados sensíveis
-- [ ] 5.3.6 Criar testes de rota/componente, integração real, E2E e inspeção visual
+- [x] 5.3.1 Criar rota autenticada `/user/security` a partir do Painel de Usuário
+- [x] 5.3.2 Configurar `RFWSecuritySettingsComponent` com providers reais e seções por capability
+- [x] 5.3.3 Implementar loading/empty/error/stale independentes e refresh após mutações
+- [x] 5.3.4 Aplicar navegação, responsividade, acessibilidade, localização e foco do contrato
+- [x] 5.3.5 Integrar telemetria sem identidade, origem ou metadados sensíveis
+- [x] 5.3.6 Criar testes de rota/componente, integração real, E2E e inspeção visual
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/5.3/README.md`](./evidence/5.3/README.md).
 
 ### 5.4 Implementar gestão de métodos e sessões INT-WEB-AUTH-006..009 `[C]`
 

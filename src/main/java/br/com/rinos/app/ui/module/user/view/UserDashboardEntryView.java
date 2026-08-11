@@ -3,6 +3,8 @@ package br.com.rinos.app.ui.module.user.view;
 import jakarta.annotation.security.PermitAll;
 
 import com.vaadin.flow.component.html.Main;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
@@ -22,4 +24,12 @@ public class UserDashboardEntryView extends Main {
 
   /** Rota global reservada para o Painel de Usuário. */
   public static final String ROUTE = "user";
+
+  /**
+   * Cria a entrada mínima do painel e seu enlace para segurança.
+   */
+  public UserDashboardEntryView() {
+    add(new Paragraph("Painel de Usuário"),
+        new RouterLink("Configurações de segurança", UserSecurityView.class));
+  }
 }
