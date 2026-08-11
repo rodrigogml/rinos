@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Properties;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,7 +42,7 @@ public final class PasswordHashCalibrationTool {
         properties,
         PasswordHashCalibrationService.DEFAULT_WARMUP_OPERATIONS,
         PasswordHashCalibrationService.MINIMUM_MEASUREMENTS);
-    System.out.printf(
+    System.out.printf(Locale.ROOT,
         "measuredAt=%s%njava=%s%nos=%s%nprocessors=%d%n"
             + "memoryKib=%d%niterations=%d%nparallelism=%d%nsaltLength=%d%nhashLength=%d%n"
             + "measurements=%d%nmedianMillis=%.3f%np95Millis=%.3f%nresult=%s%n",
