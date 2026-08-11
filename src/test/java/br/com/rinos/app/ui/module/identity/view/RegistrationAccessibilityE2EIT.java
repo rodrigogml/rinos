@@ -44,7 +44,7 @@ import com.microsoft.playwright.options.ReducedMotion;
  */
 @SpringBootTest(
     classes = RegistrationUiTestApplication.class,
-    webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = "vaadin.launch-browser=false")
 @EnabledIfSystemProperty(named = "rinos.ui.e2e.enabled", matches = "true")
 @DisplayName("Gate automatizado WCAG 2.2 AA do cadastro")

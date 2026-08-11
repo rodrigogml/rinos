@@ -33,7 +33,7 @@ import com.microsoft.playwright.options.BoundingBox;
  */
 @SpringBootTest(
     classes = RegistrationUiTestApplication.class,
-    webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = "vaadin.launch-browser=false")
 @EnabledIfSystemProperty(named = "rinos.ui.e2e.enabled", matches = "true")
 @DisplayName("Jornadas E2E do cadastro local, retomada e Google")
