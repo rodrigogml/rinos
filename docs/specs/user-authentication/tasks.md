@@ -624,8 +624,8 @@ Ref: Spec §Measurable Outcomes; Checklist requirements.md
 
 - [ ] 7.2.1 Reexecutar quality gate, análise cross-artifact, build, testes e inspeções obrigatórias
 - [ ] 7.2.2 Marcar subtarefas concluídas com evidência e confirmar ausência de trabalho emergente órfão
-- [ ] 7.2.3 Atualizar status da feature, roadmap e documentação de arquitetura afetada
-- [ ] 7.2.4 Verificar submódulo limpo/publicado e ponteiro do Rinos no commit validado
+- [x] 7.2.3 Atualizar status da feature, roadmap e documentação de arquitetura afetada
+- [x] 7.2.4 Verificar submódulo limpo/publicado e ponteiro do Rinos no commit validado
 - [ ] 7.2.5 Criar commit final rastreável, sincronizar `main` e registrar resultado da entrega
 
 ---
