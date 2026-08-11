@@ -422,7 +422,7 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 > A redefinição de senha usa a operação transacional que revoga todas as sessões e invalida as provas abertas;
 > fatores fortes confirmados não são revogados silenciosamente. Evidências em
 > [`evidence/4.4.1/README.md`](./evidence/4.4.1/README.md).
-- [ ] 4.4.2 Orientar identidade passwordless sem criar senha ou revelar métodos a solicitante anônimo
+- [x] 4.4.2 Orientar identidade passwordless sem criar senha ou revelar métodos a solicitante anônimo
 - [ ] 4.4.3 Criar templates/eventos de nova sessão de risco, método alterado, falhas repetidas e recuperação concluída
 - [ ] 4.4.4 Disparar notificações pós-commit conforme mudança/recuperação, limiar com cooldown de 24 horas ou navegador não reconhecido em 30 dias
 - [ ] 4.4.5 Estender limpeza diária para fluxos, provas, sessões, janelas e códigos expirados

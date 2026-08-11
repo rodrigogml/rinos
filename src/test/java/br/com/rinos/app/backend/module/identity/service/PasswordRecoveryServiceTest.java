@@ -157,6 +157,31 @@ class PasswordRecoveryServiceTest {
   }
 
   @Test
+  void issue_shouldKeepPasswordlessIdentityNeutralWithoutCreatingPasswordOrProof() {
+    when(emails.normalize("passwordless@example.test")).thenReturn(
+        new NormalizedEmailVO("passwordless@example.test", "passwordless@example.test"));
+    UserEntity user = activeUser();
+    when(users.findByNormalizedEmailForUpdate("passwordless@example.test"))
+        .thenReturn(Optional.of(user));
+    when(credentials.findByUserIdAndStatus(1L, LocalCredentialStatusEnum.ACTIVE))
+        .thenReturn(Optional.empty());
+
+    PasswordRecoveryOperationVO result = service.issue(
+        "passwordless@example.test",
+        "203.0.113.10",
+        Locale.forLanguageTag("pt-BR"),
+        UUID.randomUUID(),
+        Instant.parse("2026-08-02T12:00:00Z"));
+
+    assertThat(result.status()).isEqualTo(PasswordRecoveryOperationStatusEnum.ACCEPTED);
+    assertThat(result.dispatch()).isNull();
+    verify(recoveries, never()).saveAndFlush(any());
+    verify(dispatch, never()).scheduleAfterCommit(any());
+    verify(credentialService, never()).replace(any(), any());
+    verify(credentialService, never()).replaceAndInvalidateSessions(any(), any(), any(), any());
+  }
+
+  @Test
   void reset_shouldReplaceCredentialConsumeProofAndRejectReplay() {
     Instant now = Instant.parse("2026-08-02T12:00:00Z");
     UserEntity user = activeUser();

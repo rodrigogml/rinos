@@ -37,6 +37,12 @@ O e-mail aponta para:
 `LoginView` aceita somente uma intenção conhecida e uma única prova limitada a 512 caracteres. Depois de entregá-la
 ao estado efêmero do RFW, substitui a localização visível do navegador por `/login`.
 
+## Identidade passwordless
+
+Identidades sem credencial local permanecem no mesmo resultado neutro e não recebem prova, senha ou despacho. A
+mensagem pública apenas orienta genericamente o retorno ao login para utilizar um método já configurado, sem dizer
+se Google ou passkey existem para aquele e-mail.
+
 ## Limites deste recorte
 
 Permanecem no backlog completo de `user-authentication`: recuperação de 2FA, recovery codes, orientação por
