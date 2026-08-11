@@ -217,7 +217,11 @@ public class PasswordRecoveryService {
       recovery.setInvalidatedAt(occurredAt);
       return status(PasswordRecoveryOperationStatusEnum.INVALID_PROOF);
     }
-    credentialService.replace(user, encodedPassword);
+    credentialService.replaceAndInvalidateSessions(
+        user,
+        encodedPassword,
+        occurredAt,
+        correlationId);
     recovery.setStatus(PasswordRecoveryStatusEnum.USED);
     recovery.setUsedAt(occurredAt);
     List<PasswordRecoveryEntity> open = recoveryRepository.findByUserIdAndStatusForUpdate(

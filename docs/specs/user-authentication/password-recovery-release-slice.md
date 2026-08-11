@@ -17,7 +17,8 @@ ampla `user-authentication` nem substitui o futuro plano técnico dessa feature.
 - Emissão é limitada por origem e usuário; tentativas são limitadas por origem. Os limites pertencem exclusivamente
   ao `application.properties` sob `rinos.password-recovery.*`.
 - A nova senha usa a mesma política, verificação k-anônima no HIBP e Argon2id do cadastro.
-- A troca da credencial, o consumo da prova e a invalidação das demais provas abertas ocorrem na mesma transação.
+- A troca da credencial, a revogação de todas as sessões do usuário, o consumo da prova e a invalidação das demais
+  provas abertas ocorrem na mesma transação.
 - Emissão e conclusão produzem auditoria sem e-mail, IP, token, hash ou senha.
 - Provas encerradas são removidas pelo catálogo global de manutenção após a retenção configurada.
 
@@ -38,10 +39,10 @@ ao estado efêmero do RFW, substitui a localização visível do navegador por `
 
 ## Limites deste recorte
 
-Permanecem no backlog completo de `user-authentication`: sessões persistentes e sua revogação concreta, recuperação
-de 2FA, recovery codes, orientação por e-mail para identidades exclusivamente externas e demais métodos de acesso.
-Enquanto não existem sessões persistentes no Rinos, não há sessão secundária a revogar; a atualização da credencial
-é o marco que a futura implementação de sessões deverá observar.
+Permanecem no backlog completo de `user-authentication`: recuperação de 2FA, recovery codes, orientação por
+e-mail para identidades exclusivamente externas e demais métodos de acesso. A redefinição de senha já revoga todas
+as sessões globais e invalida as provas de recuperação abertas; fatores fortes confirmados, como TOTP, passkey e
+Google, permanecem disponíveis e não são revogados silenciosamente.
 
 > [!IMPORTANT]
 > Este documento permite liberar `user-registration`, não liberar toda a autenticação. Qualquer ampliação deve passar

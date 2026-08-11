@@ -179,7 +179,11 @@ class PasswordRecoveryServiceTest {
     assertThat(completed.status()).isEqualTo(PasswordRecoveryOperationStatusEnum.COMPLETED);
     assertThat(recovery.getStatus()).isEqualTo(PasswordRecoveryStatusEnum.USED);
     assertThat(recovery.getUsedAt()).isEqualTo(now);
-    verify(credentialService).replace(user, "{argon2}new-hash");
+    verify(credentialService).replaceAndInvalidateSessions(
+        eq(user),
+        eq("{argon2}new-hash"),
+        eq(now),
+        any());
 
     PasswordRecoveryOperationVO replay = service.reset(
         "opaque-proof",
