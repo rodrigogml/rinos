@@ -155,6 +155,20 @@ class RegistrationViewE2EIT {
     }
   }
 
+  @Test
+  void recovery_shouldOpenNeutralRequestStep_onDesktop() {
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      openLogin(page);
+      page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Esqueci minha senha").setExact(true)).click();
+      assertThat(page.locator("[data-rfw-access-step='recovery_request']")).isVisible();
+      assertThat(page.getByLabel("E-mail ou usuário")).isVisible();
+      assertNoHorizontalOverflow(page);
+    }
+  }
+
   /**
    * Confirma o reflow da mesma composição e registra a evidência em viewport de telefone.
    *

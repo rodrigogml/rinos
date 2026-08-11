@@ -487,12 +487,30 @@ Ref: [Interface INT-WEB-AUTH-001](./interface-spec.md#int-web-auth-001--entrar-n
 
 Ref: Interface INT-WEB-AUTH-002, INT-WEB-AUTH-003 e INT-WEB-AUTH-004
 
-- [ ] 5.2.1 Integrar seleção/confirmacão de TOTP, e-mail, passkey e recovery code sem envio automático
-- [ ] 5.2.2 Integrar lista legal vigente, abertura do documento, aceite e cancelamento antes da sessão
-- [ ] 5.2.3 Preservar recovery renderer existente e conectá-lo às novas invalidações/outcomes
-- [ ] 5.2.4 Cobrir estados, expiração, reenvio, conflito de versão e saídas seguras
-- [ ] 5.2.5 Aplicar acessibilidade, responsividade, localização e telemetria descritas nas interações
-- [ ] 5.2.6 Criar testes de componente, integração, E2E e inspeção visual dos três fluxos
+- [x] 5.2.1 Integrar seleção/confirmacão de TOTP, e-mail, passkey e recovery code sem envio automático
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.1/README.md`](./evidence/5.2.1/README.md).
+- [x] 5.2.2 Integrar lista legal vigente, abertura do documento, aceite e cancelamento antes da sessão
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.2/README.md`](./evidence/5.2.2/README.md).
+- [x] 5.2.3 Preservar recovery renderer existente e conectá-lo às novas invalidações/outcomes
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.3/README.md`](./evidence/5.2.3/README.md).
+- [x] 5.2.4 Cobrir estados, expiração, reenvio, conflito de versão e saídas seguras
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.4/README.md`](./evidence/5.2.4/README.md).
+- [x] 5.2.5 Aplicar acessibilidade, responsividade, localização e telemetria descritas nas interações
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.5/README.md`](./evidence/5.2.5/README.md).
+- [x] 5.2.6 Criar testes de componente, integração, E2E e inspeção visual dos três fluxos
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.2.6/README.md`](./evidence/5.2.6/README.md).
 
 ### 5.3 Criar configurações de segurança INT-WEB-AUTH-005 `[A]`
 
