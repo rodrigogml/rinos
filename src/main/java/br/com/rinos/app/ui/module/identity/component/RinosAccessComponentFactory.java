@@ -66,6 +66,8 @@ public class RinosAccessComponentFactory {
   public RFWAccessComponent create(String unavailableMessage) {
     Objects.requireNonNull(unavailableMessage, "unavailableMessage must not be null");
     RFWAccessComponentConfig.Builder config = RFWAccessComponentConfig.builder()
+        .projectKey("rinos")
+        .rememberMeEnabled(true)
         .onAuthenticated(ignored -> UI.getCurrent().navigate(UserDashboardEntryView.class))
         .fieldInstruction(
             RFWAccessStepEnum.REGISTRATION,

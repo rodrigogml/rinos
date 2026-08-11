@@ -68,6 +68,8 @@ class RinosAccessComponentFactoryTest {
         ArgumentCaptor.forClass(RFWAccessComponentConfig.class);
     verify(rfwFactory).create(configCaptor.capture());
     RFWAccessComponentConfig config = configCaptor.getValue();
+    assertThat(config.getProjectKey()).isEqualTo("rinos");
+    assertThat(config.getRememberMeEnabled()).isTrue();
     assertThat(config.getDisabledCapabilities()).doesNotContain(
         RFWAccessCapabilityEnum.REGISTRATION);
     assertThat(config.getFieldInstructionKey(

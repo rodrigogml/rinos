@@ -460,7 +460,12 @@ Ref: [Interface INT-WEB-AUTH-001](./interface-spec.md#int-web-auth-001--entrar-n
 > [!NOTE]
 > A RFW descobre automaticamente os adapters Spring registrados pelo Rinos; não há cópia de componente nem registro
 > manual paralelo. Evidências em [`evidence/5.1.1/README.md`](./evidence/5.1.1/README.md).
-- [ ] 5.1.2 Implementar conteúdo, ordem, mensagens neutras, lembrar-me e destino interno seguro
+- [x] 5.1.2 Implementar conteúdo, ordem, mensagens neutras, lembrar-me e destino interno seguro
+
+> [!NOTE]
+> A composição usa o renderer padrão RFW para ordem, conteúdo, mensagens e estados; o Rinos habilita explicitamente
+> lembrar-me somente quando o provider persistente existe e navega após publicação segura para o Painel de Usuário.
+> Evidências em [`evidence/5.1.2/README.md`](./evidence/5.1.2/README.md).
 - [ ] 5.1.3 Cobrir os onze estados, dupla submissão, indisponibilidade e limpeza de dados sensíveis
 - [ ] 5.1.4 Aplicar responsividade, teclado, foco, leitor de tela, reflow e i18n usando somente APIs RFW
 - [ ] 5.1.5 Integrar telemetria sanitizada de visualização, submissão e resultado
