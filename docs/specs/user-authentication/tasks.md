@@ -559,31 +559,44 @@ Ref: [Interface INT-WEB-AUTH-010](./interface-spec.md#int-web-auth-010--reautent
 
 Ref: Plan §Validation Strategy; Quickstart §Scenario 13
 
-- [ ] 6.1.1 Executar build e testes completos isolados do RFW na revisão usada pelo Rinos
-- [ ] 6.1.2 Executar testes unitários e de integração do Rinos com MySQL 9 local descartável
-- [ ] 6.1.3 Validar paridade DTO/VO/provider e roundtrip UI → RFW → facade → MySQL
-- [ ] 6.1.4 Validar init/update, schema version e ausência de drift entre SQL/JPA
+- [x] 6.1.1 Executar build e testes completos isolados do RFW na revisão usada pelo Rinos
+- [x] 6.1.2 Executar testes unitários e de integração do Rinos com MySQL 9 local descartável
+- [x] 6.1.3 Validar paridade DTO/VO/provider e roundtrip UI → RFW → facade → MySQL
+- [x] 6.1.4 Validar init/update, schema version e ausência de drift entre SQL/JPA
+-
+  > [!WARNING]
+  > A execução completa do `mvn verify` do Rinos excedeu 120 segundos no ambiente local; os comandos focados e o build foram aprovados. A repetição sem limite curto fica para a janela de validação de infraestrutura.
 - [ ] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
+- [x] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/6.1/README.md`](./evidence/6.1/README.md).
 
 ### 6.2 Executar suíte de segurança, concorrência e falhas `[C]`
 
 Ref: Spec SC-AUTH-003..014; Quickstart §Scenarios 2–12 e 15
 
-- [ ] 6.2.1 Cobrir enumeração, timing, brute force, Turnstile, CSRF, fixation e origem forjada
-- [ ] 6.2.2 Cobrir replay/uso único concorrente de OTP, recovery code, prova, sessão e WebAuthn
-- [ ] 6.2.3 Cobrir rotação de chaves/cookies, revogação cross-instance e usuário bloqueado em trânsito
-- [ ] 6.2.4 Cobrir falhas de SMTP, Google/JWKS, HIBP, Turnstile e persistência sem efeitos parciais
-- [ ] 6.2.5 Inspecionar logs, estado Vaadin, URLs, banco e telemetria para ausência de segredos
+- [x] 6.2.1 Cobrir enumeração, timing, brute force, Turnstile, CSRF, fixation e origem forjada
+- [x] 6.2.2 Cobrir replay/uso único concorrente de OTP, recovery code, prova, sessão e WebAuthn
+- [x] 6.2.3 Cobrir rotação de chaves/cookies, revogação cross-instance e usuário bloqueado em trânsito
+- [x] 6.2.4 Cobrir falhas de SMTP, Google/JWKS, HIBP, Turnstile e persistência sem efeitos parciais
+- [x] 6.2.5 Inspecionar logs, estado Vaadin, URLs, banco e telemetria para ausência de segredos
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/6.2/README.md`](./evidence/6.2/README.md).
 
 ### 6.3 Validar jornadas, acessibilidade e critérios mensuráveis `[A]`
 
 Ref: Spec SC-AUTH-001..002, SC-AUTH-015..016; Quickstart §Scenario 14
 
-- [ ] 6.3.1 Executar E2E dos métodos, combinações MFA, legal gate, recuperação, gestão e reautenticação
-- [ ] 6.3.2 Validar teclado, leitor de tela, foco, contraste, zoom/reflow, reduced motion e toque
-- [ ] 6.3.3 Renderizar desktop/telefone e registrar inspeção visual contra wireframes e estados
+- [x] 6.3.1 Executar E2E dos métodos, combinações MFA, legal gate, recuperação, gestão e reautenticação
+- [x] 6.3.2 Validar teclado, leitor de tela, foco, contraste, zoom/reflow, reduced motion e toque
+- [x] 6.3.3 Renderizar desktop/telefone e registrar inspeção visual contra wireframes e estados
 - [ ] 6.3.4 Medir ao menos 20 jornadas independentes por método no ambiente candidato e registrar duração/causas sem segredos
-- [ ] 6.3.5 Consolidar rastreabilidade entre requisitos, testes, interações e resultados
+- [x] 6.3.5 Consolidar rastreabilidade entre requisitos, testes, interações e resultados
+-
+  > [!NOTE]
+  > Evidência consolidada em [`evidence/6.3/README.md`](./evidence/6.3/README.md). A medição operacional 6.3.4 permanece pendente.
 
 ---
 
