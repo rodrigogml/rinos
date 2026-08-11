@@ -570,7 +570,6 @@ Ref: Plan §Validation Strategy; Quickstart §Scenario 13
   > [!WARNING]
   > A execução completa do `mvn verify` do Rinos excedeu 120 segundos no ambiente local; os comandos focados e o build foram aprovados. A repetição sem limite curto fica para a janela de validação de infraestrutura.
 - [x] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
-- [x] 6.1.5 Registrar evidências e corrigir lacunas documentais sem duplicar o código
 -
   > [!NOTE]
   > Evidência consolidada em [`evidence/6.1/README.md`](./evidence/6.1/README.md).
@@ -622,11 +621,14 @@ Ref: Plan §Configuration Ownership; README §Produção
 
 Ref: Spec §Measurable Outcomes; Checklist requirements.md
 
-- [ ] 7.2.1 Reexecutar quality gate, análise cross-artifact, build, testes e inspeções obrigatórias
-- [ ] 7.2.2 Marcar subtarefas concluídas com evidência e confirmar ausência de trabalho emergente órfão
+- [x] 7.2.1 Reexecutar quality gate, análise cross-artifact, build, testes e inspeções obrigatórias
+- [x] 7.2.2 Marcar subtarefas concluídas com evidência e confirmar ausência de trabalho emergente órfão
 - [x] 7.2.3 Atualizar status da feature, roadmap e documentação de arquitetura afetada
 - [x] 7.2.4 Verificar submódulo limpo/publicado e ponteiro do Rinos no commit validado
 - [ ] 7.2.5 Criar commit final rastreável, sincronizar `main` e registrar resultado da entrega
+
+  > [!NOTE]
+  > A evidência do quality gate e da análise cross-artifact está em [`evidence/7.2/README.md`](./evidence/7.2/README.md). O fechamento permanece bloqueado somente pela medição operacional 6.3.4.
 
 ---
 
