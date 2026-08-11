@@ -470,12 +470,18 @@ Ref: [Interface INT-WEB-AUTH-001](./interface-spec.md#int-web-auth-001--entrar-n
 -
   > [!NOTE]
   > A cobertura reproduzível está registrada em [`evidence/5.1.3/README.md`](./evidence/5.1.3/README.md).
-- [ ] 5.1.4 Aplicar responsividade, teclado, foco, leitor de tela, reflow e i18n usando somente APIs RFW
+- [x] 5.1.4 Aplicar responsividade, teclado, foco, leitor de tela, reflow e i18n usando somente APIs RFW
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.1.4/README.md`](./evidence/5.1.4/README.md).
 - [x] 5.1.5 Integrar telemetria sanitizada de visualização, submissão e resultado
 -
   > [!NOTE]
   > O contrato e o listener RFW estão registrados em [`evidence/5.1.5/README.md`](./evidence/5.1.5/README.md).
-- [ ] 5.1.6 Criar testes de componente, integração real, E2E e inspeção visual desktop/telefone
+- [x] 5.1.6 Criar testes de componente, integração real, E2E e inspeção visual desktop/telefone
+-
+  > [!NOTE]
+  > Evidência: [`evidence/5.1.6/README.md`](./evidence/5.1.6/README.md).
 
 ### 5.2 Implementar MFA, gate legal e recuperação INT-WEB-AUTH-002..004 `[C]`
 

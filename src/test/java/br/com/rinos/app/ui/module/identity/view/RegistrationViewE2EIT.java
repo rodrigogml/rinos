@@ -127,6 +127,34 @@ class RegistrationViewE2EIT {
     }
   }
 
+  @Test
+  void login_shouldExposeRfwKeyboardContract_onDesktop() {
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1440, 1000))) {
+      Page page = context.newPage();
+      openLogin(page);
+      assertThat(page.locator("[data-rfw-access-step='sign_in']")).isVisible();
+      assertThat(page.getByLabel("E-mail ou usuário")).isVisible();
+      assertThat(page.getByLabel("Senha")).isVisible();
+      assertThat(page.getByRole(AriaRole.BUTTON,
+          new Page.GetByRoleOptions().setName("Entrar").setExact(true))).isEnabled();
+      assertNoHorizontalOverflow(page);
+    }
+  }
+
+  @Test
+  void login_shouldReflowWithoutHorizontalOverflow_onPhone() {
+    try (BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(390, 844))) {
+      Page page = context.newPage();
+      openLogin(page);
+      assertThat(page.locator("[data-rfw-access-step='sign_in']")).isVisible();
+      assertNoHorizontalOverflow(page);
+      page.getByLabel("E-mail ou usuário").focus();
+      assertThat(page.getByLabel("E-mail ou usuário")).isFocused();
+    }
+  }
+
   /**
    * Confirma o reflow da mesma composição e registra a evidência em viewport de telefone.
    *
@@ -587,6 +615,11 @@ class RegistrationViewE2EIT {
     page.getByRole(AriaRole.BUTTON,
         new Page.GetByRoleOptions().setName("Criar conta").setExact(true)).click();
     assertThat(page.locator("[data-rfw-access-step='registration']")).isVisible();
+  }
+
+  private void openLogin(Page page) {
+    page.navigate("http://127.0.0.1:" + port + "/login");
+    assertRfwStylesLoaded(page);
   }
 
   private void openExternalRegistration(Page page) {
