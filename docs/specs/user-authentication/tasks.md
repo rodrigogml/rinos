@@ -455,7 +455,11 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 
 Ref: [Interface INT-WEB-AUTH-001](./interface-spec.md#int-web-auth-001--entrar-no-rinos)
 
-- [ ] 5.1.1 Registrar providers reais de senha, passkey, Google, Turnstile e lifecycle no `RFWAccessComponent`
+- [x] 5.1.1 Registrar providers reais de senha, passkey, Google, Turnstile e lifecycle no `RFWAccessComponent`
+
+> [!NOTE]
+> A RFW descobre automaticamente os adapters Spring registrados pelo Rinos; não há cópia de componente nem registro
+> manual paralelo. Evidências em [`evidence/5.1.1/README.md`](./evidence/5.1.1/README.md).
 - [ ] 5.1.2 Implementar conteúdo, ordem, mensagens neutras, lembrar-me e destino interno seguro
 - [ ] 5.1.3 Cobrir os onze estados, dupla submissão, indisponibilidade e limpeza de dados sensíveis
 - [ ] 5.1.4 Aplicar responsividade, teclado, foco, leitor de tela, reflow e i18n usando somente APIs RFW

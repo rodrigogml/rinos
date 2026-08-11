@@ -18,7 +18,7 @@
 | Surface ID | Existing Route, Command, or Component | Evidence | Current Behavior |
 |------------|---------------------------------------|----------|------------------|
 | `SURF-WEB-RINOS` | `/login` | `src/main/java/br/com/rinos/app/ui/module/identity/view/LoginView.java` | Hospeda `RFWAccessComponent`, trata ativação/redefinição por deep link e navega para `/user` após outcome autenticado |
-| `SURF-WEB-RINOS` | composição de acesso | `src/main/java/br/com/rinos/app/ui/module/identity/component/RinosAccessComponentFactory.java` | Configura cadastro/documentos e callback; não existe provider real de login, MFA, sessão ou gestão |
+| `SURF-WEB-RINOS` | composição de acesso | `src/main/java/br/com/rinos/app/ui/module/identity/component/RinosAccessComponentFactory.java` | Configura cadastro/documentos e callback; providers reais de login, Google, passkey, Turnstile, lifecycle e recuperação são descobertos pelo RFW via beans |
 | `SURF-WEB-RINOS` | `/user` | `src/main/java/br/com/rinos/app/ui/module/user/view/UserDashboardEntryView.java` | Rota protegida reservada, ainda sem conteúdo |
 | `SURF-WEB-RINOS` | recuperação mínima | `src/main/java/br/com/rinos/app/ui/config/RFWPasswordRecoveryProviderAdapter.java` | Solicitação e redefinição já operam no componente de acesso, sem gestão concreta de sessões |
 | `SURF-WEB-RINOS` | componentes RFW | `modules/RFW.Platform/src/main/java/br/eng/rodrigogml/rfw/ui/access/` e `ui/securitysettings/` | Entrega shell, renderers e gestão genérica; lacunas desta feature estão em [RFW Gap Analysis](./rfw-gap-analysis.md) |
