@@ -54,3 +54,14 @@ Resultado observado:
 Esta evidência comprova o smoke de SMTP real e a entrega observada pelo destinatário, mas não
 declara throughput. A tarefa permanece aberta até a restauração/validação do limite padrão
 de 20, do Turnstile real e dos demais critérios do gate.
+
+## Turnstile de produção
+
+Em 11/08/2026 foi criado, via API Cloudflare, o widget `Rinos - Autenticação` em modo `managed`,
+com os hostnames `app.rinos.com.br` e `localhost`. O sitekey foi instalado no ambiente candidato
+e o segredo foi gravado somente no `application.properties` runtime do Turing, sem registro em
+Git, documentação ou logs.
+
+A aplicação reiniciou com estado `active`. A validação visual completa permanece pendente porque
+o ambiente público ainda impede a jornada de login/cadastro enquanto os documentos jurídicos
+vigentes não forem publicados; não foi usado token de teste nem contornado esse bloqueio.
