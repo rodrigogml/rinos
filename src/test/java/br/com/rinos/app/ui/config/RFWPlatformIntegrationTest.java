@@ -124,6 +124,7 @@ import br.eng.rodrigogml.rfw.ui.access.RFWAccessEntryRequestVO;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessStepEnum;
 import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessPropertiesConfig;
 import br.eng.rodrigogml.rfw.ui.access.config.RFWAccessUIAutoConfiguration;
+import br.eng.rodrigogml.rfw.ui.access.google.RFWGoogleCredentialEvent;
 import br.eng.rodrigogml.rfw.ui.access.google.RFWGoogleSignInComponent;
 import br.eng.rodrigogml.rfw.ui.access.provider.RFWRemoteAddressProvider;
 import br.eng.rodrigogml.rfw.ui.access.turnstile.RFWTurnstileComponent;
@@ -1213,6 +1214,27 @@ class RFWPlatformIntegrationTest {
               .satisfies(google -> assertThat(google.getElement().getTag())
                   .isEqualTo("rfw-google-sign-in"));
         });
+  }
+
+  /**
+   * Comprova que repetir uma credencial externa não reutiliza o nonce da tentativa anterior.
+   */
+  @Test
+  void googleSignIn_shouldRotateNonceBeforePublishingAnotherCredential() {
+    RFWGoogleSignInComponent google = new RFWGoogleSignInComponent("test-client");
+    List<RFWGoogleCredentialEvent> attempts = new ArrayList<>();
+    google.addCredentialListener(attempts::add);
+
+    google.acceptCredential("same-ephemeral-id-token");
+    google.acceptCredential("same-ephemeral-id-token");
+
+    assertThat(attempts)
+        .hasSize(2)
+        .extracting(RFWGoogleCredentialEvent::getCredential)
+        .containsOnly("same-ephemeral-id-token");
+    assertThat(attempts.get(0).getNonce())
+        .isNotBlank()
+        .isNotEqualTo(attempts.get(1).getNonce());
   }
 
   /**

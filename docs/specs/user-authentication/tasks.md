@@ -405,7 +405,12 @@ Ref: Spec FR-AUTH-GGL-*; Contract External Services §Google OpenID Connect; Int
 > O gate do catálogo MySQL restringe o vínculo externo a metadados estáveis e o teste do componente de acesso
 > comprova que uma falha do Google preserva o login local por senha. Comandos e limites estão registrados em
 > [`evidence/4.3.5/README.md`](./evidence/4.3.5/README.md).
-- [ ] 4.3.6 Testar JWKS/Google indisponível, replay, e-mail coincidente, bloqueio e concorrência de vínculo
+- [x] 4.3.6 Testar JWKS/Google indisponível, replay, e-mail coincidente, bloqueio e concorrência de vínculo
+
+> [!NOTE]
+> O provider Google agora converte falhas de discovery/JWKS em `UNAVAILABLE`, sem publicar identidade ou sessão.
+> A cobertura adversarial e os comandos executados estão registrados em
+> [`evidence/4.3.6/README.md`](./evidence/4.3.6/README.md).
 
 ### 4.4 Completar recuperação, notificações e limpeza `[C]`
 
