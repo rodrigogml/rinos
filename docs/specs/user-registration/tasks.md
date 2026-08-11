@@ -556,7 +556,8 @@ Ref: [Spec §Escopo, FR-REG-008 e SC-UR-014–015](./spec.md), [Plan §Implement
   - Evidência: [checklist e análise cross-artifact sem blockers](./evidence/7.5.4/README.md).
 - [x] 7.5.5 Executar smoke test do JAR no ambiente de release atrás do proxy `[release-blocker]`
   - Evidência: [sondas somente leitura do serviço, Apache e rota pública](./evidence/7.5.5/README.md).
-- [ ] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95 `[release-blocker]`
+- [~] 7.5.6 Executar a calibração Argon2id no perfil de servidor-alvo e registrar hardware, JVM, parâmetros, data, mediana e percentil 95 `[release-blocker]`
+  - Evidência: [calibração no Turing; perfil atual falhou e candidato com 75 iterações passou, ainda não aplicado](./evidence/7.5.6/README.md).
 - [x] 7.5.7 Registrar decisão go/no-go e impedir produção enquanto qualquer gate declarado bloqueante estiver aberto, incluindo documentos jurídicos 6.0.3–6.0.5, recuperação de senha e validações humanas ou operacionais de release `[release-blocker]`
   - Evidência: [decisão NO-GO e gate Maven de release](./evidence/7.5.7/README.md).
 
