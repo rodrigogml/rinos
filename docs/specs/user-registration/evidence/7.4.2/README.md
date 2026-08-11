@@ -38,8 +38,19 @@ As chaves e o token empregados são os valores publicados na
 > [!IMPORTANT]
 > Este smoke não substitui a configuração do widget e das chaves exclusivas de produção.
 
-## Pendência externa
+## SMTP real
 
-A tarefa permanece aberta. A instalação local não possui host, usuário, senha e destinatário de
-um SMTP real. Falta executar um único cadastro de smoke nesse serviço e confirmar apenas o aceite
-SMTP, sem declarar throughput nem entrega final na caixa postal.
+Em 11/08/2026 foi configurado o ambiente candidato com o Forward Email usando
+`smtp.forwardemail.net:465` em SSL/TLS implícito e o remetente
+`no-reply@rinos.com.br`. Foi enviado um único e-mail de smoke para
+`teste@rinos.com.br`.
+
+Resultado observado:
+
+- autenticação e aceitação SMTP confirmadas (`SMTP_ACCEPTED`);
+- mensagem recebida na caixa pessoal associada ao alias de teste;
+- nenhuma senha ou segredo incluído nesta evidência.
+
+Esta evidência comprova o smoke de SMTP real e a entrega observada pelo destinatário, mas não
+declara throughput. A tarefa permanece aberta até a restauração/validação do limite padrão
+de 20, do Turnstile real e dos demais critérios do gate.

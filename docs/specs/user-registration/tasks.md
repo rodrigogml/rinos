@@ -530,7 +530,7 @@ Ref: [Spec §SC-UR-002 e SC-UR-009–010](./spec.md), [Contracts §SMTP por RFW]
 - [x] 7.4.1 Configurar o perfil do gate para permitir ao menos 100 novas pendências por origem e verificação humana controlada, executar 100 cadastros nominais contra SMTP local controlado e medir cada aceite desde o respectivo commit
   - Evidência: [100 commits e 100 aceitações no SMTP local controlado](./evidence/7.4.1/README.md).
 - [ ] 7.4.2 Confirmar ao menos 95 aceitações em até dois minutos, restaurar e validar separadamente o limite padrão de 20 e o Turnstile real e executar um único smoke test no SMTP real sem declarar throughput `[release-blocker]`
-  - Evidência parcial: [SLO local, limite 20 e Siteverify externo validados; SMTP real pendente](./evidence/7.4.2/README.md).
+  - Evidência atualizada: [SLO local, limite 20, Siteverify externo e SMTP real validados; demais critérios do gate permanecem pendentes](./evidence/7.4.2/README.md).
 - [x] 7.4.3 Validar métricas de dispatch SMTP, falhas, reenvios, bloqueios, ativações, cancelamentos e limpeza
   - Evidência: [matriz executável de métricas operacionais](./evidence/7.4.3/README.md).
 - [x] 7.4.4 Validar alertas para falhas SMTP, falha de job, integração indisponível e erro de migration
