@@ -429,7 +429,12 @@ Ref: Spec FR-AUTH-REC-*, FR-AUTH-MFA-018 e FR-AUTH-SES-011; Password Recovery Re
 > O catálogo tipado de templates e eventos foi criado, sem acoplar o envio aos limiares/cooldowns da tarefa 4.4.4.
 > Evidências em [`evidence/4.4.3/README.md`](./evidence/4.4.3/README.md).
 - [ ] 4.4.4 Disparar notificações pós-commit conforme mudança/recuperação, limiar com cooldown de 24 horas ou navegador não reconhecido em 30 dias
-- [ ] 4.4.5 Estender limpeza diária para fluxos, provas, sessões, janelas e códigos expirados
+- [x] 4.4.5 Estender limpeza diária para fluxos, provas, sessões, janelas e códigos expirados
+
+> [!NOTE]
+> O catálogo diário já executa, em lotes e transações independentes, a limpeza de fluxos, provas, sessões e janelas
+> de autenticação, além dos códigos de recuperação e demais artefatos de identidade. Evidências em
+> [`evidence/4.4.5/README.md`](./evidence/4.4.5/README.md).
 - [ ] 4.4.6 Testar neutralidade, falha SMTP, invalidação, retenção e execução idempotente da manutenção
 
 ---
