@@ -18,6 +18,7 @@ docs/legal/
 │   └── terms-of-use.md
 └── approved/
     ├── privacy-policy/<version>.md
+    ├── subprocessors-and-international-transfers/<version>.md
     └── terms-of-use/<version>.md
 ```
 
