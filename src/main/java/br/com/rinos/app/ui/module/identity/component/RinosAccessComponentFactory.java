@@ -14,6 +14,7 @@ import br.com.rinos.app.api.enums.LegalDocumentTypeEnum;
 import br.com.rinos.app.api.facade.LegalDocumentFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.ui.module.user.view.UserDashboardEntryView;
+import br.com.rinos.app.ui.module.identity.service.AuthenticationUiTelemetryService;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessCapabilityEnum;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponent;
 import br.eng.rodrigogml.rfw.ui.access.RFWAccessComponentFactory;
@@ -39,6 +40,19 @@ public class RinosAccessComponentFactory {
 
   private final RFWAccessComponentFactory accessComponentFactory;
   private final LegalDocumentFacade legalDocumentFacade;
+  private final AuthenticationUiTelemetryService telemetryService;
+
+  /**
+   * Mantém compatibilidade com consumidores de teste que compõem a factory sem o serviço opcional.
+   *
+   * @param accessComponentFactory factory da plataforma
+   * @param legalDocumentFacade consulta jurÃ­dica pÃºblica
+   */
+  public RinosAccessComponentFactory(
+      RFWAccessComponentFactory accessComponentFactory,
+      LegalDocumentFacade legalDocumentFacade) {
+    this(accessComponentFactory, legalDocumentFacade, new AuthenticationUiTelemetryService());
+  }
 
   /**
    * Cria a composição sobre a factory compartilhada e o contrato público de documentos.
@@ -48,13 +62,16 @@ public class RinosAccessComponentFactory {
    */
   public RinosAccessComponentFactory(
       RFWAccessComponentFactory accessComponentFactory,
-      LegalDocumentFacade legalDocumentFacade) {
+      LegalDocumentFacade legalDocumentFacade,
+      AuthenticationUiTelemetryService telemetryService) {
     this.accessComponentFactory = Objects.requireNonNull(
         accessComponentFactory,
         "accessComponentFactory must not be null");
     this.legalDocumentFacade = Objects.requireNonNull(
         legalDocumentFacade,
         "legalDocumentFacade must not be null");
+    this.telemetryService = Objects.requireNonNull(telemetryService,
+        "telemetryService must not be null");
   }
 
   /**
@@ -68,6 +85,7 @@ public class RinosAccessComponentFactory {
     RFWAccessComponentConfig.Builder config = RFWAccessComponentConfig.builder()
         .projectKey("rinos")
         .rememberMeEnabled(true)
+        .telemetryListener(telemetryService::record)
         .onAuthenticated(ignored -> UI.getCurrent().navigate(UserDashboardEntryView.class))
         .fieldInstruction(
             RFWAccessStepEnum.REGISTRATION,

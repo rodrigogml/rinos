@@ -466,9 +466,15 @@ Ref: [Interface INT-WEB-AUTH-001](./interface-spec.md#int-web-auth-001--entrar-n
 > A composição usa o renderer padrão RFW para ordem, conteúdo, mensagens e estados; o Rinos habilita explicitamente
 > lembrar-me somente quando o provider persistente existe e navega após publicação segura para o Painel de Usuário.
 > Evidências em [`evidence/5.1.2/README.md`](./evidence/5.1.2/README.md).
-- [ ] 5.1.3 Cobrir os onze estados, dupla submissão, indisponibilidade e limpeza de dados sensíveis
+- [x] 5.1.3 Cobrir os onze estados, dupla submissão, indisponibilidade e limpeza de dados sensíveis
+-
+  > [!NOTE]
+  > A cobertura reproduzível está registrada em [`evidence/5.1.3/README.md`](./evidence/5.1.3/README.md).
 - [ ] 5.1.4 Aplicar responsividade, teclado, foco, leitor de tela, reflow e i18n usando somente APIs RFW
-- [ ] 5.1.5 Integrar telemetria sanitizada de visualização, submissão e resultado
+- [x] 5.1.5 Integrar telemetria sanitizada de visualização, submissão e resultado
+-
+  > [!NOTE]
+  > O contrato e o listener RFW estão registrados em [`evidence/5.1.5/README.md`](./evidence/5.1.5/README.md).
 - [ ] 5.1.6 Criar testes de componente, integração real, E2E e inspeção visual desktop/telefone
 
 ### 5.2 Implementar MFA, gate legal e recuperação INT-WEB-AUTH-002..004 `[C]`
