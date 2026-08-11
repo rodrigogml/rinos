@@ -1,6 +1,6 @@
 # Evidência da tarefa 7.5.7
 
-**Data da decisão:** 2026-08-02  
+**Data da decisão:** 2026-08-02
 **Decisão vigente:** **NO-GO para produção**
 
 ## Autoridade do gate
