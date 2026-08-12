@@ -23,7 +23,7 @@ Papéis de ator não concedem acesso. O plano limita quais funcionalidades podem
 
 ### Session 2026-07-24
 
-- Q: Como criar o primeiro administrador global sem transformar o primeiro usuário cadastrado em superusuário nem exigir intervenção direta no banco? -> A: Uma definição exclusiva de origem `PROPERTY_FILE` no `application.properties` indicará o e-mail autorizado ao bootstrap, com `rodrigo@rinos.com.br` como padrão de código. O usuário deverá concluir o cadastro normal, confirmar o e-mail e configurar TOTP ou passkey compatível. Somente enquanto o bootstrap nunca tiver sido concluído, o sistema atribuirá atomicamente a identificação de ator e o grupo global protegido, registrará auditoria e gravará marcador permanente; alterações posteriores da propriedade nunca concederão acesso.
+- Q: Como criar o primeiro administrador global sem transformar o primeiro usuário cadastrado em superusuário nem exigir intervenção direta no banco? -> A: Uma definição exclusiva de origem `PROPERTY_FILE` no `application.properties` indicará o e-mail autorizado ao bootstrap, com `admin@rinos.com.br` como padrão de código. O usuário deverá concluir o cadastro normal, confirmar o e-mail e configurar TOTP ou passkey compatível. Somente enquanto o bootstrap nunca tiver sido concluído, o sistema atribuirá atomicamente a identificação de ator e o grupo global protegido, registrará auditoria e gravará marcador permanente; alterações posteriores da propriedade nunca concederão acesso.
 
 ## User Scenarios & Testing
 
@@ -144,7 +144,7 @@ Um administrador autorizado consulta concessões e alterações para entender de
 
 ### Bootstrap da Administração Global
 
-- **FR-ACL-BOOT-001**: O e-mail autorizado ao bootstrap inicial DEVE ser uma definição exclusiva de origem `PROPERTY_FILE`, lida somente do `application.properties`, com o valor padrão de código `rodrigo@rinos.com.br`.
+- **FR-ACL-BOOT-001**: O e-mail autorizado ao bootstrap inicial DEVE ser uma definição exclusiva de origem `PROPERTY_FILE`, lida somente do `application.properties`, com o valor padrão de código `admin@rinos.com.br`.
 - **FR-ACL-BOOT-002**: O valor configurado DEVE ser validado e normalizado pelas mesmas regras do e-mail primário de `user-registration`; valor inválido DEVE impedir o bootstrap e produzir diagnóstico operacional seguro.
 - **FR-ACL-BOOT-003**: O bootstrap somente DEVE considerar o usuário cujo e-mail primário normalizado corresponda exatamente ao valor configurado e esteja confirmado em uma identidade ativa.
 - **FR-ACL-BOOT-004**: Antes de qualquer concessão, o usuário elegível DEVE possuir TOTP confirmado ou passkey compatível com verificação local; código por e-mail NÃO DEVE satisfazer essa exigência.
@@ -234,7 +234,7 @@ Um administrador autorizado consulta concessões e alterações para entender de
 - **SC-ACL-009**: Usuário autorizado identifica em até 30 segundos os grupos e concessões que originam uma chave efetiva.
 - **SC-ACL-010**: Todas as jornadas administrativas podem ser concluídas apenas por teclado e sem bloqueios críticos de acessibilidade.
 - **SC-ACL-011**: Em 100% dos testes, mover, renomear ou reorganizar categorias de chaves não altera qualquer resultado de autorização ou concessão vigente.
-- **SC-ACL-012**: Em 100% das instalações novas sem valor explícito, somente a identidade ativa e confirmada de `rodrigo@rinos.com.br` torna-se elegível ao bootstrap, e nenhuma concessão ocorre antes de TOTP ou passkey compatível.
+- **SC-ACL-012**: Em 100% das instalações novas sem valor explícito, somente a identidade ativa e confirmada de `admin@rinos.com.br` torna-se elegível ao bootstrap, e nenhuma concessão ocorre antes de TOTP ou passkey compatível.
 - **SC-ACL-013**: Em 100% das avaliações concorrentes ou repetidas, o bootstrap produz no máximo um administrador inicial, uma associação ao grupo protegido e um marcador de conclusão.
 - **SC-ACL-014**: Em 100% dos testes posteriores à conclusão, alterar ou remover a propriedade não concede, restaura nem transfere acesso.
 - **SC-ACL-015**: Em 100% dos testes, o bootstrap concluído possui auditoria correlacionável e não expõe segredo de fator forte.

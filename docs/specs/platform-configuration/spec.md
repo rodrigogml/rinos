@@ -25,7 +25,7 @@ Lease, heartbeat, sessão, fencing token e demais estados operacionais de eleiç
 
 ### Session 2026-07-24
 
-- Q: A regra de que configurações não concedem acesso impede a propriedade usada para criar o primeiro administrador global? -> A: A regra permanece para configurações comuns. `access-control` possui uma única exceção de bootstrap, com origem `PROPERTY_FILE`, padrão `rodrigo@rinos.com.br`, usuário ativo e confirmado, fator forte e marcador ainda não concluído. A propriedade isoladamente não autoriza operações e nunca volta a conceder acesso depois da conclusão.
+- Q: A regra de que configurações não concedem acesso impede a propriedade usada para criar o primeiro administrador global? -> A: A regra permanece para configurações comuns. `access-control` possui uma única exceção de bootstrap, com origem `PROPERTY_FILE`, padrão `admin@rinos.com.br`, usuário ativo e confirmado, fator forte e marcador ainda não concluído. A propriedade isoladamente não autoriza operações e nunca volta a conceder acesso depois da conclusão.
 - Q: A publicação de configuração global exige aprovação de um segundo administrador? -> A: Não. O próprio administrador autorizado pode concluir a publicação após autenticação forte recente, confirmação, justificativa, validações e auditoria.
 
 ### Session 2026-07-27
