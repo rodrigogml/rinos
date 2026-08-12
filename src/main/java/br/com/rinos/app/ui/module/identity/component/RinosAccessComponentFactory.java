@@ -87,8 +87,8 @@ public class RinosAccessComponentFactory {
     RFWAccessComponentConfig.Builder config = RFWAccessComponentConfig.builder()
         .projectKey("rinos")
         .rememberMeEnabled(true)
-        .message("signIn.title", "")
-        .message("signIn.description", "")
+        .message("signIn.title", null)
+        .message("signIn.description", null)
         .telemetryListener(telemetryService::record)
         .onAuthenticated(ignored -> UI.getCurrent().navigate(UserDashboardEntryView.class))
         .fieldInstruction(
