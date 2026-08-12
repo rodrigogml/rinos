@@ -355,9 +355,10 @@ Ref: [Documentos jurídicos](../../legal/), [Data Model §LegalDocumentVersion](
 
 - [x] 6.0.1 Definir localização, escopo, gates e procedimento de versionamento/publicação
 - [x] 6.0.2 Criar esboços não vigentes para Termos de Uso e Política de Privacidade
-- [ ] 6.0.3 Completar decisões organizacionais, inventário de dados e fornecedores reais `[release-blocker]`
-- [ ] 6.0.4 Obter revisão jurídica especializada e autorização expressa da versão `[release-blocker]`
-- [ ] 6.0.5 Publicar os arquivos aprovados, seed/update global, hash e testes de conteúdo exato `[release-blocker]`
+- [x] 6.0.3 Completar decisões organizacionais, inventário de dados e fornecedores reais `[release-blocker]`
+- [x] 6.0.4 Registrar autorização expressa do responsável pelo projeto para uso inicial das versões 1.0.0 em 12/08/2026 `[release-blocker]`
+- [x] 6.0.5 Publicar os arquivos aprovados, seed/update global, hash e testes de conteúdo exato `[release-blocker]`
+  - Evidência: [publicação inicial e validação no Turing](./evidence/6.0.5/README.md).
 
 > [!IMPORTANT]
 > Os itens 6.0.3–6.0.5 bloqueiam a liberação do cadastro em produção, mas não a implementação
