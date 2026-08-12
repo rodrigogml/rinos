@@ -13,7 +13,7 @@ rinos.application.public-base-url=http://localhost:7070
 
 # Internacionalização, tema e componente público de acesso da RFW Platform
 rfw.i18n.enabled=true
-rfw.i18n.supported-language-locales=pt-BR
+rfw.i18n.supported-language-locales=pt-BR,en,es,fr,it,zh-CN
 rfw.i18n.default-language-locale=pt-BR
 rfw.i18n.default-format-locale=pt-BR
 rfw.i18n.default-zone-id=America/Sao_Paulo
