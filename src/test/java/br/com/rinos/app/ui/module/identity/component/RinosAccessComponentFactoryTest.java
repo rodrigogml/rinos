@@ -71,8 +71,8 @@ class RinosAccessComponentFactoryTest {
     assertThat(config.getProjectKey()).isEqualTo("rinos");
     assertThat(config.getRememberMeEnabled()).isTrue();
     assertThat(config.getMessageOverrides())
-        .containsEntry("signIn.title", "")
-        .containsEntry("signIn.description", "");
+        .containsEntry("signIn.title", null)
+        .containsEntry("signIn.description", null);
     assertThat(config.getDisabledCapabilities()).doesNotContain(
         RFWAccessCapabilityEnum.REGISTRATION);
     assertThat(config.getFieldInstructionKey(

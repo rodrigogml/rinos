@@ -24,7 +24,7 @@ Não inclui representação de usuário, login como terceiro, acesso temporário
 
 ### Session 2026-07-24
 
-- Q: Como é criado o primeiro administrador global ao qual se aplica a proteção de continuidade? → A: O bootstrap único pertence a `access-control`: o e-mail indicado no `application.properties`, com padrão `admin@rinos.com.br`, deve concluir cadastro, confirmação e fator forte antes de receber o grupo global protegido. Um marcador permanente impede nova concessão pela propriedade; esta feature apenas protege e administra identidades depois desse bootstrap.
+- Q: Como é criado o primeiro administrador global ao qual se aplica a proteção de continuidade? → A: O bootstrap único pertence a `access-control`: o e-mail indicado no `application.properties`, com padrão `rodrigo@rinos.com.br`, deve concluir cadastro, confirmação e fator forte antes de receber o grupo global protegido. Um marcador permanente impede nova concessão pela propriedade; esta feature apenas protege e administra identidades depois desse bootstrap.
 
 ## User Scenarios & Testing
 
