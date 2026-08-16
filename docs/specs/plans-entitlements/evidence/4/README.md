@@ -18,7 +18,21 @@ Data: 2026-08-16.
 - teste unitário comprova `SOURCE_UNAVAILABLE` e snapshot fail-closed quando a fonte falha;
 - teste em MySQL real comprova leitura ao vivo do contrato e do uso, limite `10`, transição para `LIMIT_REACHED` e cache
   imutável da composição publicada;
-- `mvn verify`: 725 testes unitários e 136 testes de integração executados, 18 cenários condicionais ignorados, sem
+- `mvn verify`: 725 testes unitários e 138 testes de integração executados, 18 cenários condicionais ignorados, sem
   falhas ou erros.
 
-Os itens 4.1, 4.3, 4.4 e 4.5 continuam abertos e serão concluídos nos próximos lotes do núcleo.
+## Contratos e capacidade (4.1, 4.3–4.5)
+
+- bootstrap `PERSONAL/FREE` e `TENANT/FREE` cria ou confirma contrato e atribuição sob lock do titular;
+- o bootstrap tenant ocupa permanentemente a vaga do fundador e repetições devolvem o mesmo contrato;
+- reserva, ocupação, conversão e liberação pré-aceite são idempotentes pelas identidades públicas da intenção;
+- toda mutação autoritativa bloqueia o contrato tenant no MySQL, expira reservas vencidas e reconta ocupações e reservas
+  dentro da mesma transação;
+- uma ocupação nunca é removida por mudança posterior de estado da associação;
+- auditoria e outbox são gravadas na mesma transação do fato; métricas usam apenas operação e resultado seguros;
+- `inspect` e todos os resultados públicos expõem somente limite, totais e códigos seguros, sem titular, e-mail ou regra
+  interna.
+
+O teste `PlansTransactionalCoreIT` comprova bootstrap repetido, teto dez, repetição de reserva/liberação/conversão e duas
+instâncias concorrendo pela última vaga. A corrida resulta em exatamente uma reserva e um `LIMIT_REACHED`, mantendo
+`occupied + reserved = 10`.

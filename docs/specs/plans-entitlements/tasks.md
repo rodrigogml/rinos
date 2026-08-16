@@ -31,11 +31,13 @@ Evidência: [bootstrap, backfill e readiness](./evidence/3/README.md).
 
 ## Fase 4 — Núcleo
 
-- [ ] 4.1 Implementar domínio de catálogo, contrato, atribuição, fallback e imutabilidade.
+- [x] 4.1 Implementar domínio de catálogo, contrato, atribuição, fallback e imutabilidade.
 - [x] 4.2 Implementar avaliação fail-closed e cache somente de composição publicada. Evidência: [Fase 4](evidence/4/README.md).
-- [ ] 4.3 Implementar reserva, conversão, liberação pré-aceite e ocupação permanente.
-- [ ] 4.4 Serializar concorrência cross-instance e garantir idempotência.
-- [ ] 4.5 Implementar auditoria, outbox, métricas e diagnóstico seguro.
+- [x] 4.3 Implementar reserva, conversão, liberação pré-aceite e ocupação permanente.
+- [x] 4.4 Serializar concorrência cross-instance e garantir idempotência.
+- [x] 4.5 Implementar auditoria, outbox, métricas e diagnóstico seguro.
+
+Evidência consolidada: [núcleo de planos](evidence/4/README.md).
 
 ## Fase 5 — Integrações
 
