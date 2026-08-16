@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.plans.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Set;
@@ -90,6 +91,43 @@ class JdbcEntitlementEvaluationServiceIT {
     jdbc.update("UPDATE plans_serviceContract SET status = 'SUSPENDED' WHERE idServiceContract = 1");
     var unavailable = service.evaluate(request(evaluatedAt.plusSeconds(2)));
 
+    assertThat(unavailable.results().getFirst().status())
+        .isEqualTo(EntitlementDecisionStatus.UNAVAILABLE);
+    assertThat(unavailable.results().getFirst().safeReasonCode())
+        .isEqualTo("PLAN_CONTRACT_UNAVAILABLE");
+  }
+
+  @Test
+  void shouldUseSameScopeFallbackWithoutRevivingRestoredEndedAssignment() {
+    JdbcEntitlementEvaluationService service = new JdbcEntitlementEvaluationService(dataSource);
+    Instant evaluatedAt = Instant.now();
+    jdbc.update("""
+        UPDATE plans_planAssignment
+           SET status = 'ENDED', currentMarker = NULL,
+               endedAt = TIMESTAMPADD(SECOND, -1, CURRENT_TIMESTAMP(6))
+         WHERE idServiceContract = 1
+        """);
+
+    var fallback = service.evaluate(request(evaluatedAt));
+
+    assertThat(fallback.allowed()).isTrue();
+    assertThat(fallback.results().getFirst().fallback()).isTrue();
+    assertThat(fallback.results().getFirst().configuredLimit()).isEqualTo(10);
+
+    assertThatThrownBy(() -> jdbc.update("""
+        UPDATE plans_planAssignment
+           SET status = 'ACTIVE'
+         WHERE idServiceContract = 1
+        """)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+    var afterStaleRestore = service.evaluate(request(evaluatedAt.plusSeconds(1)));
+
+    assertThat(afterStaleRestore.allowed()).isTrue();
+    assertThat(afterStaleRestore.results().getFirst().fallback()).isTrue();
+
+    jdbc.update("UPDATE plans_plan SET defaultPlan = FALSE WHERE scopeType = 'TENANT'");
+    var unavailable = service.evaluate(request(evaluatedAt.plusSeconds(2)));
+
+    assertThat(unavailable.allowed()).isFalse();
     assertThat(unavailable.results().getFirst().status())
         .isEqualTo(EntitlementDecisionStatus.UNAVAILABLE);
     assertThat(unavailable.results().getFirst().safeReasonCode())

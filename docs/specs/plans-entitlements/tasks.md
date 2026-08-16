@@ -52,12 +52,14 @@ Evidência: [integrações de planos](evidence/5/README.md).
 
 ## Fase 6 — Validação
 
-- [ ] 6.1 Testar isolamento pessoal/tenant e entre tenants.
-- [ ] 6.2 Testar teto dez com convites, inclusão, aceite e concorrência real MySQL.
-- [ ] 6.3 Testar que remoção, saída, suspensão e bloqueio não liberam vaga.
-- [ ] 6.4 Testar que revogação/expiração pré-aceite libera exatamente uma reserva.
-- [ ] 6.5 Testar backfill, restauração, fallback, indisponibilidade e repetição.
-- [ ] 6.6 Executar `mvn verify` e registrar evidências.
+- [x] 6.1 Testar isolamento pessoal/tenant e entre tenants.
+- [x] 6.2 Testar teto dez com convites, inclusão, aceite e concorrência real MySQL.
+- [x] 6.3 Testar que remoção, saída, suspensão e bloqueio não liberam vaga.
+- [x] 6.4 Testar que revogação/expiração pré-aceite libera exatamente uma reserva.
+- [x] 6.5 Testar backfill, restauração, fallback, indisponibilidade e repetição.
+- [x] 6.6 Executar `mvn verify` e registrar evidências.
+
+Evidência: [validação cruzada de planos](evidence/6/README.md).
 
 ## Fase 7 — Interface posterior
 
