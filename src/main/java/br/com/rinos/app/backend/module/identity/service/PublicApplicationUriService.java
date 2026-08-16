@@ -2,6 +2,7 @@ package br.com.rinos.app.backend.module.identity.service;
 
 import java.net.URI;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -21,6 +22,7 @@ public class PublicApplicationUriService {
   private static final String ACTIVATION_STEP = "activation";
   private static final String PASSWORD_RESET_STEP = "password-reset";
   private static final String REGISTRATION_CANCELLATION_PATH = "/cancel-registration";
+  private static final String MEMBERSHIP_INVITATION_PATH = "/accept-invitation";
 
   private final URI publicBaseUrl;
 
@@ -78,6 +80,20 @@ public class PublicApplicationUriService {
         .path(LOGIN_PATH)
         .queryParam("step", PASSWORD_RESET_STEP)
         .queryParam("proof", token)
+        .build()
+        .encode()
+        .toUri();
+  }
+
+  /** Cria a URL absoluta de aceite vinculando identificador público e prova opaca. */
+  public URI membershipInvitationUri(UUID invitationId, String proof) {
+    if (invitationId == null || proof == null || proof.isBlank()) {
+      throw new IllegalArgumentException("membership invitation parameters are invalid");
+    }
+    return UriComponentsBuilder.fromUri(publicBaseUrl)
+        .path(MEMBERSHIP_INVITATION_PATH)
+        .queryParam("invitation", invitationId)
+        .queryParam("proof", proof)
         .build()
         .encode()
         .toUri();

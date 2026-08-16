@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 /**
  * Acessa exclusivamente identidades globais persistidas no backend.
@@ -57,4 +59,14 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT user FROM UserEntity user WHERE user.id = :userId")
   Optional<UserEntity> findByIdForUpdate(@Param("userId") Long userId);
+
+  /** Pesquisa limitada para pickers administrativos sem materializar o diretório completo. */
+  @Query("""
+      SELECT user
+      FROM UserEntity user
+      WHERE :term = '' OR LOWER(user.email) LIKE CONCAT('%', :term, '%')
+      ORDER BY user.normalizedEmail
+      """)
+  List<UserEntity> findForAccessAdministration(
+      @Param("term") String term, Pageable pageable);
 }

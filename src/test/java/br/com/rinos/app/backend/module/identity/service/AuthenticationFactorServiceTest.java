@@ -1,8 +1,10 @@
 package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,7 +64,8 @@ class AuthenticationFactorServiceTest {
     AuthenticationMethodInventoryService inventory = mock(AuthenticationMethodInventoryService.class);
     when(inventory.inspect(11L)).thenReturn(new AuthenticationMethodInventoryVO(false, false, 1, 0, false, 1));
     PasskeyCredentialService service = new PasskeyCredentialService(users,
-        mock(PasskeyUserRepository.class), credentials, inventory, references, audit);
+        mock(PasskeyUserRepository.class), credentials, inventory, references, audit,
+        mock(AdministrativeFactorContinuityPort.class));
 
     FactorOperationStatusEnum result = service.revoke(11L, credential.getReference(),
         false, UUID.randomUUID(), NOW);
@@ -73,20 +76,27 @@ class AuthenticationFactorServiceTest {
   }
 
   @Test
-  void passkeyRevoke_shouldProtectLastAdministrativeFactor() {
+  void passkeyRevoke_shouldDelegateLastAdministrativeFactorToEffectiveContinuity() {
     PasskeyCredentialRepository credentials = mock(PasskeyCredentialRepository.class);
     PasskeyCredentialEntity credential = credential();
     when(credentials.findByUserIdAndReferenceForUpdate(any(), any())).thenReturn(Optional.of(credential));
     AuthenticationMethodInventoryService inventory = mock(AuthenticationMethodInventoryService.class);
     when(inventory.inspect(11L)).thenReturn(new AuthenticationMethodInventoryVO(true, false, 1, 0, false, 1));
+    AdministrativeFactorContinuityPort continuity = mock(AdministrativeFactorContinuityPort.class);
+    AdministrativeFactorContinuityContext context =
+        new AdministrativeFactorContinuityContext(11L, List.of(42L));
+    when(continuity.lockContexts(11L)).thenReturn(context);
+    doThrow(new IllegalArgumentException("administrative continuity would be lost"))
+        .when(continuity).validateAndRevise(context, NOW);
     PasskeyCredentialService service = new PasskeyCredentialService(users,
-        mock(PasskeyUserRepository.class), credentials, inventory, references, audit);
+        mock(PasskeyUserRepository.class), credentials, inventory, references, audit,
+        continuity);
 
-    FactorOperationStatusEnum result = service.revoke(11L, credential.getReference(),
-        true, UUID.randomUUID(), NOW);
-
-    assertThat(result).isEqualTo(FactorOperationStatusEnum.ADMIN_FACTOR_REQUIRED);
-    assertThat(credential.getStatus()).isEqualTo(PasskeyCredentialStatusEnum.ACTIVE);
+    assertThatThrownBy(() -> service.revoke(11L, credential.getReference(),
+        true, UUID.randomUUID(), NOW))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("continuity would be lost");
+    verify(credentials).flush();
   }
 
   @Test
@@ -104,7 +114,8 @@ class AuthenticationFactorServiceTest {
         credentials,
         inventory,
         references,
-        audit);
+        audit,
+        mock(AdministrativeFactorContinuityPort.class));
     UUID correlationId = UUID.randomUUID();
 
     FactorOperationStatusEnum result = service.revoke(
@@ -136,7 +147,8 @@ class AuthenticationFactorServiceTest {
         credentials,
         mock(AuthenticationMethodInventoryService.class),
         references,
-        audit);
+        audit,
+        mock(AdministrativeFactorContinuityPort.class));
     UUID correlationId = UUID.randomUUID();
 
     service.rename(11L, credential.getReference(), "Chave principal", correlationId, NOW);
@@ -173,7 +185,8 @@ class AuthenticationFactorServiceTest {
         mock(TotpProtocolService.class),
         new AuthenticationMfaPropertiesConfig(
             java.time.Duration.ofMinutes(5), 5, java.time.Duration.ofMinutes(1), 3,
-            java.time.Duration.ofMinutes(15)));
+            java.time.Duration.ofMinutes(15)),
+        mock(AdministrativeFactorContinuityPort.class));
 
     FactorOperationStatusEnum result = service.revoke(11L, factor.getReference(),
         true, UUID.randomUUID(), NOW.plusSeconds(1));

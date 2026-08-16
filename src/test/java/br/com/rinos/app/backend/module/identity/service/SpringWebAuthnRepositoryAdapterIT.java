@@ -101,7 +101,8 @@ class SpringWebAuthnRepositoryAdapterIT {
           credentials,
           mock(AuthenticationMethodInventoryService.class),
           new IdentityReferenceService(),
-          identityAuditService);
+          identityAuditService,
+          mock(AdministrativeFactorContinuityPort.class));
       ReauthenticationService reauthenticationService = mock(ReauthenticationService.class);
       java.util.UUID sessionReference = java.util.UUID.fromString(
           "58a06f7d-c288-45fb-ab2f-7773a4abac14");

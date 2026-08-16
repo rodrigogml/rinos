@@ -289,3 +289,7 @@ Um usuário autorizado substitui uma instrução alterada, desativa um destino q
 - Execução, aprovação ou liquidação de pagamentos.
 - Cadastro-base, papéis e relacionamentos da pessoa.
 - Associação entre pessoa e usuário ou participante.
+
+## Integração com Controle de Acesso
+
+Consulta mascarada, revelação completa, criação, alteração, verificação, preferência, desativação e exclusão usam chaves distintas `tenant.party.payment.*` do [catálogo canônico](../access-control/contracts/access-key-catalog.md).

@@ -9,8 +9,8 @@ A RFW Platform é a fundação obrigatória das interfaces e das capacidades té
 
 ## Baseline aprovada
 
-A baseline executável atual usa a revisão
-`4971e679d56a78c8bc4b73fb436dee84f147ca8f` da RFW Platform, publicada como
+A baseline executável versionada atual usa a revisão
+`7559314380021be60f6289c9488933bf74adbdcb` da RFW Platform, publicada como
 `br.eng.rodrigogml.rfw:rfw:2.0.0`. O ponteiro Git do submódulo é a fonte executável dessa fixação; a versão Maven
 identifica o artefato, mas não substitui a revisão imutável do submódulo.
 

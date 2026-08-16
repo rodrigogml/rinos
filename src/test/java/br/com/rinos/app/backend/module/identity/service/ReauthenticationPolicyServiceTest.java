@@ -120,6 +120,17 @@ class ReauthenticationPolicyServiceTest {
         .isEqualTo("ui.securitySettings.reauthentication.operation.changePassword");
   }
 
+  @Test
+  void accessAdministration_shouldRequireStrongTotpOrPasskeyEvidence() {
+    assertThat(ReauthenticationOperationEnum.MANAGE_ACCESS.requiredAssurance())
+        .isEqualTo(AuthenticationAssuranceEnum.MULTI_FACTOR);
+    assertThat(ReauthenticationOperationEnum.MANAGE_ACCESS.allowedMethods())
+        .containsExactlyInAnyOrder(AuthenticationMethodEnum.TOTP, AuthenticationMethodEnum.PASSKEY)
+        .doesNotContain(AuthenticationMethodEnum.PASSWORD);
+    assertThat(ReauthenticationOperationEnum.fromOperationId("explain-access"))
+        .contains(ReauthenticationOperationEnum.EXPLAIN_ACCESS);
+  }
+
   private static VerifiedAuthSessionMethodVO verified(AuthenticationMethodEnum method) {
     return new VerifiedAuthSessionMethodVO(method, AUTHENTICATED_AT, null);
   }

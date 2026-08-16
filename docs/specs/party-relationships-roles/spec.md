@@ -235,3 +235,7 @@ Um usuário autorizado encerra um papel ou relacionamento que deixou de ser vál
 - Classificação da conta/tenant como pessoa física ou jurídica.
 - Autosserviço cadastral ou funcional baseado na identidade da pessoa autenticada.
 - Fusão ou desmembramento de pessoas e seus vínculos.
+
+## Integração com Controle de Acesso
+
+Consultar, atribuir, alterar, encerrar e cancelar usam `tenant.party.relationship.*` do [catálogo canônico](../access-control/contracts/access-key-catalog.md). Papel de negócio não concede autorização.

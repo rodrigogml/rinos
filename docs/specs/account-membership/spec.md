@@ -2,7 +2,7 @@
 
 **Feature**: `account-membership`
 **Created**: 2026-07-19
-**Status**: Clarified — pronta para planejamento
+**Status**: Planned — primeiro slice persistente autorizado para implementação
 
 ## Escopo
 
@@ -11,6 +11,10 @@ Esta feature vincula a identidade global de um usuário a uma ou mais contas por
 Papéis identificam o ator no contexto da conta, mas não concedem acesso. Grupos e chaves pertencem a `access-control`; seleção da conta ativa pertence a `tenant-context-isolation`. Esta feature também não cria usuários automaticamente nem permite acesso antes do aceite e das concessões exigidas.
 
 ## Clarifications
+
+### Session 2026-08-16
+
+- Q: Como o limite inicial de usuários é contado? -> A: `TENANT/FREE` admite dez identidades distintas já associadas, independentemente do estado atual. Convite reserva vaga antes do envio; aceite converte a reserva; somente convite não aceito revogado ou expirado libera reserva.
 
 ### Session 2026-07-19
 
@@ -134,7 +138,7 @@ Um participante encerra voluntariamente sua associação com uma conta sem cance
 
 - **FR-MEM-ACCEPT-001**: Aceite ou recusa DEVE exigir usuário autenticado cujo e-mail principal confirmado corresponda ao destinatário normalizado.
 - **FR-MEM-ACCEPT-002**: O usuário DEVE visualizar identificação suficiente da conta, convidante e papel proposto antes de decidir.
-- **FR-MEM-ACCEPT-003**: O aceite DEVE revalidar convite, usuário, conta, ausência de associação vigente e limites do plano antes de criar a associação.
+- **FR-MEM-ACCEPT-003**: O aceite DEVE revalidar convite, usuário, conta, ausência de associação vigente e converter atomicamente a reserva do plano antes de criar a associação.
 - **FR-MEM-ACCEPT-004**: Aceite válido DEVE consumir a prova e ativar exatamente uma associação de forma atômica.
 - **FR-MEM-ACCEPT-005**: Recusa DEVE consumir o convite sem criar associação e sem informar ao convidante dados além da decisão necessária.
 - **FR-MEM-ACCEPT-006**: Prova inválida, expirada, revogada, consumida ou de outro destinatário NÃO DEVE criar associação.
@@ -152,8 +156,12 @@ Um participante encerra voluntariamente sua associação com uma conta sem cance
 - **FR-MEM-LIFE-007**: Nova entrada de usuário removido DEVE exigir novo convite e novo aceite, preservando o ciclo anterior.
 - **FR-MEM-LIFE-008**: Um participante ativo DEVE poder sair após autenticação recente e confirmação explícita.
 - **FR-MEM-LIFE-009**: Saída DEVE afetar apenas a associação selecionada e nunca cancelar o usuário global.
-- **FR-MEM-LIFE-010**: Saída, remoção, suspensão, rebaixamento de papel ou retirada de concessões NÃO DEVEM deixar a conta sem ao menos um participante ativo com todas as chaves administrativas mínimas e 2FA compatível.
-- **FR-MEM-LIFE-010A**: O papel de administrador, isoladamente, NÃO DEVE satisfazer a continuidade; as chaves vigentes e a capacidade de cumprir o 2FA obrigatório DEVEM ser verificadas no momento da operação.
+- **FR-MEM-LIFE-010**: Saída, remoção, suspensão, rebaixamento de papel, retirada de permissão ou novo bloqueio
+  NÃO DEVEM deixar a conta sem ao menos um participante ativo com acesso efetivo a todas as chaves administrativas
+  mínimas e 2FA compatível.
+- **FR-MEM-LIFE-010A**: O papel de administrador, isoladamente, NÃO DEVE satisfazer a continuidade; permissões,
+  bloqueios, grupos, vigências e a capacidade de cumprir o 2FA obrigatório DEVEM ser verificados pelo resultado efetivo
+  no momento da operação e nas fronteiras futuras conhecidas.
 - **FR-MEM-LIFE-010B**: Procedimento excepcional de recuperação por administrador do sistema fica fora desta feature e DEVE ser definido em `system-administration` com confirmação reforçada e auditoria.
 - **FR-MEM-LIFE-011**: Nenhuma alteração de associação DEVE transferir automaticamente propriedade, responsabilidades ou dados para outro usuário.
 - **FR-MEM-LIFE-012**: Operações concorrentes sobre a mesma associação DEVEM detectar conflito e não sobrescrever silenciosamente estado vigente.
@@ -165,6 +173,8 @@ Um participante encerra voluntariamente sua associação com uma conta sem cance
 - **FR-MEM-BOUND-003**: Seleção, troca e propagação da conta ativa pertencem a `tenant-context-isolation`.
 - **FR-MEM-BOUND-004**: Limites de participantes e funcionalidades por plano são avaliados por `plans-entitlements`.
 - **FR-MEM-BOUND-005**: A associação NÃO DEVE conceder acesso a módulos não liberados pelo plano da conta.
+- **FR-MEM-BOUND-006**: Envio de convite, inclusão manual, aceite, ativação, reativação, importação e qualquer entrada equivalente DEVEM usar a mesma autoridade de capacidade antes de produzir efeito.
+- **FR-MEM-BOUND-007**: Suspender, remover, encerrar, sair ou bloquear identidade já associada NÃO DEVE liberar ocupação da franquia; reassociação da mesma identidade NÃO DEVE duplicá-la.
 
 ### Decisões de Infraestrutura Auditáveis
 
@@ -196,3 +206,7 @@ Um participante encerra voluntariamente sua associação com uma conta sem cance
 - **SC-MEM-009**: Em 100% dos testes, nova entrada após remoção preserva o ciclo anterior e exige novo convite.
 - **SC-MEM-010**: Todas as jornadas podem ser concluídas apenas por teclado e sem bloqueios críticos de acessibilidade.
 - **SC-MEM-011**: Em 100% dos testes, nenhuma operação comum deixa a conta sem participante ativo com chaves administrativas mínimas e 2FA compatível.
+
+## Integração com Controle de Acesso
+
+O participante apto à administração mínima é apurado pelo resultado efetivo de regras, grupos, bloqueios, vigências, estado e fator forte, conforme `access-control`; papel ou associação ativa isolados não satisfazem esta garantia.

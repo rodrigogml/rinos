@@ -11,6 +11,9 @@ server.port=7070
 # Origem pública canônica usada em links absolutos enviados para fora da aplicação
 rinos.application.public-base-url=http://localhost:7070
 
+# Candidato exclusivo ao primeiro bootstrap administrativo global; não concede acesso após a conclusão.
+rinos.access.bootstrap.administrator-email=admin@rinos.com.br
+
 # Internacionalização, tema e componente público de acesso da RFW Platform
 rfw.i18n.enabled=true
 rfw.i18n.supported-language-locales=pt-BR,en,es,fr,it,zh-CN

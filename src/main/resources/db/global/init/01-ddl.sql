@@ -23,6 +23,7 @@ CREATE TABLE identity_user (
   email VARCHAR(320) NOT NULL,
   normalizedEmail VARCHAR(320) NOT NULL,
   status VARCHAR(32) NOT NULL,
+  globalActorRole VARCHAR(32) NOT NULL DEFAULT 'USER',
   activatedAt TIMESTAMP(6) NULL,
   blockedAt TIMESTAMP(6) NULL,
   deactivatedAt TIMESTAMP(6) NULL,
@@ -31,6 +32,9 @@ CREATE TABLE identity_user (
   version BIGINT NOT NULL DEFAULT 0,
   CONSTRAINT pk_identity_user PRIMARY KEY (id),
   CONSTRAINT uk_identity_user_normalized_email UNIQUE (normalizedEmail),
+  CONSTRAINT ck_identity_user_global_actor_role CHECK (
+    globalActorRole IN ('USER', 'SYSTEM_ADMINISTRATOR')
+  ),
   INDEX idx_identity_user_status_created (status, createdAt)
 ) ENGINE = InnoDB;
 
@@ -599,3 +603,1065 @@ CREATE TABLE identity_event (
   INDEX idx_identity_event_correlation (correlationId),
   INDEX idx_identity_event_occurred (occurredAt)
 ) ENGINE = InnoDB;
+
+-- Modelo relacional global do controle de acesso.
+-- Referencias a tenant e associacao permanecem logicas ate seus modulos publicarem
+-- as tabelas canonicas no mesmo schema global.
+
+CREATE TABLE account_tenant (
+  idTenant BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_account_tenant PRIMARY KEY (idTenant),
+  CONSTRAINT uk_account_tenant_public UNIQUE (publicId),
+  CONSTRAINT ck_account_tenant_status CHECK (
+    status IN ('RESERVED', 'OPERATIONAL', 'SUSPENDED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_account_tenant_version CHECK (version >= 0),
+  INDEX idx_account_tenant_status (status, updatedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE account_account (
+  idAccount BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  idTenant BIGINT NOT NULL,
+  founderUserId BIGINT NOT NULL,
+  displayName VARCHAR(160) NOT NULL,
+  baseCurrency CHAR(3) NOT NULL,
+  timeZoneId VARCHAR(100) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_account_account PRIMARY KEY (idAccount),
+  CONSTRAINT uk_account_account_public UNIQUE (publicId),
+  CONSTRAINT uk_account_account_tenant UNIQUE (idTenant),
+  CONSTRAINT uk_account_account_tenant_ref UNIQUE (idAccount, idTenant),
+  CONSTRAINT fk_account_account_tenant FOREIGN KEY (idTenant)
+    REFERENCES account_tenant (idTenant) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_account_account_founder FOREIGN KEY (founderUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_account_account_status CHECK (
+    status IN ('CREATING', 'ACTIVE', 'SUSPENDED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_account_account_currency CHECK (
+    CHAR_LENGTH(baseCurrency) = 3 AND BINARY baseCurrency = BINARY UPPER(baseCurrency)
+  ),
+  CONSTRAINT ck_account_account_version CHECK (version >= 0),
+  INDEX idx_account_account_founder (founderUserId, status),
+  INDEX idx_account_account_status (status, updatedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE account_creationIntent (
+  idAccountCreationIntent BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  protocolId BINARY(16) NOT NULL,
+  creatorUserId BIGINT NOT NULL,
+  idempotencyKey BINARY(16) NOT NULL,
+  payloadHash BINARY(32) NOT NULL,
+  idAccount BIGINT NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  publicStage VARCHAR(32) NOT NULL,
+  failureCode VARCHAR(100) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_account_creation_intent PRIMARY KEY (idAccountCreationIntent),
+  CONSTRAINT uk_account_creation_intent_public UNIQUE (publicId),
+  CONSTRAINT uk_account_creation_intent_protocol UNIQUE (protocolId),
+  CONSTRAINT uk_account_creation_intent_actor_key UNIQUE (creatorUserId, idempotencyKey),
+  CONSTRAINT uk_account_creation_intent_account UNIQUE (idAccount),
+  CONSTRAINT fk_account_creation_intent_creator FOREIGN KEY (creatorUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_account_creation_intent_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_account_creation_intent_status CHECK (
+    status IN ('ACCEPTED', 'PROCESSING', 'READY', 'FAILED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_account_creation_intent_stage CHECK (
+    publicStage IN ('ACCEPTED', 'PREPARING', 'FINISHING', 'AVAILABLE', 'ATTENTION')
+  ),
+  CONSTRAINT ck_account_creation_intent_version CHECK (version >= 0),
+  INDEX idx_account_creation_intent_status (status, updatedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE account_provisioningCheckpoint (
+  idAccountProvisioningCheckpoint BIGINT AUTO_INCREMENT NOT NULL,
+  idAccount BIGINT NOT NULL,
+  stepType VARCHAR(32) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  externalReference VARCHAR(200) NULL,
+  attemptCount INT NOT NULL DEFAULT 0,
+  nextAttemptAt TIMESTAMP(6) NULL,
+  failureCode VARCHAR(100) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_account_provisioning_checkpoint PRIMARY KEY (idAccountProvisioningCheckpoint),
+  CONSTRAINT uk_account_provisioning_checkpoint UNIQUE (idAccount, stepType),
+  CONSTRAINT fk_account_checkpoint_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_account_checkpoint_step CHECK (
+    stepType IN ('STORAGE', 'FOUNDING_MEMBERSHIP', 'ACCESS_BOOTSTRAP', 'DEFAULT_PLAN')
+  ),
+  CONSTRAINT ck_account_checkpoint_status CHECK (
+    status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')
+  ),
+  CONSTRAINT ck_account_checkpoint_attempt CHECK (attemptCount >= 0),
+  CONSTRAINT ck_account_checkpoint_version CHECK (version >= 0),
+  INDEX idx_account_checkpoint_dispatch (status, nextAttemptAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE account_outboxEvent (
+  idAccountOutboxEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventId BINARY(16) NOT NULL,
+  aggregateType VARCHAR(40) NOT NULL,
+  aggregateId BIGINT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  payload JSON NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  attemptCount INT NOT NULL DEFAULT 0,
+  nextAttemptAt TIMESTAMP(6) NULL,
+  leaseOwner VARCHAR(100) NULL,
+  leaseUntil TIMESTAMP(6) NULL,
+  publishedAt TIMESTAMP(6) NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_account_outbox_event PRIMARY KEY (idAccountOutboxEvent),
+  CONSTRAINT uk_account_outbox_event UNIQUE (eventId),
+  CONSTRAINT ck_account_outbox_aggregate CHECK (aggregateType = 'ACCOUNT'),
+  CONSTRAINT ck_account_outbox_status CHECK (
+    status IN ('PENDING', 'PROCESSING', 'PUBLISHED', 'FAILED')
+  ),
+  CONSTRAINT ck_account_outbox_attempt CHECK (attemptCount >= 0),
+  CONSTRAINT ck_account_outbox_lease CHECK (
+    (leaseOwner IS NULL AND leaseUntil IS NULL)
+    OR (leaseOwner IS NOT NULL AND leaseUntil IS NOT NULL)
+  ),
+  INDEX idx_account_outbox_dispatch (status, nextAttemptAt, leaseUntil)
+) ENGINE = InnoDB;
+
+CREATE TABLE account_auditEvent (
+  idAccountAuditEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  idAccount BIGINT NULL,
+  idTenant BIGINT NULL,
+  actorUserId BIGINT NULL,
+  systemOrigin VARCHAR(100) NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  safeResultCode VARCHAR(100) NOT NULL,
+  details JSON NULL,
+  occurredAt TIMESTAMP(6) NOT NULL,
+  CONSTRAINT pk_account_audit_event PRIMARY KEY (idAccountAuditEvent),
+  CONSTRAINT fk_account_audit_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_account_audit_tenant FOREIGN KEY (idTenant)
+    REFERENCES account_tenant (idTenant) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_account_audit_actor FOREIGN KEY (actorUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_account_audit_origin CHECK (
+    (actorUserId IS NOT NULL AND systemOrigin IS NULL)
+    OR (actorUserId IS NULL AND systemOrigin IS NOT NULL)
+  ),
+  INDEX idx_account_audit_account (idAccount, occurredAt),
+  INDEX idx_account_audit_tenant (idTenant, occurredAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE membership_accountMembership (
+  idAccountMembership BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  idAccount BIGINT NOT NULL,
+  idUser BIGINT NOT NULL,
+  roleType VARCHAR(32) NOT NULL,
+  originType VARCHAR(24) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  currentMarker TINYINT NULL,
+  startedAt TIMESTAMP(6) NOT NULL,
+  endedAt TIMESTAMP(6) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_membership_account_membership PRIMARY KEY (idAccountMembership),
+  CONSTRAINT uk_membership_account_membership_public UNIQUE (publicId),
+  CONSTRAINT uk_membership_account_membership_current UNIQUE (idAccount, idUser, currentMarker),
+  CONSTRAINT uk_membership_account_user_ref UNIQUE (
+    idAccountMembership, idAccount, idUser
+  ),
+  CONSTRAINT fk_membership_account_membership_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_account_membership_user FOREIGN KEY (idUser)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_membership_role CHECK (
+    roleType IN ('COLLABORATOR', 'ACCOUNTANT', 'EXTERNAL_PARTNER', 'ACCOUNT_ADMINISTRATOR')
+  ),
+  CONSTRAINT ck_membership_origin CHECK (originType IN ('FOUNDER', 'INVITATION')),
+  CONSTRAINT ck_membership_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'LEFT', 'REMOVED')),
+  CONSTRAINT ck_membership_current CHECK (
+    (status IN ('ACTIVE', 'SUSPENDED') AND currentMarker = 1 AND endedAt IS NULL)
+    OR (status IN ('LEFT', 'REMOVED') AND currentMarker IS NULL AND endedAt IS NOT NULL)
+  ),
+  CONSTRAINT ck_membership_version CHECK (version >= 0),
+  INDEX idx_membership_user_active (idUser, status),
+  INDEX idx_membership_account_active (idAccount, status)
+) ENGINE = InnoDB;
+
+CREATE TABLE membership_invitation (
+  idMembershipInvitation BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  idAccount BIGINT NOT NULL,
+  inviterMembershipId BIGINT NOT NULL,
+  normalizedEmail VARCHAR(320) NOT NULL,
+  proposedRoleType VARCHAR(32) NOT NULL,
+  proofDigest BINARY(32) NOT NULL,
+  proofKeyId VARCHAR(100) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  pendingMarker TINYINT NULL,
+  expiresAt TIMESTAMP(6) NOT NULL,
+  consumedByUserId BIGINT NULL,
+  consumedAt TIMESTAMP(6) NULL,
+  sendCount INT NOT NULL DEFAULT 1,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_membership_invitation PRIMARY KEY (idMembershipInvitation),
+  CONSTRAINT uk_membership_invitation_public UNIQUE (publicId),
+  CONSTRAINT uk_membership_invitation_pending UNIQUE (idAccount, normalizedEmail, pendingMarker),
+  CONSTRAINT uk_membership_invitation_account_ref UNIQUE (
+    idMembershipInvitation, idAccount
+  ),
+  CONSTRAINT fk_membership_invitation_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_invitation_inviter FOREIGN KEY (inviterMembershipId)
+    REFERENCES membership_accountMembership (idAccountMembership)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_invitation_consumer FOREIGN KEY (consumedByUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_membership_invitation_role CHECK (
+    proposedRoleType IN ('COLLABORATOR', 'ACCOUNTANT', 'EXTERNAL_PARTNER', 'ACCOUNT_ADMINISTRATOR')
+  ),
+  CONSTRAINT ck_membership_invitation_status CHECK (
+    status IN ('PENDING', 'ACCEPTED', 'DECLINED', 'REVOKED', 'EXPIRED', 'SUPERSEDED')
+  ),
+  CONSTRAINT ck_membership_invitation_pending CHECK (
+    (status = 'PENDING' AND pendingMarker = 1 AND consumedAt IS NULL AND consumedByUserId IS NULL)
+    OR (status <> 'PENDING' AND pendingMarker IS NULL)
+  ),
+  CONSTRAINT ck_membership_invitation_consumption CHECK (
+    (status IN ('ACCEPTED', 'DECLINED') AND consumedAt IS NOT NULL)
+    OR (status NOT IN ('ACCEPTED', 'DECLINED') AND consumedAt IS NULL AND consumedByUserId IS NULL)
+  ),
+  CONSTRAINT ck_membership_invitation_send_count CHECK (sendCount > 0),
+  CONSTRAINT ck_membership_invitation_version CHECK (version >= 0),
+  INDEX idx_membership_invitation_expiry (status, expiresAt),
+  INDEX idx_membership_invitation_email (normalizedEmail, status)
+) ENGINE = InnoDB;
+
+CREATE TABLE membership_invitationRateWindow (
+  idMembershipInvitationRateWindow BIGINT AUTO_INCREMENT NOT NULL,
+  dimensionType VARCHAR(24) NOT NULL,
+  dimensionKey VARBINARY(320) NOT NULL,
+  activeMarker BOOLEAN NULL,
+  windowStartedAt TIMESTAMP(6) NOT NULL,
+  windowEndsAt TIMESTAMP(6) NOT NULL,
+  eventCount INT NOT NULL DEFAULT 0,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_membership_invitation_rate PRIMARY KEY (idMembershipInvitationRateWindow),
+  CONSTRAINT uk_membership_invitation_rate UNIQUE (dimensionType, dimensionKey, activeMarker),
+  CONSTRAINT ck_membership_invitation_rate_dimension CHECK (
+    dimensionType IN ('ACCOUNT', 'INVITER', 'RECIPIENT', 'ORIGIN')
+  ),
+  CONSTRAINT ck_membership_invitation_rate_active CHECK (activeMarker IS NULL OR activeMarker = TRUE),
+  CONSTRAINT ck_membership_invitation_rate_window CHECK (windowEndsAt > windowStartedAt),
+  CONSTRAINT ck_membership_invitation_rate_count CHECK (eventCount >= 0),
+  CONSTRAINT ck_membership_invitation_rate_version CHECK (version >= 0),
+  INDEX idx_membership_invitation_rate_expiry (activeMarker, windowEndsAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE membership_outboxEvent (
+  idMembershipOutboxEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventId BINARY(16) NOT NULL,
+  aggregateType VARCHAR(40) NOT NULL,
+  aggregateId BIGINT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  payload JSON NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  attemptCount INT NOT NULL DEFAULT 0,
+  secretCiphertext VARBINARY(512) NULL,
+  secretNonce BINARY(12) NULL,
+  secretKeyId VARCHAR(32) NULL,
+  secretExpiresAt TIMESTAMP(6) NULL,
+  nextAttemptAt TIMESTAMP(6) NULL,
+  leaseOwner VARCHAR(100) NULL,
+  leaseUntil TIMESTAMP(6) NULL,
+  publishedAt TIMESTAMP(6) NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_membership_outbox PRIMARY KEY (idMembershipOutboxEvent),
+  CONSTRAINT uk_membership_outbox_event UNIQUE (eventId),
+  CONSTRAINT ck_membership_outbox_aggregate CHECK (
+    aggregateType IN ('MEMBERSHIP', 'INVITATION')
+  ),
+  CONSTRAINT ck_membership_outbox_status CHECK (
+    status IN ('PENDING', 'PROCESSING', 'PUBLISHED', 'FAILED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_membership_outbox_attempt CHECK (attemptCount >= 0),
+  CONSTRAINT ck_membership_outbox_lease CHECK (
+    (leaseOwner IS NULL AND leaseUntil IS NULL)
+    OR (leaseOwner IS NOT NULL AND leaseUntil IS NOT NULL)
+  ),
+  CONSTRAINT ck_membership_outbox_secret CHECK (
+    (secretCiphertext IS NULL AND secretNonce IS NULL AND secretKeyId IS NULL AND secretExpiresAt IS NULL)
+    OR (secretCiphertext IS NOT NULL AND secretNonce IS NOT NULL AND secretKeyId IS NOT NULL AND secretExpiresAt IS NOT NULL)
+  ),
+  INDEX idx_membership_outbox_dispatch (status, nextAttemptAt, leaseUntil)
+) ENGINE = InnoDB;
+
+CREATE TABLE membership_event (
+  idMembershipEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  idAccount BIGINT NOT NULL,
+  idAccountMembership BIGINT NULL,
+  idMembershipInvitation BIGINT NULL,
+  actorUserId BIGINT NULL,
+  systemOrigin VARCHAR(100) NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  safeResultCode VARCHAR(100) NOT NULL,
+  details JSON NULL,
+  occurredAt TIMESTAMP(6) NOT NULL,
+  CONSTRAINT pk_membership_event PRIMARY KEY (idMembershipEvent),
+  CONSTRAINT fk_membership_event_account FOREIGN KEY (idAccount)
+    REFERENCES account_account (idAccount) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_event_membership FOREIGN KEY (idAccountMembership)
+    REFERENCES membership_accountMembership (idAccountMembership)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_event_invitation FOREIGN KEY (idMembershipInvitation)
+    REFERENCES membership_invitation (idMembershipInvitation)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_membership_event_actor FOREIGN KEY (actorUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_membership_event_origin CHECK (
+    (actorUserId IS NOT NULL AND systemOrigin IS NULL)
+    OR (actorUserId IS NULL AND systemOrigin IS NOT NULL)
+  ),
+  INDEX idx_membership_event_account (idAccount, occurredAt),
+  INDEX idx_membership_event_membership (idAccountMembership, occurredAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_keyCategory (
+  idAccessKeyCategory BIGINT AUTO_INCREMENT NOT NULL,
+  categoryCode VARCHAR(160) NOT NULL,
+  parentIdAccessKeyCategory BIGINT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  nameI18nKey VARCHAR(200) NOT NULL,
+  descriptionI18nKey VARCHAR(200) NOT NULL,
+  displayOrder INT NOT NULL DEFAULT 0,
+  status VARCHAR(24) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  CONSTRAINT pk_access_key_category PRIMARY KEY (idAccessKeyCategory),
+  CONSTRAINT uk_access_key_category_code UNIQUE (categoryCode),
+  CONSTRAINT fk_access_key_category_parent FOREIGN KEY (parentIdAccessKeyCategory)
+    REFERENCES access_keyCategory (idAccessKeyCategory)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_key_category_scope CHECK (scopeType IN ('GLOBAL', 'TENANT')),
+  CONSTRAINT ck_access_key_category_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_access_key_category_values CHECK (displayOrder >= 0 AND version >= 0),
+  INDEX idx_access_key_category_navigation (scopeType, status, parentIdAccessKeyCategory, displayOrder)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_key (
+  idAccessKey BIGINT AUTO_INCREMENT NOT NULL,
+  accessKeyCode VARCHAR(200) NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idAccessKeyCategory BIGINT NOT NULL,
+  ownerModule VARCHAR(100) NOT NULL,
+  nameI18nKey VARCHAR(200) NOT NULL,
+  descriptionI18nKey VARCHAR(200) NOT NULL,
+  entitlementScope VARCHAR(16) NULL,
+  entitlementCode VARCHAR(200) NULL,
+  status VARCHAR(24) NOT NULL,
+  descriptorVersion INT NOT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_access_key PRIMARY KEY (idAccessKey),
+  CONSTRAINT uk_access_key_code UNIQUE (accessKeyCode),
+  CONSTRAINT fk_access_key_category FOREIGN KEY (idAccessKeyCategory)
+    REFERENCES access_keyCategory (idAccessKeyCategory)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_key_scope CHECK (scopeType IN ('GLOBAL', 'TENANT')),
+  CONSTRAINT ck_access_key_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_access_key_entitlement CHECK (
+    (entitlementScope IS NULL AND entitlementCode IS NULL)
+    OR (entitlementScope IN ('PERSONAL', 'TENANT') AND entitlementCode IS NOT NULL)
+  ),
+  CONSTRAINT ck_access_key_descriptor_version CHECK (descriptorVersion > 0),
+  INDEX idx_access_key_catalog (scopeType, status, ownerModule, idAccessKeyCategory)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_keyRequirement (
+  idAccessKeyRequirement BIGINT AUTO_INCREMENT NOT NULL,
+  idAccessKey BIGINT NOT NULL,
+  featureCode VARCHAR(100) NOT NULL,
+  requirementCode VARCHAR(100) NOT NULL,
+  CONSTRAINT pk_access_key_requirement PRIMARY KEY (idAccessKeyRequirement),
+  CONSTRAINT uk_access_key_requirement UNIQUE (idAccessKey, featureCode, requirementCode),
+  CONSTRAINT fk_access_key_requirement_key FOREIGN KEY (idAccessKey)
+    REFERENCES access_key (idAccessKey)
+    ON DELETE CASCADE ON UPDATE RESTRICT,
+  INDEX idx_access_key_requirement_trace (featureCode, requirementCode)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_contextRevision (
+  idAccessContextRevision BIGINT AUTO_INCREMENT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idTenant BIGINT NULL,
+  contextDiscriminator BIGINT GENERATED ALWAYS AS
+    (CASE WHEN scopeType = 'GLOBAL' THEN 0 ELSE idTenant END) STORED,
+  revision BIGINT NOT NULL DEFAULT 0,
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_access_context_revision PRIMARY KEY (idAccessContextRevision),
+  CONSTRAINT uk_access_context_revision UNIQUE (scopeType, contextDiscriminator),
+  CONSTRAINT ck_access_context_revision_scope CHECK (
+    (scopeType = 'GLOBAL' AND idTenant IS NULL)
+    OR (scopeType = 'TENANT' AND idTenant IS NOT NULL AND idTenant > 0)
+  ),
+  CONSTRAINT ck_access_context_revision_value CHECK (revision >= 0)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_group (
+  idAccessGroup BIGINT AUTO_INCREMENT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idTenant BIGINT NULL,
+  contextDiscriminator BIGINT GENERATED ALWAYS AS
+    (CASE WHEN scopeType = 'GLOBAL' THEN 0 ELSE idTenant END) STORED,
+  name VARCHAR(160) NOT NULL,
+  normalizedName VARCHAR(160) NOT NULL,
+  description VARCHAR(500) NULL,
+  status VARCHAR(24) NOT NULL,
+  protectedGroup BOOLEAN NOT NULL DEFAULT FALSE,
+  baselineVersion INT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_access_group PRIMARY KEY (idAccessGroup),
+  CONSTRAINT uk_access_group_name UNIQUE (scopeType, contextDiscriminator, normalizedName),
+  CONSTRAINT ck_access_group_scope CHECK (
+    (scopeType = 'GLOBAL' AND idTenant IS NULL)
+    OR (scopeType = 'TENANT' AND idTenant IS NOT NULL AND idTenant > 0)
+  ),
+  CONSTRAINT ck_access_group_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_access_group_baseline CHECK (
+    (protectedGroup = TRUE AND baselineVersion IS NOT NULL AND baselineVersion > 0)
+    OR (protectedGroup = FALSE AND baselineVersion IS NULL)
+  ),
+  CONSTRAINT ck_access_group_version CHECK (version >= 0),
+  INDEX idx_access_group_context (scopeType, contextDiscriminator, status)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_protectedGroupBaseline (
+  idProtectedGroupBaseline BIGINT AUTO_INCREMENT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  baselineVersion INT NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_access_protected_baseline PRIMARY KEY (idProtectedGroupBaseline),
+  CONSTRAINT uk_access_protected_baseline UNIQUE (scopeType, baselineVersion),
+  CONSTRAINT ck_access_protected_baseline_scope CHECK (scopeType IN ('GLOBAL', 'TENANT')),
+  CONSTRAINT ck_access_protected_baseline_status CHECK (status IN ('ACTIVE', 'SUPERSEDED')),
+  CONSTRAINT ck_access_protected_baseline_version CHECK (baselineVersion > 0)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_protectedGroupBaselineKey (
+  idProtectedGroupBaseline BIGINT NOT NULL,
+  idAccessKey BIGINT NOT NULL,
+  CONSTRAINT pk_access_protected_baseline_key
+    PRIMARY KEY (idProtectedGroupBaseline, idAccessKey),
+  CONSTRAINT fk_access_baseline_key_baseline FOREIGN KEY (idProtectedGroupBaseline)
+    REFERENCES access_protectedGroupBaseline (idProtectedGroupBaseline)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_baseline_key_key FOREIGN KEY (idAccessKey)
+    REFERENCES access_key (idAccessKey)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  INDEX idx_access_baseline_key_key (idAccessKey)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_groupSubject (
+  idAccessGroupSubject BIGINT AUTO_INCREMENT NOT NULL,
+  idAccessGroup BIGINT NOT NULL,
+  idUser BIGINT NULL,
+  idAccountMembership BIGINT NULL,
+  status VARCHAR(24) NOT NULL,
+  validFrom TIMESTAMP(6) NULL,
+  validUntil TIMESTAMP(6) NULL,
+  createdByUserId BIGINT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  version BIGINT NOT NULL DEFAULT 0,
+  CONSTRAINT pk_access_group_subject PRIMARY KEY (idAccessGroupSubject),
+  CONSTRAINT uk_access_group_subject_user UNIQUE (idAccessGroup, idUser),
+  CONSTRAINT uk_access_group_subject_membership UNIQUE (idAccessGroup, idAccountMembership),
+  CONSTRAINT fk_access_group_subject_group FOREIGN KEY (idAccessGroup)
+    REFERENCES access_group (idAccessGroup)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_group_subject_user FOREIGN KEY (idUser)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_group_subject_membership FOREIGN KEY (idAccountMembership)
+    REFERENCES membership_accountMembership (idAccountMembership)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_group_subject_actor FOREIGN KEY (createdByUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_group_subject_origin CHECK (
+    (idUser IS NOT NULL AND idAccountMembership IS NULL)
+    OR (idUser IS NULL AND idAccountMembership IS NOT NULL AND idAccountMembership > 0)
+  ),
+  CONSTRAINT ck_access_group_subject_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'ENDED')),
+  CONSTRAINT ck_access_group_subject_validity CHECK (
+    validFrom IS NULL OR validUntil IS NULL OR validUntil > validFrom
+  ),
+  CONSTRAINT ck_access_group_subject_version CHECK (version >= 0),
+  INDEX idx_access_group_subject_user_resolution (idUser, status, validFrom, validUntil),
+  INDEX idx_access_group_subject_member_resolution
+    (idAccountMembership, status, validFrom, validUntil)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_rule (
+  idAccessRule BIGINT AUTO_INCREMENT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idTenant BIGINT NULL,
+  contextDiscriminator BIGINT GENERATED ALWAYS AS
+    (CASE WHEN scopeType = 'GLOBAL' THEN 0 ELSE idTenant END) STORED,
+  originType VARCHAR(24) NOT NULL,
+  idUser BIGINT NULL,
+  idAccountMembership BIGINT NULL,
+  idAccessGroup BIGINT NULL,
+  idAccessKey BIGINT NOT NULL,
+  effect VARCHAR(16) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  validFrom TIMESTAMP(6) NULL,
+  validUntil TIMESTAMP(6) NULL,
+  createdByUserId BIGINT NULL,
+  updatedByUserId BIGINT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  version BIGINT NOT NULL DEFAULT 0,
+  CONSTRAINT pk_access_rule PRIMARY KEY (idAccessRule),
+  CONSTRAINT uk_access_rule_user UNIQUE
+    (scopeType, contextDiscriminator, idUser, idAccessKey),
+  CONSTRAINT uk_access_rule_membership UNIQUE
+    (scopeType, contextDiscriminator, idAccountMembership, idAccessKey),
+  CONSTRAINT uk_access_rule_group UNIQUE
+    (scopeType, contextDiscriminator, idAccessGroup, idAccessKey),
+  CONSTRAINT fk_access_rule_user FOREIGN KEY (idUser)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_membership FOREIGN KEY (idAccountMembership)
+    REFERENCES membership_accountMembership (idAccountMembership)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_group FOREIGN KEY (idAccessGroup)
+    REFERENCES access_group (idAccessGroup)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_key FOREIGN KEY (idAccessKey)
+    REFERENCES access_key (idAccessKey)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_created_actor FOREIGN KEY (createdByUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_updated_actor FOREIGN KEY (updatedByUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_rule_scope CHECK (
+    (scopeType = 'GLOBAL' AND idTenant IS NULL)
+    OR (scopeType = 'TENANT' AND idTenant IS NOT NULL AND idTenant > 0)
+  ),
+  CONSTRAINT ck_access_rule_origin CHECK (
+    (originType = 'DIRECT_USER' AND scopeType = 'GLOBAL'
+      AND idUser IS NOT NULL AND idAccountMembership IS NULL AND idAccessGroup IS NULL)
+    OR (originType = 'DIRECT_MEMBERSHIP' AND scopeType = 'TENANT'
+      AND idUser IS NULL AND idAccountMembership IS NOT NULL
+      AND idAccountMembership > 0 AND idAccessGroup IS NULL)
+    OR (originType = 'GROUP' AND idUser IS NULL
+      AND idAccountMembership IS NULL AND idAccessGroup IS NOT NULL)
+  ),
+  CONSTRAINT ck_access_rule_effect CHECK (effect IN ('PERMITIR', 'BLOQUEAR')),
+  CONSTRAINT ck_access_rule_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_access_rule_validity CHECK (
+    validFrom IS NULL OR validUntil IS NULL OR validUntil > validFrom
+  ),
+  CONSTRAINT ck_access_rule_version CHECK (version >= 0),
+  INDEX idx_access_rule_context_key
+    (scopeType, contextDiscriminator, idAccessKey, status, validFrom, validUntil),
+  INDEX idx_access_rule_user_resolution
+    (idUser, status, validFrom, validUntil, idAccessKey),
+  INDEX idx_access_rule_member_resolution
+    (idAccountMembership, status, validFrom, validUntil, idAccessKey),
+  INDEX idx_access_rule_group_resolution
+    (idAccessGroup, status, validFrom, validUntil, idAccessKey)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_ruleHistory (
+  idAccessRuleHistory BIGINT AUTO_INCREMENT NOT NULL,
+  idAccessRule BIGINT NOT NULL,
+  changeType VARCHAR(32) NOT NULL,
+  previousSnapshot JSON NULL,
+  newSnapshot JSON NOT NULL,
+  actorUserId BIGINT NULL,
+  systemOrigin VARCHAR(100) NULL,
+  reason VARCHAR(500) NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  occurredAt TIMESTAMP(6) NOT NULL,
+  CONSTRAINT pk_access_rule_history PRIMARY KEY (idAccessRuleHistory),
+  CONSTRAINT fk_access_rule_history_rule FOREIGN KEY (idAccessRule)
+    REFERENCES access_rule (idAccessRule)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_access_rule_history_actor FOREIGN KEY (actorUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_rule_history_change CHECK (
+    changeType IN ('CREATE', 'EFFECT_CHANGE', 'VALIDITY_CHANGE', 'DEACTIVATE')
+  ),
+  CONSTRAINT ck_access_rule_history_actor CHECK (
+    (actorUserId IS NOT NULL AND systemOrigin IS NULL)
+    OR (actorUserId IS NULL AND systemOrigin IS NOT NULL)
+  ),
+  INDEX idx_access_rule_history_rule_time (idAccessRule, occurredAt),
+  INDEX idx_access_rule_history_correlation (correlationId)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_bootstrap (
+  idAccessBootstrap BIGINT NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  completedByUserId BIGINT NULL,
+  completedAt TIMESTAMP(6) NULL,
+  correlationId VARCHAR(100) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  CONSTRAINT pk_access_bootstrap PRIMARY KEY (idAccessBootstrap),
+  CONSTRAINT fk_access_bootstrap_user FOREIGN KEY (completedByUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_bootstrap_singleton CHECK (idAccessBootstrap = 1),
+  CONSTRAINT ck_access_bootstrap_status CHECK (status IN ('NEVER_COMPLETED', 'COMPLETED')),
+  CONSTRAINT ck_access_bootstrap_state CHECK (
+    (status = 'NEVER_COMPLETED' AND completedByUserId IS NULL
+      AND completedAt IS NULL AND correlationId IS NULL)
+    OR (status = 'COMPLETED' AND completedByUserId IS NOT NULL
+      AND completedAt IS NOT NULL AND correlationId IS NOT NULL)
+  ),
+  CONSTRAINT ck_access_bootstrap_version CHECK (version >= 0)
+) ENGINE = InnoDB;
+
+CREATE TABLE access_auditEvent (
+  idAccessAuditEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idTenant BIGINT NULL,
+  contextDiscriminator BIGINT GENERATED ALWAYS AS
+    (CASE WHEN scopeType = 'GLOBAL' THEN 0 ELSE idTenant END) STORED,
+  actorUserId BIGINT NULL,
+  systemOrigin VARCHAR(100) NULL,
+  targetType VARCHAR(80) NOT NULL,
+  targetId BIGINT NOT NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  safeReasonCode VARCHAR(100) NULL,
+  details JSON NULL,
+  occurredAt TIMESTAMP(6) NOT NULL,
+  CONSTRAINT pk_access_audit_event PRIMARY KEY (idAccessAuditEvent),
+  CONSTRAINT fk_access_audit_event_actor FOREIGN KEY (actorUserId)
+    REFERENCES identity_user (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_access_audit_event_scope CHECK (
+    (scopeType = 'GLOBAL' AND idTenant IS NULL)
+    OR (scopeType = 'TENANT' AND idTenant IS NOT NULL AND idTenant > 0)
+  ),
+  CONSTRAINT ck_access_audit_event_actor CHECK (
+    (actorUserId IS NOT NULL AND systemOrigin IS NULL)
+    OR (actorUserId IS NULL AND systemOrigin IS NOT NULL)
+  ),
+  INDEX idx_access_audit_context_time (scopeType, contextDiscriminator, occurredAt),
+  INDEX idx_access_audit_target_time (targetType, targetId, occurredAt),
+  INDEX idx_access_audit_correlation (correlationId)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_plan (
+  idPlan BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  planCode VARCHAR(100) NOT NULL,
+  nameI18nKey VARCHAR(200) NOT NULL,
+  descriptionI18nKey VARCHAR(200) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  freePlan BOOLEAN NOT NULL DEFAULT FALSE,
+  defaultPlan BOOLEAN NOT NULL DEFAULT FALSE,
+  defaultScopeMarker VARCHAR(16) GENERATED ALWAYS AS (
+    CASE WHEN defaultPlan = TRUE AND status = 'ACTIVE' THEN scopeType ELSE NULL END
+  ) STORED,
+  availableFrom TIMESTAMP(6) NULL,
+  availableUntil TIMESTAMP(6) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_plan PRIMARY KEY (idPlan),
+  CONSTRAINT uk_plans_plan_public UNIQUE (publicId),
+  CONSTRAINT uk_plans_plan_code UNIQUE (scopeType, planCode),
+  CONSTRAINT uk_plans_plan_scope_id UNIQUE (idPlan, scopeType),
+  CONSTRAINT uk_plans_plan_default UNIQUE (defaultScopeMarker),
+  CONSTRAINT ck_plans_plan_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_plan_status CHECK (status IN ('DRAFT', 'ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_plans_plan_validity CHECK (
+    availableFrom IS NULL OR availableUntil IS NULL OR availableUntil > availableFrom
+  ),
+  CONSTRAINT ck_plans_plan_version CHECK (version >= 0),
+  INDEX idx_plans_plan_catalog (scopeType, status, availableFrom, availableUntil)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_planVersion (
+  idPlanVersion BIGINT AUTO_INCREMENT NOT NULL,
+  idPlan BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  versionNumber INT NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  publishedAt TIMESTAMP(6) NULL,
+  validFrom TIMESTAMP(6) NULL,
+  validUntil TIMESTAMP(6) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_plan_version PRIMARY KEY (idPlanVersion),
+  CONSTRAINT uk_plans_plan_version_number UNIQUE (idPlan, versionNumber),
+  CONSTRAINT uk_plans_plan_version_scope UNIQUE (idPlanVersion, scopeType),
+  CONSTRAINT fk_plans_plan_version_plan FOREIGN KEY (idPlan, scopeType)
+    REFERENCES plans_plan (idPlan, scopeType) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_plan_version_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_plan_version_status CHECK (
+    status IN ('DRAFT', 'PUBLISHED', 'RETIRED')
+  ),
+  CONSTRAINT ck_plans_plan_version_publish CHECK (
+    (status = 'DRAFT' AND publishedAt IS NULL)
+    OR (status IN ('PUBLISHED', 'RETIRED') AND publishedAt IS NOT NULL)
+  ),
+  CONSTRAINT ck_plans_plan_version_validity CHECK (
+    validFrom IS NULL OR validUntil IS NULL OR validUntil > validFrom
+  ),
+  CONSTRAINT ck_plans_plan_version_values CHECK (versionNumber > 0 AND version >= 0),
+  INDEX idx_plans_plan_version_effective (idPlan, status, validFrom, validUntil)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_entitlementDefinition (
+  idEntitlementDefinition BIGINT AUTO_INCREMENT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  entitlementCode VARCHAR(200) NOT NULL,
+  ownerModule VARCHAR(100) NOT NULL,
+  entitlementType VARCHAR(32) NOT NULL,
+  unitCode VARCHAR(40) NULL,
+  countingSemantics VARCHAR(100) NULL,
+  nameI18nKey VARCHAR(200) NOT NULL,
+  descriptionI18nKey VARCHAR(200) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_entitlement_definition PRIMARY KEY (idEntitlementDefinition),
+  CONSTRAINT uk_plans_entitlement_code UNIQUE (scopeType, entitlementCode),
+  CONSTRAINT uk_plans_entitlement_scope UNIQUE (idEntitlementDefinition, scopeType),
+  CONSTRAINT ck_plans_entitlement_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_entitlement_type CHECK (
+    entitlementType IN ('AVAILABILITY', 'MAXIMUM_QUANTITY', 'PERIODIC_QUOTA')
+  ),
+  CONSTRAINT ck_plans_entitlement_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT ck_plans_entitlement_unit CHECK (
+    (entitlementType = 'AVAILABILITY' AND unitCode IS NULL AND countingSemantics IS NULL)
+    OR (entitlementType <> 'AVAILABILITY' AND unitCode IS NOT NULL)
+  ),
+  CONSTRAINT ck_plans_entitlement_version CHECK (version >= 0),
+  INDEX idx_plans_entitlement_catalog (scopeType, status, ownerModule)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_planVersionEntitlement (
+  idPlanVersionEntitlement BIGINT AUTO_INCREMENT NOT NULL,
+  idPlanVersion BIGINT NOT NULL,
+  idEntitlementDefinition BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  booleanValue BOOLEAN NULL,
+  quantityValue BIGINT NULL,
+  periodCode VARCHAR(32) NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_plan_version_entitlement PRIMARY KEY (idPlanVersionEntitlement),
+  CONSTRAINT uk_plans_plan_version_entitlement UNIQUE (
+    idPlanVersion, idEntitlementDefinition
+  ),
+  CONSTRAINT fk_plans_pve_version FOREIGN KEY (idPlanVersion, scopeType)
+    REFERENCES plans_planVersion (idPlanVersion, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_pve_definition FOREIGN KEY (idEntitlementDefinition, scopeType)
+    REFERENCES plans_entitlementDefinition (idEntitlementDefinition, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_pve_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_pve_value CHECK (
+    (booleanValue IS NOT NULL AND quantityValue IS NULL AND periodCode IS NULL)
+    OR (booleanValue IS NULL AND quantityValue IS NOT NULL AND quantityValue >= 0)
+  ),
+  INDEX idx_plans_pve_definition (idEntitlementDefinition, idPlanVersion)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_serviceContract (
+  idServiceContract BIGINT AUTO_INCREMENT NOT NULL,
+  publicId BINARY(16) NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  startedAt TIMESTAMP(6) NOT NULL,
+  endedAt TIMESTAMP(6) NULL,
+  sourceType VARCHAR(32) NOT NULL,
+  idempotencyKey BINARY(32) NOT NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_service_contract PRIMARY KEY (idServiceContract),
+  CONSTRAINT uk_plans_service_contract_public UNIQUE (publicId),
+  CONSTRAINT uk_plans_service_contract_scope UNIQUE (idServiceContract, scopeType),
+  CONSTRAINT uk_plans_service_contract_key UNIQUE (scopeType, idempotencyKey),
+  CONSTRAINT ck_plans_service_contract_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_service_contract_status CHECK (
+    status IN ('ACTIVE', 'SUSPENDED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_plans_service_contract_source CHECK (
+    sourceType IN ('BOOTSTRAP', 'BACKFILL', 'ADMINISTRATION', 'SYSTEM')
+  ),
+  CONSTRAINT ck_plans_service_contract_state CHECK (
+    (status IN ('ACTIVE', 'SUSPENDED') AND endedAt IS NULL)
+    OR (status = 'CANCELLED' AND endedAt IS NOT NULL)
+  ),
+  CONSTRAINT ck_plans_service_contract_version CHECK (version >= 0),
+  INDEX idx_plans_service_contract_status (scopeType, status, updatedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_personalContractHolder (
+  idServiceContract BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL DEFAULT 'PERSONAL',
+  idUser BIGINT NOT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_personal_holder PRIMARY KEY (idServiceContract),
+  CONSTRAINT uk_plans_personal_holder_user UNIQUE (idUser),
+  CONSTRAINT fk_plans_personal_holder_contract FOREIGN KEY (idServiceContract, scopeType)
+    REFERENCES plans_serviceContract (idServiceContract, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_personal_holder_user FOREIGN KEY (idUser)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_personal_holder_scope CHECK (scopeType = 'PERSONAL')
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_tenantContractHolder (
+  idServiceContract BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL DEFAULT 'TENANT',
+  idTenant BIGINT NOT NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_tenant_holder PRIMARY KEY (idServiceContract),
+  CONSTRAINT uk_plans_tenant_holder_tenant UNIQUE (idTenant),
+  CONSTRAINT uk_plans_tenant_holder_ref UNIQUE (idServiceContract, idTenant, scopeType),
+  CONSTRAINT fk_plans_tenant_holder_contract FOREIGN KEY (idServiceContract, scopeType)
+    REFERENCES plans_serviceContract (idServiceContract, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_tenant_holder_tenant FOREIGN KEY (idTenant)
+    REFERENCES account_tenant (idTenant) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_tenant_holder_scope CHECK (scopeType = 'TENANT')
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_planAssignment (
+  idPlanAssignment BIGINT AUTO_INCREMENT NOT NULL,
+  idServiceContract BIGINT NOT NULL,
+  idPlanVersion BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  currentMarker TINYINT NULL,
+  startedAt TIMESTAMP(6) NOT NULL,
+  endedAt TIMESTAMP(6) NULL,
+  sourceType VARCHAR(32) NOT NULL,
+  reasonCode VARCHAR(100) NULL,
+  idempotencyKey BINARY(16) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_plan_assignment PRIMARY KEY (idPlanAssignment),
+  CONSTRAINT uk_plans_assignment_current UNIQUE (idServiceContract, currentMarker),
+  CONSTRAINT uk_plans_assignment_idempotency UNIQUE (idServiceContract, idempotencyKey),
+  CONSTRAINT fk_plans_assignment_contract FOREIGN KEY (idServiceContract, scopeType)
+    REFERENCES plans_serviceContract (idServiceContract, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_assignment_version FOREIGN KEY (idPlanVersion, scopeType)
+    REFERENCES plans_planVersion (idPlanVersion, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_assignment_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_assignment_status CHECK (status IN ('ACTIVE', 'ENDED', 'CANCELLED')),
+  CONSTRAINT ck_plans_assignment_source CHECK (
+    sourceType IN ('BOOTSTRAP', 'BACKFILL', 'ADMINISTRATION', 'SYSTEM')
+  ),
+  CONSTRAINT ck_plans_assignment_current CHECK (
+    (status = 'ACTIVE' AND currentMarker = 1 AND endedAt IS NULL)
+    OR (status IN ('ENDED', 'CANCELLED') AND currentMarker IS NULL AND endedAt IS NOT NULL)
+  ),
+  CONSTRAINT ck_plans_assignment_version CHECK (version >= 0),
+  INDEX idx_plans_assignment_effective (idServiceContract, status, startedAt, endedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_tenantUserCapacityOccupancy (
+  idTenantUserCapacityOccupancy BIGINT AUTO_INCREMENT NOT NULL,
+  idServiceContract BIGINT NOT NULL,
+  idTenant BIGINT NOT NULL,
+  idAccount BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL DEFAULT 'TENANT',
+  idUser BIGINT NOT NULL,
+  firstMembershipId BIGINT NULL,
+  occupiedAt TIMESTAMP(6) NOT NULL,
+  sourceType VARCHAR(32) NOT NULL,
+  idempotencyKey BINARY(16) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_tenant_capacity_occupancy PRIMARY KEY (idTenantUserCapacityOccupancy),
+  CONSTRAINT uk_plans_tenant_capacity_user UNIQUE (idTenant, idUser),
+  CONSTRAINT uk_plans_tenant_capacity_occupancy_key UNIQUE (idServiceContract, idempotencyKey),
+  CONSTRAINT uk_plans_capacity_occupancy_ref UNIQUE (
+    idTenantUserCapacityOccupancy, idServiceContract, idTenant, idAccount
+  ),
+  CONSTRAINT fk_plans_capacity_occupancy_holder
+    FOREIGN KEY (idServiceContract, idTenant, scopeType)
+    REFERENCES plans_tenantContractHolder (idServiceContract, idTenant, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_occupancy_account FOREIGN KEY (idAccount, idTenant)
+    REFERENCES account_account (idAccount, idTenant)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_occupancy_membership
+    FOREIGN KEY (firstMembershipId, idAccount, idUser)
+    REFERENCES membership_accountMembership (idAccountMembership, idAccount, idUser)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_capacity_occupancy_scope CHECK (scopeType = 'TENANT'),
+  CONSTRAINT ck_plans_capacity_occupancy_source CHECK (
+    sourceType IN ('FOUNDER', 'INVITATION', 'MANUAL', 'IMPORT', 'BACKFILL')
+  ),
+  CONSTRAINT ck_plans_capacity_occupancy_version CHECK (version >= 0),
+  INDEX idx_plans_capacity_occupancy_contract (idServiceContract, occupiedAt)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_tenantUserCapacityReservation (
+  idTenantUserCapacityReservation BIGINT AUTO_INCREMENT NOT NULL,
+  idServiceContract BIGINT NOT NULL,
+  idTenant BIGINT NOT NULL,
+  idAccount BIGINT NOT NULL,
+  scopeType VARCHAR(16) NOT NULL DEFAULT 'TENANT',
+  idMembershipInvitation BIGINT NOT NULL,
+  recipientDigest BINARY(32) NOT NULL,
+  recipientKeyId VARCHAR(32) NOT NULL,
+  idUser BIGINT NULL,
+  status VARCHAR(24) NOT NULL,
+  capacityMarker TINYINT NULL,
+  expiresAt TIMESTAMP(6) NOT NULL,
+  convertedOccupancyId BIGINT NULL,
+  idempotencyKey BINARY(16) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_tenant_capacity_reservation PRIMARY KEY (idTenantUserCapacityReservation),
+  CONSTRAINT uk_plans_capacity_reservation_invitation UNIQUE (idMembershipInvitation),
+  CONSTRAINT uk_plans_capacity_reservation_key UNIQUE (idServiceContract, idempotencyKey),
+  CONSTRAINT fk_plans_capacity_reservation_holder
+    FOREIGN KEY (idServiceContract, idTenant, scopeType)
+    REFERENCES plans_tenantContractHolder (idServiceContract, idTenant, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_reservation_account FOREIGN KEY (idAccount, idTenant)
+    REFERENCES account_account (idAccount, idTenant)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_reservation_invitation
+    FOREIGN KEY (idMembershipInvitation, idAccount)
+    REFERENCES membership_invitation (idMembershipInvitation, idAccount)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_reservation_user FOREIGN KEY (idUser)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_capacity_reservation_occupancy
+    FOREIGN KEY (convertedOccupancyId, idServiceContract, idTenant, idAccount)
+    REFERENCES plans_tenantUserCapacityOccupancy (
+      idTenantUserCapacityOccupancy, idServiceContract, idTenant, idAccount
+    )
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_capacity_reservation_scope CHECK (scopeType = 'TENANT'),
+  CONSTRAINT ck_plans_capacity_reservation_status CHECK (
+    status IN ('RESERVED', 'CONVERTED', 'RELEASED', 'EXPIRED')
+  ),
+  CONSTRAINT ck_plans_capacity_reservation_state CHECK (
+    (status = 'RESERVED' AND capacityMarker = 1 AND convertedOccupancyId IS NULL)
+    OR (status = 'CONVERTED' AND capacityMarker IS NULL AND convertedOccupancyId IS NOT NULL)
+    OR (status IN ('RELEASED', 'EXPIRED') AND capacityMarker IS NULL
+      AND convertedOccupancyId IS NULL)
+  ),
+  CONSTRAINT ck_plans_capacity_reservation_version CHECK (version >= 0),
+  INDEX idx_plans_capacity_reservation_count (idServiceContract, capacityMarker, expiresAt),
+  INDEX idx_plans_capacity_reservation_recipient (idTenant, recipientDigest, status)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_auditEvent (
+  idPlansAuditEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  scopeType VARCHAR(16) NOT NULL,
+  idServiceContract BIGINT NULL,
+  actorUserId BIGINT NULL,
+  systemOrigin VARCHAR(100) NULL,
+  correlationId VARCHAR(100) NOT NULL,
+  safeResultCode VARCHAR(100) NOT NULL,
+  beforeState JSON NULL,
+  afterState JSON NULL,
+  occurredAt TIMESTAMP(6) NOT NULL,
+  CONSTRAINT pk_plans_audit_event PRIMARY KEY (idPlansAuditEvent),
+  CONSTRAINT fk_plans_audit_contract FOREIGN KEY (idServiceContract, scopeType)
+    REFERENCES plans_serviceContract (idServiceContract, scopeType)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_plans_audit_actor FOREIGN KEY (actorUserId)
+    REFERENCES identity_user (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT ck_plans_audit_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
+  CONSTRAINT ck_plans_audit_origin CHECK (
+    (actorUserId IS NOT NULL AND systemOrigin IS NULL)
+    OR (actorUserId IS NULL AND systemOrigin IS NOT NULL)
+  ),
+  INDEX idx_plans_audit_contract (idServiceContract, occurredAt),
+  INDEX idx_plans_audit_correlation (correlationId)
+) ENGINE = InnoDB;
+
+CREATE TABLE plans_outboxEvent (
+  idPlansOutboxEvent BIGINT AUTO_INCREMENT NOT NULL,
+  eventId BINARY(16) NOT NULL,
+  aggregateType VARCHAR(40) NOT NULL,
+  aggregateId BIGINT NOT NULL,
+  eventType VARCHAR(80) NOT NULL,
+  payload JSON NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  attemptCount INT NOT NULL DEFAULT 0,
+  nextAttemptAt TIMESTAMP(6) NULL,
+  leaseOwner VARCHAR(100) NULL,
+  leaseUntil TIMESTAMP(6) NULL,
+  publishedAt TIMESTAMP(6) NULL,
+  createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  CONSTRAINT pk_plans_outbox_event PRIMARY KEY (idPlansOutboxEvent),
+  CONSTRAINT uk_plans_outbox_event UNIQUE (eventId),
+  CONSTRAINT ck_plans_outbox_aggregate CHECK (
+    aggregateType IN ('PLAN', 'PLAN_VERSION', 'CONTRACT', 'ASSIGNMENT', 'CAPACITY')
+  ),
+  CONSTRAINT ck_plans_outbox_status CHECK (
+    status IN ('PENDING', 'PROCESSING', 'PUBLISHED', 'FAILED', 'CANCELLED')
+  ),
+  CONSTRAINT ck_plans_outbox_attempt CHECK (attemptCount >= 0),
+  CONSTRAINT ck_plans_outbox_lease CHECK (
+    (leaseOwner IS NULL AND leaseUntil IS NULL)
+    OR (leaseOwner IS NOT NULL AND leaseUntil IS NOT NULL)
+  ),
+  INDEX idx_plans_outbox_dispatch (status, nextAttemptAt, leaseUntil)
+) ENGINE = InnoDB;
+
+INSERT INTO access_contextRevision (scopeType, idTenant, revision)
+VALUES ('GLOBAL', NULL, 0);
+
+INSERT INTO access_bootstrap (idAccessBootstrap, status, version)
+VALUES (1, 'NEVER_COMPLETED', 0);

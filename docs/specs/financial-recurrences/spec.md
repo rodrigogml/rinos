@@ -400,3 +400,7 @@ Um usuário autorizado distingue o que foi previsto, alterado, materializado, ig
 - Índices externos e reajustes automáticos dependentes de serviços de terceiros.
 - Geração antecipada em massa de obrigações, direitos, pagamentos ou recebimentos futuros.
 - Calendário fiscal, contábil ou trabalhista e manutenção completa de feriados.
+
+## Integração com Controle de Acesso
+
+As operações usam `tenant.financial.recurrence.view` e `tenant.financial.recurrence.manage` do [catálogo canônico](../access-control/contracts/access-key-catalog.md). Ocorrência calculada reautoriza no momento de qualquer efeito financeiro.

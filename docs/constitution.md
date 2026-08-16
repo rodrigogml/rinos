@@ -1,24 +1,23 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 -> 1.1.0
-- Princípios criados:
-  - Isolamento Multi-Tenant Inviolável
-  - Autorização Explícita e Contextual
-  - Integridade e Rastreabilidade dos Dados
-  - Arquitetura Modular Baseada no RFW
-  - Qualidade Antes de Escopo
-- Seções adicionadas:
-  - Regra obrigatória de uso da RFW Platform em interfaces
-  - Protocolo de consulta ao showroom e evolução autorizada do submódulo
-- Seções removidas: nenhuma
-- Artefatos verificados:
-  - docs/briefing/20260717-briefing.md: alinhado
-  - AGENTS.md: criado com roteamento obrigatório para a documentação e showroom do RFW
-  - docs/architecture/rfw-platform-usage.md: criado
-  - docs/architecture/interaction-surfaces.md: atualizado
-  - docs/specs/user-registration/plan.md: atualizado
-  - docs/specs/*/tasks.md: inexistentes; as futuras tarefas devem incluir os quality gates aplicáveis
-- TODOs pendentes: nenhum para ratificação desta versão
+- Version: 1.1.0 -> 1.2.0
+- Princípio ampliado:
+  - Autorização Explícita e Contextual: bloqueios vigentes prevalecem sobre permissões no mesmo contexto e chave.
+- Obrigações preservadas:
+  - negação por padrão;
+  - isolamento entre contexto global e cada tenant;
+  - papéis de ator sem efeito autorizativo.
+- Seções removidas: nenhuma.
+- Artefatos sincronizados neste ciclo:
+  - docs/specs/access-control/spec.md
+  - docs/specs/access-control/contracts/access-key-catalog.md
+  - docs/specs/access-control/plan.md e artefatos derivados
+  - docs/specs/access-control/checklists/cross-artifact.md
+  - SDDs dependentes enumerados no plano de `access-control`
+- Impacto de compatibilidade:
+  - requisitos anteriores que proibiam bloqueios explícitos foram substituídos;
+  - implementações futuras devem usar regra com efeito `PERMITIR` ou `BLOQUEAR` e precedência determinística.
+- TODOs pendentes: nenhum para ratificação desta versão; schema e código permanecem fora deste ciclo documental.
 -->
 
 # Rinos Constitution
@@ -31,7 +30,13 @@ Toda leitura, escrita, consulta, evento, cache, arquivo e operação assíncrona
 
 ### II. Autorização Explícita e Contextual
 
-Todo acesso DEVE ser negado por padrão e liberado somente por grupos e chaves explícitos no contexto aplicável. Papéis como colaborador, parceiro externo, administrador da conta e administrador do sistema identificam atores, mas NÃO concedem permissões por si próprios. As decisões de autorização DEVEM considerar a identidade única do usuário, o contexto do sistema ou da conta e as concessões vigentes. Alterações de grupos, chaves e acessos sensíveis DEVEM produzir registros de auditoria rastreáveis.
+Todo acesso DEVE ser negado por padrão e liberado somente por regras explícitas sobre chaves registradas no contexto
+aplicável. Papéis como colaborador, parceiro externo, administrador da conta e administrador do sistema identificam
+atores, mas NÃO concedem permissões por si próprios. Para cada chave exigida, a decisão DEVE encontrar ao menos uma
+permissão vigente e nenhum bloqueio vigente entre as regras diretas e de grupos do sujeito; qualquer bloqueio no mesmo
+contexto e chave prevalece sobre todas as permissões. Regras globais e de tenant são incompatíveis e não propagam
+efeito entre contextos. Alterações de grupos, chaves, regras e acessos sensíveis DEVEM produzir registros de auditoria
+rastreáveis.
 
 ### III. Integridade e Rastreabilidade dos Dados
 
@@ -89,4 +94,4 @@ Exceções temporárias somente são permitidas quando registradas em ADR com es
 
 A conformidade DEVE ser revisada sempre que uma feature for especificada, antes de iniciar sua implementação e antes de considerá-la concluída. Mudanças na constituição exigem sincronização dos artefatos afetados no mesmo ciclo ou registro explícito da pendência no relatório de impacto.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-17 | **Last Amended**: 2026-07-25
+**Version**: 1.2.0 | **Ratified**: 2026-07-17 | **Last Amended**: 2026-08-14

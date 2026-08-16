@@ -7,9 +7,10 @@
 Implementar a primeira identidade global do Rinos, independente de tenant, com cadastro local ou Google, consentimentos versionados, comprovação de e-mail, proteção contra automação, retomada, cancelamento e expiração. A abordagem usa facades transacionais, constraints de banco como autoridade final de unicidade, credenciais e tokens não recuperáveis, integrações externas isoladas por portas e a infraestrutura reutilizável do RFW para e-mail, verificação e atualização de banco.
 
 Este plano não inclui autenticação geral de sessões, recuperação de acesso, conteúdo do Painel de Usuário, associação
-a contas ou permissões. O cadastro publica somente a autenticação resultante de sua ativação pelo serviço de sessão
-do RFW e redireciona para a rota global autenticada reservada `/user`. A classe de entrada permanece sem conteúdo,
-dados ou operações até ser composta pela feature `user-dashboard`.
+a tenants ou permissões. A ativação também consome `PersonalContractBootstrapPort` e somente publica a autenticação
+resultante pelo serviço de sessão do RFW depois de confirmar contrato e atribuição `PERSONAL/FREE`; o cadastro não
+administra catálogo nem direitos. A conclusão redireciona para a rota global autenticada reservada `/user`. A classe
+de entrada permanece sem conteúdo, dados ou operações até ser composta pela feature `user-dashboard`.
 
 ## Technical Context
 
@@ -134,7 +135,8 @@ acessam repositories nem controlam transações.
 1. A submissão local valida contrato, origem, limite, Turnstile e senha antes de iniciar escrita.
 2. Uma transação cria ou reutiliza a identidade pendente, substitui a credencial local quando permitido, registra exatamente as versões publicadas apresentadas e aceitas, invalida comprovações anteriores e cria nova comprovação com token armazenado somente como hash. Uma versão retirada depois de apresentada ainda pode originar a pendência; referências desconhecidas, futuras, duplicadas por finalidade ou sem os dois documentos-base são rejeitadas.
 3. O commit ocorre antes do envio SMTP direto pelo RFW. A chamada usa timeout explícito e somente confirma envio depois da aceitação pelo SMTP. Falha ou interrupção não reverte nem duplica o cadastro, não dispara retentativa automática e orienta retomada e reenvio; nenhuma outbox, mensagem renderizada, URL secreta ou token recuperável é persistido no primeiro incremento.
-4. A ativação bloqueia e relê cadastro, usuário, comprovação e documentos vigentes na mesma transação. Se faltarem
+4. A ativação bloqueia e relê cadastro, usuário, comprovação e documentos vigentes na mesma transação, confirma
+   idempotentemente `PERSONAL/FREE` pela porta de `plans-entitlements` e só então ativa a identidade. Se faltarem
    versões legais atuais, a prova original permanece aberta e funciona como referência opaca da continuação; ela só
    é consumida ao registrar os aceites e ativar. Repetição antes ou depois da conclusão retorna o mesmo estágio
    lógico sem recriar efeitos. Se o fluxo local vencer uma corrida contra uma continuação Google ainda pendente, as
