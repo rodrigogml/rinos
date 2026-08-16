@@ -343,3 +343,7 @@ Um usuário autorizado registra acordo que transforma saldo pendente de uma ou m
 - Programas de pontos, milhas, cashback promocional e benefícios da bandeira.
 - Conversão automática de compras internacionais e cálculo tributário cambial.
 - Regras contábeis de partidas dobradas e demonstrações formais.
+
+## Integração com Controle de Acesso
+
+As operações de cartões usam `tenant.financial.card.view` e `tenant.financial.card.manage` do [catálogo canônico](../access-control/contracts/access-key-catalog.md), sem converter detalhe de cartão em novo papel ou privilégio implícito.

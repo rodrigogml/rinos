@@ -28,7 +28,9 @@ class RFWHumanVerificationRequirementProviderAdapterTest {
         RFWHumanVerificationOperationEnum.REGISTRATION_CANCELLATION,
         HumanVerificationOperationEnum.REGISTRATION_CANCELLATION,
         RFWHumanVerificationOperationEnum.PASSWORD_RECOVERY,
-        HumanVerificationOperationEnum.PASSWORD_RECOVERY);
+        HumanVerificationOperationEnum.PASSWORD_RECOVERY,
+        RFWHumanVerificationOperationEnum.ACCOUNT_CREATION,
+        HumanVerificationOperationEnum.ACCOUNT_CREATION);
     mappings.values().forEach(operation ->
         when(facade.isHumanVerificationRequired(operation, "203.0.113.10")).thenReturn(true));
 

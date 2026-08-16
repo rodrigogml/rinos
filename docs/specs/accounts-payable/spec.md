@@ -338,3 +338,9 @@ Um módulo autorizado cria ou atualiza obrigação originada por processo própr
 - Orçamento e fluxo de caixa avançado além das consultas de compromissos desta feature.
 - Contas a receber, adiantamentos concedidos, reembolsos a recuperar e créditos contra fornecedores.
 - Aplicativos móveis ou desktop nativos.
+
+## Integração com Controle de Acesso
+
+Consulta e manutenção usam `tenant.financial.payable.*`; liquidação exige cumulativamente
+`tenant.financial.payable.settle` e acesso à conta financeira afetada, conforme o
+[catálogo canônico](../access-control/contracts/access-key-catalog.md).

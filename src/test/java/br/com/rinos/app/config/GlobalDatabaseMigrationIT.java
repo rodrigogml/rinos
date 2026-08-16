@@ -1,6 +1,7 @@
 package br.com.rinos.app.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -54,8 +55,14 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260809_001_update.sql",
       "classpath:db/global/update/20260809_002_update.sql",
       "classpath:db/global/update/20260809_003_update.sql",
-      "classpath:db/global/update/20260810_001_update.sql");
-  private static final String TARGET_VERSION = "20260810001";
+      "classpath:db/global/update/20260810_001_update.sql",
+      "classpath:db/global/update/20260812_001_update.sql",
+      "classpath:db/global/update/20260812_002_update.sql",
+      "classpath:db/global/update/20260815_001_update.sql",
+      "classpath:db/global/update/20260815_002_update.sql",
+      "classpath:db/global/update/20260815_003_update.sql",
+      "classpath:db/global/update/20260816_001_update.sql");
+  private static final String TARGET_VERSION = "20260816001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -126,6 +133,9 @@ class GlobalDatabaseMigrationIT {
     assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
+    assertAccountTables();
+    assertMembershipTables();
+    assertAccessControlTables();
     assertThat(tableExists("testGlobalMigrationMarker")).isFalse();
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -173,6 +183,9 @@ class GlobalDatabaseMigrationIT {
     assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
+    assertAccountTables();
+    assertMembershipTables();
+    assertAccessControlTables();
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -191,7 +204,7 @@ class GlobalDatabaseMigrationIT {
       throws SQLException {
     initializeDatabase();
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260810_002_update.sql";
+        + ",classpath:db/global/failure/20260816_002_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();
@@ -239,6 +252,79 @@ class GlobalDatabaseMigrationIT {
     assertThat(readTimestamp("identity_localCredential", "compromisedAt", 1L)).isNull();
     assertThat(readTimestamp("identity_externalIdentity", "lastUsedAt", 1L)).isNull();
     assertAuthenticationTables();
+  }
+
+  /**
+   * Comprova no MySQL real os uniques e checks que fecham contexto, origem e vigência ACL.
+   *
+   * @throws SQLException quando o cenário válido não pode ser preparado
+   */
+  @Test
+  void accessSchema_shouldRejectInconsistentContextOriginAndValidity() throws SQLException {
+    initializeDatabase();
+    executeUpdate("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES ('acl@example.com', 'acl@example.com', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_keyCategory
+          (categoryCode, scopeType, nameI18nKey, descriptionI18nKey, displayOrder, status)
+        VALUES ('global.platform', 'GLOBAL', 'category.name', 'category.description', 0, 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_key
+          (accessKeyCode, scopeType, idAccessKeyCategory, ownerModule, nameI18nKey,
+           descriptionI18nKey, status, descriptorVersion)
+        VALUES ('global.platform.directory.view', 'GLOBAL', 1, 'test', 'key.name',
+                'key.description', 'ACTIVE', 1)
+        """);
+    executeUpdate("""
+        INSERT INTO access_group
+          (scopeType, idTenant, name, normalizedName, status, protectedGroup, baselineVersion)
+        VALUES ('GLOBAL', NULL, 'Operators', 'operators', 'ACTIVE', FALSE, NULL)
+        """);
+    executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, idTenant, originType, idUser, idAccessKey, effect, status)
+        VALUES ('GLOBAL', NULL, 'DIRECT_USER', 1, 1, 'PERMITIR', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_ruleHistory
+          (idAccessRule, changeType, newSnapshot, systemOrigin, correlationId, occurredAt)
+        VALUES (1, 'CREATE', JSON_OBJECT('effect', 'PERMITIR'), 'schema-test',
+                'acl-correlation', CURRENT_TIMESTAMP(6))
+        """);
+
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_group
+          (scopeType, idTenant, name, normalizedName, status, protectedGroup, baselineVersion)
+        VALUES ('GLOBAL', 42, 'Invalid', 'invalid', 'ACTIVE', FALSE, NULL)
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_groupSubject (idAccessGroup, status)
+        VALUES (1, 'ACTIVE')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, originType, idUser, idAccessKey, effect, status)
+        VALUES ('GLOBAL', 'DIRECT_USER', 1, 1, 'BLOQUEAR', 'ACTIVE')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, originType, idAccessGroup, idAccessKey, effect, status,
+           validFrom, validUntil)
+        VALUES ('GLOBAL', 'GROUP', 1, 1, 'PERMITIR', 'ACTIVE',
+                '2026-08-16 00:00:00', '2026-08-15 00:00:00')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_bootstrap (idAccessBootstrap, status, version)
+        VALUES (2, 'NEVER_COMPLETED', 0)
+        """)).isInstanceOf(SQLException.class);
+
+    assertThat(readLong("SELECT COUNT(*) FROM access_ruleHistory")).isOne();
+    assertThat(indexExists("access_rule", "idx_access_rule_context_key")).isTrue();
+    assertThat(indexExists("access_groupSubject", "idx_access_group_subject_member_resolution"))
+        .isTrue();
   }
 
   /**
@@ -443,6 +529,114 @@ class GlobalDatabaseMigrationIT {
             throw new IllegalStateException(exception);
           }
         });
+  }
+
+  /** Confirma as autoridades globais básicas de conta, tenant e provisionamento. */
+  private void assertAccountTables() {
+    assertThat(List.of(
+        "account_tenant",
+        "account_account",
+        "account_creationIntent",
+        "account_provisioningCheckpoint",
+        "account_outboxEvent",
+        "account_auditEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /** Confirma associações, convites e trilhas duráveis do membership global. */
+  private void assertMembershipTables() {
+    assertThat(List.of(
+        "membership_accountMembership",
+        "membership_invitation",
+        "membership_invitationRateWindow",
+        "membership_outboxEvent",
+        "membership_event"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /**
+   * Confirma as estruturas globais e os guardas iniciais do controle de acesso.
+   *
+   * @throws SQLException quando o schema ou os dados iniciais não podem ser consultados
+   */
+  private void assertAccessControlTables() throws SQLException {
+    assertThat(List.of(
+        "access_keyCategory",
+        "access_key",
+        "access_keyRequirement",
+        "access_contextRevision",
+        "access_group",
+        "access_protectedGroupBaseline",
+        "access_protectedGroupBaselineKey",
+        "access_groupSubject",
+        "access_rule",
+        "access_ruleHistory",
+        "access_bootstrap",
+        "access_auditEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+    assertThat(readLong("SELECT revision FROM access_contextRevision WHERE scopeType = 'GLOBAL'"))
+        .isZero();
+    assertThat(readLong("SELECT COUNT(*) FROM access_bootstrap WHERE idAccessBootstrap = 1"))
+        .isOne();
+  }
+
+  /**
+   * Lê um valor numérico escalar do schema descartável.
+   *
+   * @param sql consulta constante controlada pelo teste
+   * @return valor retornado
+   * @throws SQLException quando a consulta falha
+   */
+  private long readLong(String sql) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery(sql)) {
+      assertThat(result.next()).isTrue();
+      return result.getLong(1);
+    }
+  }
+
+  private void executeUpdate(String sql) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate(sql);
+    }
+  }
+
+  private boolean indexExists(String tableName, String indexName) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement("""
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
+              AND index_name = ?
+            """)) {
+      statement.setString(1, tableName);
+      statement.setString(2, indexName);
+      try (ResultSet result = statement.executeQuery()) {
+        assertThat(result.next()).isTrue();
+        return result.getInt(1) > 0;
+      }
+    }
   }
 
   /**

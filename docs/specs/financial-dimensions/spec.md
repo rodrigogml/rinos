@@ -376,3 +376,7 @@ Um usuário autorizado desativa dimensões ou valores, indica substitutos quando
 - Plano de contas, diários, partidas dobradas e escrituração contábil.
 - Importação, exportação ou sincronização com sistemas externos nesta primeira versão.
 - Campos personalizados livres de texto, número, data, arquivo ou formulário.
+
+## Integração com Controle de Acesso
+
+As operações desta feature usam `tenant.financial.dimension.view` e `tenant.financial.dimension.manage` do [catálogo canônico](../access-control/contracts/access-key-catalog.md), sem semântica local de autorização.

@@ -2,7 +2,7 @@
 
 **Feature**: `account-registration`
 **Created**: 2026-07-19
-**Status**: Clarified — pronta para planejamento
+**Status**: Planned — persistência básica pronta para implementação; ativação depende de adapters externos
 
 ## Escopo
 
@@ -20,6 +20,10 @@ Inclui a aceitação durável da criação, o acompanhamento do provisionamento 
 ### Session 2026-07-24
 
 - Q: A criação deve aguardar todo o provisionamento ou utilizar o processo assíncrono já definido para tenants? -> A: A solicitação aceita cria a conta no estado `EM_CRIACAO`, persiste uma intenção durável e idempotente e entra na fila estrutural. A conta somente se torna ativa após armazenamento pronto e compatível, associação fundadora, concessões mínimas e plano padrão válido; a atomicidade é exigida em cada etapa durável, não como uma transação distribuída sobre todo o fluxo.
+
+### Session 2026-08-16
+
+- Q: O plano da conta compartilha o contrato pessoal do fundador? -> A: Não. O provisionamento cria contrato `TENANT` próprio, atribui `TENANT/FREE` e registra o fundador como uma das dez ocupações; billing e histórico permanecem independentes do contrato pessoal.
 
 ## User Scenarios & Testing
 
@@ -156,11 +160,12 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **FR-ACC-STATE-008**: Suspensão ou cancelamento NÃO DEVE apagar imediatamente dados sujeitos a retenção, auditoria, obrigações legais ou financeiras.
 - **FR-ACC-STATE-009**: Cancelamento DEVE verificar impedimentos conhecidos, incluindo responsabilidades administrativas, obrigações e retenções aplicáveis, antes da conclusão.
 - **FR-ACC-PLAN-001**: A plataforma DEVE possuir um cadastro de planos com identificador estável, nome, estado e indicação de disponibilidade para atribuição.
-- **FR-ACC-PLAN-002**: O cadastro DEVE conter exatamente um plano ativo designado como padrão de criação; inicialmente ele é o plano gratuito de código estável `FREE`, apresentado como `Free`.
-- **FR-ACC-PLAN-003**: Toda nova conta DEVE receber o plano padrão vigente sem exigir escolha adicional do usuário; enquanto o padrão for o `FREE`, a atribuição não gera cobrança.
+- **FR-ACC-PLAN-002**: O catálogo tenant DEVE conter exatamente um padrão ativo; inicialmente `TENANT/FREE`, apresentado como `Free`.
+- **FR-ACC-PLAN-003**: Toda nova conta DEVE receber contrato tenant independente e atribuição ao padrão vigente; `TENANT/FREE` não gera cobrança e inclui limite de dez identidades associadas.
 - **FR-ACC-PLAN-004**: Franquias, cotas, funcionalidades, preços, versões, definição do plano padrão e regras de transição DEVEM ser definidos em `plans-entitlements`, não nesta feature.
 - **FR-ACC-PLAN-005**: A ativação NÃO DEVE ocorrer se o plano padrão estiver ausente, duplicado, inativo ou indisponível; a conta DEVE permanecer em `EM_CRIACAO`, não operacional e acompanhável, sem descartar a intenção aceita.
 - **FR-ACC-PLAN-006**: A simples atribuição do plano padrão DEVE liberar somente as funcionalidades e franquias explicitamente vigentes em sua versão atribuída.
+- **FR-ACC-PLAN-007**: Contrato, atribuição, direitos e billing futuro do tenant NÃO DEVEM compartilhar estado com contrato pessoal do fundador ou participante.
 
 ### Manutenção dos Dados Cadastrais
 
@@ -196,8 +201,9 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **Tenant**: limite imutável de isolamento de dados e operações pertencente a uma única conta.
 - **Founding Membership**: associação inicial entre o criador e a conta, identificando-o como administrador fundador sem substituir concessões explícitas.
 - **Account Access Bootstrap**: conjunto inicial de grupo e chaves que permite ao fundador manter a conta até a gestão completa de acessos estar disponível.
-- **Plan Reference**: registro estável de um plano disponível, incluindo obrigatoriamente um único plano padrão vigente; inicialmente, o plano gratuito `FREE`, sem antecipar suas franquias e regras comerciais.
-- **Account Plan Assignment**: vínculo vigente entre uma conta e um plano, criado com o plano `Free` durante a ativação inicial.
+- **Tenant Plan Reference**: registro estável de plano `TENANT`, incluindo exatamente um padrão vigente no escopo; inicialmente `TENANT/FREE` com limite de dez usuários associados.
+- **Tenant Service Contract**: fronteira durável e independente de billing futuro e histórico do tenant.
+- **Plan Assignment**: vínculo vigente entre contrato tenant e versão de plano, criado durante a ativação inicial.
 - **Account Creation Intent**: identidade idempotente e durável da solicitação aceita, vinculada à conta em criação e ao protocolo utilizado para acompanhar suas etapas assíncronas.
 - **Account Audit Event**: registro de criação, alteração sensível e transição de estado com ator, tenant, instante e efeito.
 
@@ -217,5 +223,9 @@ Um administrador devidamente autorizado interrompe o uso ou solicita o encerrame
 - **SC-ACC-010**: Em 100% dos testes, atualizar uma conta não modifica identidade global do usuário nem dados de outra conta.
 - **SC-ACC-011**: Em 100% dos testes, conta suspensa ou cancelada não aceita novas operações de negócio.
 - **SC-ACC-012**: Todas as jornadas de cadastro e manutenção podem ser concluídas apenas por teclado e sem bloqueios críticos de acessibilidade.
-- **SC-ACC-013**: Em 100% dos testes, uma conta nova somente é ativada com armazenamento pronto e compatível, associação fundadora, concessões mínimas e atribuição válida do único plano padrão, sem liberar direitos não definidos; no catálogo inicial, esse plano é o `FREE` sem cobrança.
+- **SC-ACC-013**: Em 100% dos testes, uma conta nova somente é ativada com armazenamento pronto, associação fundadora, concessões mínimas, contrato tenant e atribuição válida a `TENANT/FREE`, com o fundador ocupando uma de dez vagas e sem liberar direito ausente.
 - **SC-ACC-014**: Em 100% dos testes de desconexão, reinicialização, concorrência e repetição, a mesma intenção produz no máximo uma conta e um processo, que prossegue ou é retomado sem depender da sessão original.
+
+## Integração com Controle de Acesso
+
+A associação fundadora recebe o grupo protegido inicial e a baseline explícita definida no [catálogo canônico](../access-control/contracts/access-key-catalog.md). Não há concessão implícita por papel, por ser fundador ou por concluir o provisionamento.

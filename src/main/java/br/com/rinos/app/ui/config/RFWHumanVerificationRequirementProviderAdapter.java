@@ -65,6 +65,7 @@ public class RFWHumanVerificationRequirementProviderAdapter
       case REGISTRATION_CANCELLATION ->
           HumanVerificationOperationEnum.REGISTRATION_CANCELLATION;
       case PASSWORD_RECOVERY -> HumanVerificationOperationEnum.PASSWORD_RECOVERY;
+      case ACCOUNT_CREATION -> HumanVerificationOperationEnum.ACCOUNT_CREATION;
     };
   }
 }

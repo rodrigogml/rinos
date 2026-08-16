@@ -8,11 +8,19 @@
 
 Esta feature permite conceder a um operador de suporte devidamente autorizado acesso excepcional, temporário, limitado e integralmente auditado ao conteúdo de um único tenant para diagnóstico ou assistência solicitada. O acesso de suporte é um contexto próprio e visivelmente distinto: não transforma o operador em participante da conta, não concede grupos comuns do tenant e não decorre do papel Administrador do Sistema.
 
-Toda concessão deve possuir solicitação, finalidade, justificativa, prazo, solicitante, operador e estado. Qualquer participante ativo pode solicitar ajuda no tenant em que participa; essa solicitação autoriza um operador diferente a visualizar, por tempo limitado, somente os mesmos dados que o solicitante ainda puder visualizar. O operador continua usando sua identidade global, precisa estar habilitado globalmente para suporte e nunca recebe capacidade de escrita. A ausência de qualquer condição resulta em negação.
+Toda concessão deve possuir solicitação, finalidade, justificativa, prazo, solicitante, operador e estado. Qualquer
+participante ativo pode solicitar ajuda no tenant em que participa; essa solicitação autoriza um operador diferente a
+visualizar, por tempo limitado, somente os mesmos dados que o solicitante ainda puder visualizar depois da resolução
+de permissões e bloqueios vigentes. O operador continua usando sua identidade global, precisa estar habilitado
+globalmente para suporte e nunca recebe capacidade de escrita. A ausência de qualquer condição resulta em negação.
 
 Não inclui recuperação da administração de conta órfã, alteração comum de participantes ou grupos, exportação administrativa, restauração, migração, acesso direto ao armazenamento, atendimento jurídico a titulares, investigação irrestrita ou credenciais de infraestrutura. Também não autoriza visualizar senhas, tokens, segredos, chaves privadas, provas de autenticação ou dados de outro tenant.
 
 ## Clarifications
+
+### Session 2026-08-16
+
+- Q: Plano pessoal do solicitante ou operador amplia suporte tenant? -> A: Não. O alcance usa exclusivamente direitos efetivos do contrato do tenant atendido; contratos pessoais e outros tenants não participam.
 
 ### Session 2026-07-20
 
@@ -140,7 +148,9 @@ Responsáveis autorizados pela conta e pela plataforma acompanham solicitações
 - **FR-TSA-APR-008**: A criação da solicitação NÃO DEVE exigir chave administrativa, segundo fator ou aprovação adicional de outro participante na primeira versão.
 - **FR-TSA-APR-009**: Solicitação aguardando atendimento DEVE possuir validade máxima de 7 dias e expirar quando não iniciada nesse prazo.
 - **FR-TSA-APR-010**: Negação, cancelamento ou expiração DEVE ser definitiva para a solicitação; nova tentativa exige nova solicitação.
-- **FR-TSA-APR-011**: Alteração de tenant, finalidade ou solicitante DEVE exigir nova solicitação; mudança no alcance normal de visualização do solicitante DEVE refletir-se dinamicamente sem criar permissão própria para o operador.
+- **FR-TSA-APR-011**: Alteração de tenant, finalidade ou solicitante DEVE exigir nova solicitação; mudança em
+  permissão, bloqueio ou outro gate do alcance normal de visualização do solicitante DEVE refletir-se dinamicamente
+  sem criar permissão própria para o operador.
 - **FR-TSA-APR-012**: Antes de iniciar e durante cada leitura, o sistema DEVE revalidar conta, armazenamento, solicitante, participação, alcance de visualização, operador, habilitação global e prazo.
 - **FR-TSA-APR-013**: O sistema DEVE atribuir automaticamente cada solicitação normal a exatamente um operador elegível e disponível, sem permitir escolha manual pelo solicitante ou assunção livre por operadores.
 - **FR-TSA-APR-014**: Operador elegível DEVE ser identidade ativa, diferente do solicitante, possuir habilitação global vigente para suporte, 2FA compatível e não manter outro contexto de suporte ativo.
@@ -175,7 +185,8 @@ Responsáveis autorizados pela conta e pela plataforma acompanham solicitações
 - **FR-TSA-SES-008**: Sessão de suporte DEVE possuir duração máxima definida exclusivamente no `application.properties`, com padrão de 4 horas no código quando ausente, e alteração somente produzirá efeito após reinicialização do serviço.
 - **FR-TSA-SES-009**: Renovação ou extensão NÃO DEVE ser automática; depois do vencimento, o participante deverá criar nova solicitação.
 - **FR-TSA-SES-010**: Fechamento da interface NÃO DEVE prolongar o prazo; restauração posterior DEVE exigir novo início e revalidação da concessão ainda vigente.
-- **FR-TSA-SES-011**: Toda operação DEVE revalidar identidade, sessão global, 2FA aplicável, tenant, concessão, capacidade, estado e prazo.
+- **FR-TSA-SES-011**: Toda operação DEVE revalidar identidade, sessão global, 2FA aplicável, tenant, concessão,
+  permissões e bloqueios efetivos do solicitante, capacidade, estado e prazo.
 - **FR-TSA-SES-012**: Falha, ambiguidade ou indisponibilidade em qualquer validação DEVE resultar em negação segura.
 - **FR-TSA-SES-013**: A duração da sessão DEVE começar no início confirmado do contexto de suporte, e não na criação da solicitação nem na atribuição do operador.
 
@@ -278,3 +289,7 @@ Responsáveis autorizados pela conta e pela plataforma acompanham solicitações
 - **SC-TSA-018**: Em 100% das atribuições concorrentes, no máximo um operador elegível e diferente do solicitante recebe a solicitação; operadores não atribuídos não obtêm seus dados nem acesso ao tenant.
 - **SC-TSA-019**: Em 100% das tentativas sem solicitação válida de participante ativo, nenhum administrador ou operador global obtém contexto ou conteúdo funcional do tenant.
 - **SC-TSA-020**: Com a configuração padrão, 100% das sessões expiram em até 4 horas contadas do início efetivo; alteração do prazo somente produz efeito depois da reinicialização do serviço.
+
+## Integração com Controle de Acesso
+
+O alcance de leitura delegado é derivado depois de resolver permissões, bloqueios, estado, plano e contexto do solicitante. Permissões próprias do operador não são combinadas no tenant e bloqueio efetivo do solicitante nunca é superado pelo suporte.

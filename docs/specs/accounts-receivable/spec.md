@@ -329,3 +329,9 @@ Um módulo autorizado cria ou atualiza direito originado por processo próprio, 
 - Negociação formal de dívida, acordos, protesto, negativação, cobrança judicial e cessão de recebíveis.
 - Anexos, comprovantes e gestão documental.
 - Conversão consolidada de relatórios entre moedas.
+
+## Integração com Controle de Acesso
+
+Consulta e manutenção usam `tenant.financial.receivable.*`; liquidação exige cumulativamente
+`tenant.financial.receivable.settle` e acesso à conta financeira afetada, conforme o
+[catálogo canônico](../access-control/contracts/access-key-catalog.md).

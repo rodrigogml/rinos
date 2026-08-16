@@ -65,7 +65,8 @@ class TotpFactorServiceTest {
         audit,
         protocol,
         new AuthenticationMfaPropertiesConfig(
-            Duration.ofMinutes(5), 2, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)));
+            Duration.ofMinutes(5), 2, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)),
+        mock(AdministrativeFactorContinuityPort.class));
   }
 
   @Test

@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
     ApplicationPropertiesConfig.class,
+    AccessBootstrapPropertiesConfig.class,
+    AccessCachePropertiesConfig.class,
     AuthenticationAbusePropertiesConfig.class,
     AuthenticationKeyringPropertiesConfig.class,
     AuthenticationMfaPropertiesConfig.class,
@@ -20,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
     AuthenticationSessionPropertiesConfig.class,
     CleanupPropertiesConfig.class,
     MaintenancePropertiesConfig.class,
+    MembershipInvitationPropertiesConfig.class,
     OriginPropertiesConfig.class,
     PasswordHashPropertiesConfig.class,
     PasswordRecoveryPropertiesConfig.class,

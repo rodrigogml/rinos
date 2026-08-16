@@ -33,11 +33,14 @@ public class PasskeyCredentialService {
   private final UserRepository users; private final PasskeyUserRepository passkeyUsers;
   private final PasskeyCredentialRepository credentials; private final AuthenticationMethodInventoryService inventory;
   private final IdentityReferenceService references; private final IdentityAuditService audit;
+  private final AdministrativeFactorContinuityPort factorContinuity;
   public PasskeyCredentialService(UserRepository users, PasskeyUserRepository passkeyUsers,
       PasskeyCredentialRepository credentials, AuthenticationMethodInventoryService inventory,
-      IdentityReferenceService references, IdentityAuditService audit) {
+      IdentityReferenceService references, IdentityAuditService audit,
+      AdministrativeFactorContinuityPort factorContinuity) {
     this.users = users; this.passkeyUsers = passkeyUsers; this.credentials = credentials;
     this.inventory = inventory; this.references = references; this.audit = audit;
+    this.factorContinuity = factorContinuity;
   }
   @Transactional
   public PasskeyCredentialSummaryVO register(Long userId, byte[] proposedUserHandle,
@@ -50,6 +53,7 @@ public class PasskeyCredentialService {
         material.signatureCount(), material.uvInitialized(), material.backupEligible(), material.backupState(),
         material.transports(), material.attestationObject(), material.attestationClientDataJson(), material.label()));
     event(user, correlationId, IdentityEventTypeEnum.AUTHENTICATION_METHOD_ADDED, occurredAt);
+    factorContinuity.afterStrongFactorEstablished(correlationId, occurredAt);
     return summary(credential);
   }
   @Transactional
@@ -78,12 +82,18 @@ public class PasskeyCredentialService {
   @Transactional
   public FactorOperationStatusEnum revoke(Long userId, UUID reference,
       boolean administrativeFactorRequired, UUID correlationId, Instant occurredAt) {
+    AdministrativeFactorContinuityContext continuityContext =
+        factorContinuity.lockContexts(userId);
     UserEntity user = lockUser(userId); PasskeyCredentialEntity value = locked(userId, reference);
     AuthenticationMethodInventoryVO current = inventory.inspect(userId);
     if (current.initialMethodCount() <= 1) return FactorOperationStatusEnum.LAST_METHOD;
-    if (administrativeFactorRequired && value.isUvInitialized() && current.administrativeFactorCount() <= 1)
-      return FactorOperationStatusEnum.ADMIN_FACTOR_REQUIRED;
-    value.revoke(occurredAt); event(user, correlationId, IdentityEventTypeEnum.AUTHENTICATION_METHOD_REMOVED, occurredAt);
+    boolean removedAdministrativeFactor = value.isUvInitialized();
+    value.revoke(occurredAt);
+    if (removedAdministrativeFactor) {
+      credentials.flush();
+      factorContinuity.validateAndRevise(continuityContext, occurredAt);
+    }
+    event(user, correlationId, IdentityEventTypeEnum.AUTHENTICATION_METHOD_REMOVED, occurredAt);
     return FactorOperationStatusEnum.REVOKED;
   }
   @Transactional(readOnly = true)

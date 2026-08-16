@@ -1,0 +1,94 @@
+# Modelo de Dados — Cadastro de Contas
+
+Todos os registros deste documento pertencem ao banco global.
+
+## `account_tenant`
+
+| Campo | Tipo | Regra |
+|---|---|---|
+| `idTenant` | BIGINT | PK interna, nunca reutilizada |
+| `publicId` | BINARY(16) | UUID único e imutável |
+| `status` | VARCHAR(24) | `RESERVED`, `OPERATIONAL`, `SUSPENDED`, `CANCELLED` |
+| `version` | BIGINT | optimistic lock |
+| `createdAt`, `updatedAt` | TIMESTAMP(6) | UTC, banco como autoridade |
+
+## `account_account`
+
+| Campo | Tipo | Regra |
+|---|---|---|
+| `idAccount` | BIGINT | PK interna |
+| `publicId` | BINARY(16) | UUID único e imutável |
+| `idTenant` | BIGINT | FK única para `account_tenant` |
+| `founderUserId` | BIGINT | FK para identidade global; não autoriza |
+| `displayName` | VARCHAR(160) | não único |
+| `baseCurrency` | CHAR(3) | ISO 4217 suportada |
+| `timeZoneId` | VARCHAR(100) | IANA `ZoneId` |
+| `status` | VARCHAR(24) | `CREATING`, `ACTIVE`, `SUSPENDED`, `CANCELLED` |
+| `version` | BIGINT | optimistic lock |
+| `createdAt`, `updatedAt` | TIMESTAMP(6) | UTC |
+
+`idTenant` e os UUIDs são imutáveis. Cancelamento é lógico.
+
+## `account_creationIntent`
+
+| Campo | Tipo | Regra |
+|---|---|---|
+| `idAccountCreationIntent` | BIGINT | PK |
+| `publicId` | BINARY(16) | UUID da intenção |
+| `protocolId` | BINARY(16) | UUID público de acompanhamento, único |
+| `creatorUserId` | BIGINT | identidade que iniciou |
+| `idempotencyKey` | BINARY(16) | chave opaca fornecida pelo cliente |
+| `payloadHash` | BINARY(32) | SHA-256 da representação canônica |
+| `idAccount` | BIGINT | FK única |
+| `status` | VARCHAR(32) | `ACCEPTED`, `PROCESSING`, `READY`, `FAILED`, `CANCELLED` |
+| `publicStage` | VARCHAR(32) | `ACCEPTED`, `PREPARING`, `FINISHING`, `AVAILABLE`, `ATTENTION` |
+| `failureCode` | VARCHAR(100) | motivo seguro opcional |
+| `createdAt`, `updatedAt` | TIMESTAMP(6) | UTC |
+
+Unique: `(creatorUserId, idempotencyKey)`. Mesmo par com hash diferente é conflito, nunca update.
+
+## `account_provisioningCheckpoint`
+
+Uma linha por conta e etapa conhecida: `STORAGE`, `FOUNDING_MEMBERSHIP`, `ACCESS_BOOTSTRAP`, `DEFAULT_PLAN`.
+Campos: conta, etapa, estado (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), referência externa opaca, tentativa,
+próximo instante, versão e timestamps. Unique `(idAccount, stepType)`.
+
+## `account_outboxEvent`
+
+| Campo | Regra |
+|---|---|
+| UUID do evento | único, imutável |
+| aggregate type/id | somente conta/intento interno |
+| event type | enum fechado |
+| payload JSON | identificadores e versão; sem token/IP/prova |
+| status | `PENDING`, `PROCESSING`, `PUBLISHED`, `FAILED` |
+| attempt/nextAttemptAt | retry durável |
+| leaseOwner/leaseUntil | claim entre instâncias |
+| createdAt/publishedAt | UTC |
+
+## `account_auditEvent`
+
+Append-only: tipo, conta, tenant, ator ou origem sistêmica, correlação, resultado seguro, detalhes JSON minimizados e
+instante. Não contém token Turnstile, IP puro ou stack trace.
+
+## Invariantes
+
+1. Cada conta referencia exatamente um tenant e cada tenant no máximo uma conta.
+2. Conta `ACTIVE` exige tenant `OPERATIONAL` e quatro checkpoints `COMPLETED`.
+3. `CANCELLED` nunca volta a `ACTIVE`; IDs nunca são reutilizados.
+4. A criação inicial confirma conta, tenant, intenção, auditoria e outbox conjuntamente.
+5. Apenas transições declaradas no serviço são aceitas; checks de banco protegem o vocabulário.
+6. Foreign keys globais usam `RESTRICT`; limpeza e retenção são processos explícitos.
+
+## Índices
+
+- conta por `publicId`, `idTenant`, `founderUserId/status`;
+- intenção por `protocolId`, `(creatorUserId,idempotencyKey)`, `status/updatedAt`;
+- checkpoint por `status/nextAttemptAt`;
+- outbox por `status/nextAttemptAt/leaseUntil`;
+- auditoria por `idAccount/occurredAt` e `idTenant/occurredAt`.
+
+## Migração
+
+DDL entra em `db/global/init/01-ddl.sql` e em novo update versionado posterior a `20260815_001_update.sql`, terminando
+com `databaseVersion`. Testes usam MySQL real para checks, uniques, FKs, JSON, timestamps, rollback e concorrência.

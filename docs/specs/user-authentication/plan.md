@@ -80,6 +80,9 @@ Não há violação constitucional autorizada. A condição do princípio IV é 
 O principal autenticado contém apenas a identidade global e uma referência opaca da sessão. A fotografia de garantia
 da sessão informa os métodos usados e o instante da última autenticação forte, mas não contém authorities de tenant.
 Papéis de ator podem determinar que uma operação futura exija MFA, porém somente grupos e chaves concederão acesso.
+Permissões globais também não são carregadas no login: operações globais e de tenant usam o mesmo contrato de decisão
+em tempo de execução. Tenant selecionado pertence à `UI`/área de trabalho do Rinos e não integra principal,
+`HttpSession`, `VaadinSession` ou `RFWSessionState` compartilhado.
 
 ### Fronteira entre sessão Vaadin e sessão de autenticação
 

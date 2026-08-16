@@ -17,7 +17,6 @@ import br.com.rinos.app.backend.module.identity.enums.TotpEnrollmentStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.TotpFactorStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.TotpFactorRepository;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
-import br.com.rinos.app.backend.module.identity.vo.AuthenticationMethodInventoryVO;
 import br.com.rinos.app.backend.module.identity.vo.EncryptedAuthenticationSecretVO;
 import br.com.rinos.app.backend.module.identity.vo.IssuedTotpEnrollmentVO;
 import br.com.rinos.app.backend.module.identity.vo.ProtectedTotpEnrollmentVO;
@@ -41,15 +40,18 @@ public class TotpFactorService {
   private final IdentityAuditService audit;
   private final TotpProtocolService protocol;
   private final AuthenticationMfaPropertiesConfig properties;
+  private final AdministrativeFactorContinuityPort factorContinuity;
 
   /** Cria a autoridade transacional dos fatores TOTP. */
   public TotpFactorService(UserRepository users, TotpFactorRepository factors,
       AuthenticationMethodInventoryService inventory, IdentityReferenceService references,
       IdentityAuditService audit, TotpProtocolService protocol,
-      AuthenticationMfaPropertiesConfig properties) {
+      AuthenticationMfaPropertiesConfig properties,
+      AdministrativeFactorContinuityPort factorContinuity) {
     this.users = users; this.factors = factors; this.inventory = inventory;
     this.references = references; this.audit = audit; this.protocol = protocol;
     this.properties = properties;
+    this.factorContinuity = factorContinuity;
   }
 
   /**
@@ -107,6 +109,7 @@ public class TotpFactorService {
     }
     factor.confirm(acceptedStep.getAsLong(), occurredAt);
     audit(user, correlationId, IdentityEventTypeEnum.AUTHENTICATION_METHOD_ADDED, "TOTP", occurredAt);
+    factorContinuity.afterStrongFactorEstablished(correlationId, occurredAt);
     return TotpEnrollmentStatusEnum.ACTIVE;
   }
 
@@ -144,13 +147,16 @@ public class TotpFactorService {
   @Transactional
   public FactorOperationStatusEnum revoke(Long userId, UUID reference,
       boolean administrativeFactorRequired, UUID correlationId, Instant occurredAt) {
+    AdministrativeFactorContinuityContext continuityContext =
+        factorContinuity.lockContexts(userId);
     UserEntity user = lockUser(userId);
     TotpFactorEntity factor = locked(userId, reference);
-    if (factor.getStatus() == TotpFactorStatusEnum.ACTIVE && administrativeFactorRequired) {
-      AuthenticationMethodInventoryVO current = inventory.inspect(userId);
-      if (current.administrativeFactorCount() <= 1) return FactorOperationStatusEnum.ADMIN_FACTOR_REQUIRED;
-    }
+    boolean removedAdministrativeFactor = factor.getStatus() == TotpFactorStatusEnum.ACTIVE;
     factor.revoke(occurredAt);
+    if (removedAdministrativeFactor) {
+      factors.flush();
+      factorContinuity.validateAndRevise(continuityContext, occurredAt);
+    }
     if (factor.getConfirmedAt() != null) audit(user, correlationId,
         IdentityEventTypeEnum.AUTHENTICATION_METHOD_REMOVED, "TOTP", occurredAt);
     return FactorOperationStatusEnum.REVOKED;

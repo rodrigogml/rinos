@@ -413,3 +413,10 @@ Um usuário ou módulo registra que o valor efetivado na moeda da conta resultou
 - Posições de investimento, quantidades, cotações e valorização de ativos.
 - Documentos fiscais e escrituração contábil.
 - Conversão consolidada de relatórios entre moedas.
+
+## Integração com Controle de Acesso
+
+Consultar, criar, confirmar, corrigir e cancelar usam as chaves `tenant.financial.transaction.*` do
+[catálogo canônico](../access-control/contracts/access-key-catalog.md). Liquidar obrigação ou direito usa a chave
+específica de `accounts-payable` ou `accounts-receivable`. Toda confirmação reautoriza no serviço e respeita bloqueios
+vigentes.

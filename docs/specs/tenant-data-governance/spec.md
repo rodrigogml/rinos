@@ -18,6 +18,10 @@ Também inclui a transferência operacional de um armazenamento de tenant entre 
 
 ## Clarifications
 
+### Session 2026-08-16
+
+- Q: Dados de serviços pessoais pertencem ao banco de algum tenant? -> A: Não. Catálogo, contratos e atribuições são globais; dados funcionais pessoais usarão data plane próprio definido pelo módulo pessoal e nunca serão colocados em tenant por conveniência.
+
 ### Session 2026-07-20
 
 - Q: Quais objetivos iniciais de recuperação devem orientar a produção? -> A: A implantação de referência utilizará backup diário, perda máxima planejada de até 24 horas (RPO) e retorno operacional planejado em até 8 horas (RTO). São compromissos dos procedimentos externos de infraestrutura, não configurações nem operações controladas pela aplicação.

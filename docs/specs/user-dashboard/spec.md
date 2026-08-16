@@ -8,9 +8,13 @@
 
 Esta feature oferece ao usuário ativo um espaço global e privado para consultar os dados de sua própria identidade, alterar seu e-mail mediante confirmação, consultar e atualizar aceites aplicáveis e acessar as configurações de segurança definidas pela feature `user-authentication`.
 
-O Painel de Usuário não representa uma conta pessoal, empresa ou tenant. Nesta etapa ele não permite criar contas, assinar planos, aceitar convites, selecionar contexto de conta, consultar dados de terceiros nem acessar módulos de negócio. Essas capacidades serão adicionadas pelas respectivas features futuras.
+O Painel de Usuário não representa tenant nem empresa. A identidade ativa possui contrato `PERSONAL/FREE`, mas nesta etapa o painel não permite trocar plano, criar tenants, aceitar convites, selecionar contexto de conta, consultar dados de terceiros nem acessar módulos pessoais ainda não declarados.
 
 ## Clarifications
+
+### Session 2026-08-16
+
+- Q: Usuário sem tenant possui plano? -> A: Sim. A ativação assegura `PERSONAL/FREE`, independente de todos os contratos tenant. Composição vazia não cria workspace, arquivo, agente ou outra capacidade implícita.
 
 ### Session 2026-07-19
 
@@ -29,7 +33,7 @@ Um usuário ativo autenticado acessa seu Painel de Usuário e reconhece sua iden
 **Acceptance Scenarios**:
 
 1. **Given** usuário ativo autenticado, **When** abre o painel, **Then** visualiza somente informações pertencentes à própria identidade
-2. **Given** usuário ativo sem associação a contas, **When** abre o painel, **Then** consegue utilizá-lo sem criação automática de conta, tenant ou plano
+2. **Given** usuário ativo sem associação a tenants, **When** abre o painel, **Then** utiliza seu contexto pessoal já provisionado sem criação automática de tenant ou direito ausente
 3. **Given** usuário não autenticado, **When** tenta abrir o painel, **Then** é direcionado ao fluxo de autenticação sem exposição de dados pessoais
 4. **Given** usuário bloqueado, desativado ou cancelado, **When** tenta acessar o painel por sessão anterior, **Then** o acesso é negado e a sessão não permanece utilizável
 
@@ -107,7 +111,7 @@ Um usuário acessa pelo painel a gestão de senha, passkeys, identidade Google, 
 - **FR-UD-003**: O painel DEVE apresentar somente dados, estados, avisos e operações pertencentes ao usuário autenticado.
 - **FR-UD-004**: Identificadores fornecidos pelo cliente NÃO DEVEM permitir consultar ou alterar outro usuário.
 - **FR-UD-005**: Um usuário sem associação a contas DEVE utilizar integralmente as capacidades desta feature.
-- **FR-UD-006**: A ativação ou o primeiro acesso ao painel NÃO DEVE criar automaticamente conta pessoal, empresa, tenant, plano, assinatura, papel, grupo, chave ou permissão.
+- **FR-UD-006**: O primeiro acesso ao painel NÃO DEVE criar tenant, empresa, associação, papel, grupo, chave, permissão ou direito; apenas consome o contrato `PERSONAL/FREE` já criado na ativação.
 - **FR-UD-007**: Criação de contas, assinatura de planos, convites, seleção de conta e módulos de negócio NÃO DEVEM ser apresentados como operações disponíveis enquanto suas respectivas features não estiverem liberadas.
 - **FR-UD-008**: Tentativas sem autenticação DEVEM preservar o destino solicitado apenas quando isso não expuser dados e DEVEM exigir autenticação antes de retornar ao painel.
 - **FR-UD-009**: Bloqueio, desativação ou cancelamento do usuário DEVE impedir imediatamente o acesso ao painel.
@@ -195,7 +199,7 @@ Um usuário acessa pelo painel a gestão de senha, passkeys, identidade Google, 
 ### Measurable Outcomes
 
 - **SC-UD-001**: Pelo menos 95% dos usuários autenticados acessam e reconhecem seu e-mail e suas configurações disponíveis em até 10 segundos.
-- **SC-UD-002**: Em 100% dos testes com usuário sem contas, o painel permanece acessível sem criar conta, tenant, plano, associação ou permissão.
+- **SC-UD-002**: Em 100% dos testes com usuário sem tenants, o painel usa somente `PERSONAL/FREE` e não cria tenant, associação, permissão ou capacidade ausente.
 - **SC-UD-003**: Em 100% dos testes de isolamento, um usuário não consulta nem altera dados da identidade de outro usuário.
 - **SC-UD-004**: Em 100% dos testes, usuários bloqueados, desativados ou cancelados não acessam o painel por sessões anteriores.
 - **SC-UD-005**: Pelo menos 90% dos usuários em teste concluem uma troca válida de e-mail sem ajuda em até três minutos, excluído o tempo de entrega da mensagem.
