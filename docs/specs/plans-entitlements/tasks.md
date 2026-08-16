@@ -41,12 +41,14 @@ Evidência consolidada: [núcleo de planos](evidence/4/README.md).
 
 ## Fase 5 — Integrações
 
-- [ ] 5.1 Tornar contrato `PERSONAL/FREE` condição da ativação de identidade.
-- [ ] 5.2 Adaptar `DefaultPlanAssignmentPort` ao contrato `TENANT/FREE`.
-- [ ] 5.3 Integrar reserva antes do envio de convite e liberação em revogação/expiração.
-- [ ] 5.4 Integrar conversão no aceite e ocupação em toda inclusão manual/importada.
-- [ ] 5.5 Revalidar capacidade em ativação e reativação sem liberar vaga por estado.
-- [ ] 5.6 Integrar `PlanEntitlementAccessPort` ao sujeito explícito.
+- [x] 5.1 Tornar contrato `PERSONAL/FREE` condição da ativação de identidade.
+- [x] 5.2 Adaptar `DefaultPlanAssignmentPort` ao contrato `TENANT/FREE`.
+- [x] 5.3 Integrar reserva antes do envio de convite e liberação em revogação/expiração.
+- [x] 5.4 Integrar conversão no aceite e ocupação em toda inclusão manual/importada.
+- [x] 5.5 Revalidar capacidade em ativação e reativação sem liberar vaga por estado.
+- [x] 5.6 Integrar `PlanEntitlementAccessPort` ao sujeito explícito.
+
+Evidência: [integrações de planos](evidence/5/README.md).
 
 ## Fase 6 — Validação
 

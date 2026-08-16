@@ -11,6 +11,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -69,6 +70,7 @@ public class JdbcTenantUserCapacityService implements TenantUserCapacityFacade {
   private final TransactionTemplate transactions;
   private final MeterRegistry metrics;
 
+  @Autowired
   public JdbcTenantUserCapacityService(
       DataSource dataSource,
       PlatformTransactionManager transactionManager,

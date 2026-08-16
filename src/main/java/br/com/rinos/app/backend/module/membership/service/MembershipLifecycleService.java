@@ -19,6 +19,7 @@ import br.com.rinos.app.backend.module.membership.entity.MembershipOutboxEventEn
 import br.com.rinos.app.backend.module.membership.repository.AccountMembershipRepository;
 import br.com.rinos.app.backend.module.membership.repository.MembershipEventRepository;
 import br.com.rinos.app.backend.module.membership.repository.MembershipOutboxEventRepository;
+import br.com.rinos.app.api.module.plans.enums.TenantUserCapacityStatus;
 
 /** Núcleo persistente chamado após autorização explícita e derivação confiável da garantia. */
 @Service
@@ -32,6 +33,7 @@ public class MembershipLifecycleService {
   private final MembershipOutboxEventRepository outbox;
   private final MembershipAdministrativeContinuityPort continuity;
   private final MembershipContextInvalidationPort invalidation;
+  private final MembershipPlanCapacityPort plans;
 
   public MembershipLifecycleService(
       AccountMembershipRepository memberships,
@@ -40,7 +42,8 @@ public class MembershipLifecycleService {
       MembershipEventRepository events,
       MembershipOutboxEventRepository outbox,
       MembershipAdministrativeContinuityPort continuity,
-      MembershipContextInvalidationPort invalidation) {
+      MembershipContextInvalidationPort invalidation,
+      MembershipPlanCapacityPort plans) {
     this.memberships = memberships;
     this.accounts = accounts;
     this.tenants = tenants;
@@ -48,6 +51,7 @@ public class MembershipLifecycleService {
     this.outbox = outbox;
     this.continuity = continuity;
     this.invalidation = invalidation;
+    this.plans = plans;
   }
 
   @Transactional
@@ -110,6 +114,18 @@ public class MembershipLifecycleService {
       }
     }
 
+    if (command.operation() == MembershipMutationOperation.REACTIVATE) {
+      var capacity = plans.occupy(target.getAccountId(), target.getUserId(),
+          target.getPublicId(), command.correlationId());
+      if (capacity.status() == TenantUserCapacityStatus.SOURCE_UNAVAILABLE) {
+        return new MembershipMutationResult(MembershipMutationResultStatus.UNAVAILABLE,
+            target.getPublicId(), target.getVersion(), null, "MEMBERSHIP_PLAN_UNAVAILABLE");
+      }
+      if (capacity.status() != TenantUserCapacityStatus.OCCUPIED
+          && capacity.status() != TenantUserCapacityStatus.ALREADY_OCCUPIED) {
+        return rejected(target, actor, "MEMBERSHIP_PLAN_LIMIT_REACHED", command);
+      }
+    }
     apply(target, command);
     memberships.saveAndFlush(target);
     long revision = invalidation.revise(tenant.getId());

@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,9 @@ import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEn
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusTransitionEnum;
 import br.com.rinos.app.backend.module.identity.vo.IdentityTransitionVO;
+import br.com.rinos.app.api.module.plans.dto.PersonalContractBootstrapRequest;
+import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
 
 /**
  * Valida e aplica transições de estado da identidade global.
@@ -29,18 +33,38 @@ public class UserLifecycleService {
 
   private static final String ENTITY_TYPE = "USER";
   private final AuthSessionService sessionService;
+  private final PersonalContractBootstrapPort personalContracts;
 
   /**
    * Mantém compatibilidade com validadores isolados que não executam transições operacionais.
    */
   public UserLifecycleService() {
     this.sessionService = null;
+    this.personalContracts = null;
   }
 
   /** Cria o lifecycle operacional com invalidação obrigatória das sessões globais. */
-  @Autowired
   public UserLifecycleService(@Lazy AuthSessionService sessionService) {
     this.sessionService = Objects.requireNonNull(sessionService, "sessionService must not be null");
+    this.personalContracts = null;
+  }
+
+  /** Construtor explícito para composição modular e testes de integração do contrato pessoal. */
+  public UserLifecycleService(
+      AuthSessionService sessionService,
+      PersonalContractBootstrapPort personalContracts) {
+    this.sessionService = Objects.requireNonNull(sessionService, "sessionService must not be null");
+    this.personalContracts = Objects.requireNonNull(
+        personalContracts, "personalContracts must not be null");
+  }
+
+  /** Cria o lifecycle operacional com contrato pessoal obrigatório na primeira ativação. */
+  @Autowired
+  public UserLifecycleService(
+      @Lazy AuthSessionService sessionService,
+      ObjectProvider<PersonalContractBootstrapPort> personalContractProvider) {
+    this.sessionService = Objects.requireNonNull(sessionService, "sessionService must not be null");
+    this.personalContracts = personalContractProvider.getIfAvailable();
   }
 
   /**
@@ -90,6 +114,7 @@ public class UserLifecycleService {
 
     if (previousStatus == UserStatusEnum.PENDING_VERIFICATION
         && newStatus == UserStatusEnum.ACTIVE) {
+      ensurePersonalContract(user, correlationId);
       user.setInitialActivatedAt(occurredAt);
     }
     user.setStatus(newStatus);
@@ -108,5 +133,20 @@ public class UserLifecycleService {
         origin,
         reason,
         occurredAt);
+  }
+
+  private void ensurePersonalContract(UserEntity user, UUID correlationId) {
+    if (personalContracts == null) {
+      return;
+    }
+    if (user.getId() == null) {
+      throw new IllegalStateException("personal plan contract context unavailable");
+    }
+    var result = personalContracts.ensure(new PersonalContractBootstrapRequest(
+        correlationId, user.getId(), correlationId.toString()));
+    if (result.status() != ContractBootstrapStatus.COMPLETED
+        && result.status() != ContractBootstrapStatus.ALREADY_COMPLETED) {
+      throw new IllegalStateException("personal plan contract could not be ensured");
+    }
   }
 }

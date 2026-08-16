@@ -49,6 +49,13 @@ import br.com.rinos.app.config.MembershipInvitationPropertiesConfig;
 import br.eng.rodrigogml.rfw.mail.EmailDispatchService;
 import br.eng.rodrigogml.rfw.mail.EmailMessage;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.com.rinos.app.api.module.plans.dto.TenantContractBootstrapRequest;
+import br.com.rinos.app.api.module.plans.port.TenantContractBootstrapPort;
+import br.com.rinos.app.backend.module.plans.component.MembershipPlanCapacityAdapter;
+import br.com.rinos.app.backend.module.plans.service.JdbcContractBootstrapService;
+import br.com.rinos.app.backend.module.plans.service.JdbcTenantUserCapacityService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class MembershipPersistenceIT {
  private static MySqlTestDatabase database; private DataSource dataSource;
@@ -56,7 +63,8 @@ class MembershipPersistenceIT {
  @AfterAll static void stop(){if(database!=null)database.close();}
  @BeforeEach void reset() throws SQLException{
   Assumptions.assumeTrue(database!=null,"MySQL de teste indisponível"); dataSource=database.recreateSchema();
-  new ResourceDatabasePopulator(new ClassPathResource("db/global/init/01-ddl.sql")).execute(dataSource);
+  new ResourceDatabasePopulator(new ClassPathResource("db/global/init/01-ddl.sql"),
+    new ClassPathResource("db/global/init/02-seed.sql")).execute(dataSource);
   execute("INSERT INTO identity_user (email,normalizedEmail,status) VALUES ('founder@example.com','founder@example.com','ACTIVE'),('guest@example.com','guest@example.com','ACTIVE')");
  }
  @Test void invitation_shouldIssueAndBeConsumedExactlyOnce(){
@@ -130,8 +138,10 @@ class MembershipPersistenceIT {
  }
  @Test void invitationExpiry_shouldMaterializeTheTerminalStateAndAllowANewCycle(){
   runner().run(context->{var setup=operationalAccount(context,"Expiração");var service=context.getBean(MembershipInvitationService.class);
-   Instant old=Instant.now().minus(java.time.Duration.ofDays(16));
-   var first=service.issue(setup.membershipId(),setup.accountPublicId(),"guest@example.com",MembershipRoleType.COLLABORATOR,"203.0.113.10","old",old);
+   var first=service.issue(setup.membershipId(),setup.accountPublicId(),"guest@example.com",MembershipRoleType.COLLABORATOR,"203.0.113.10","old",Instant.now());
+   try{execute("UPDATE membership_invitation SET expiresAt=TIMESTAMPADD(MINUTE,-1,CURRENT_TIMESTAMP(6)) WHERE publicId=UUID_TO_BIN('"+first.invitationPublicId()+"')");
+    execute("UPDATE plans_tenantUserCapacityReservation SET expiresAt=TIMESTAMPADD(MINUTE,-1,CURRENT_TIMESTAMP(6)) WHERE idMembershipInvitation=(SELECT idMembershipInvitation FROM membership_invitation WHERE publicId=UUID_TO_BIN('"+first.invitationPublicId()+"'))");}
+   catch(SQLException e){throw new IllegalStateException(e);}
    assertThat(context.getBean(MembershipInvitationExpiryService.class).expireBatch(Instant.now())).isOne();
    var replacement=service.issue(setup.membershipId(),setup.accountPublicId(),"guest@example.com",MembershipRoleType.COLLABORATOR,"203.0.113.10","new",Instant.now());
    assertThat(first.status()).isEqualTo(MembershipInvitationResultStatus.ISSUED);
@@ -238,6 +248,8 @@ class MembershipPersistenceIT {
     accepted.protocolId(),account.getPublicId(),tenant.getPublicId(),1L,UUID.randomUUID().toString()));
   try{execute("UPDATE account_account SET status='ACTIVE' WHERE idAccount="+account.getId());execute("UPDATE account_tenant SET status='OPERATIONAL' WHERE idTenant="+tenant.getId());}
   catch(SQLException e){throw new IllegalStateException(e);}
+  context.getBean(TenantContractBootstrapPort.class).ensure(new TenantContractBootstrapRequest(
+    accepted.protocolId(),account.getPublicId(),tenant.getPublicId(),1L,"tenant-plan-"+accepted.protocolId()));
   long membershipId=context.getBean(AccountMembershipRepository.class).findByAccountIdAndUserIdAndCurrentMarker(account.getId(),1L,1).orElseThrow().getId();
   return new OperationalSetup(account.getPublicId(),account.getId(),tenant.getId(),membershipId);
  }
@@ -290,7 +302,7 @@ class MembershipPersistenceIT {
    .withBean(MembershipInvitationPropertiesConfig.class,()->new MembershipInvitationPropertiesConfig(
      java.time.Duration.ofDays(15),java.time.Duration.ofMinutes(15),100,20,5,50,100,25,
      java.time.Duration.ofMinutes(2),java.time.Duration.ofMinutes(1),java.time.Duration.ofHours(1)))
-   .withBean(MembershipPlanCapacityPort.class,()->(accountId,userId)->MembershipPlanCapacityDecision.permit())
+   .withBean(MeterRegistry.class,SimpleMeterRegistry::new)
    .withBean(MembershipAdministrativeContinuityPort.class,()->request->continuity)
    .withBean(MembershipContextInvalidationPort.class,()->new MembershipContextInvalidationPort(){
      public void lock(long tenantId){} public long revise(long tenantId){return revision.incrementAndGet();}});}
@@ -304,7 +316,8 @@ class MembershipPersistenceIT {
  @Import({AccountCreationAcceptanceService.class,FoundingMembershipBootstrapAdapter.class,AccountMembershipAccessAdapter.class,
    MembershipInvitationService.class,MembershipInvitationExpiryService.class,MembershipInvitationRateLimitService.class,MembershipLifecycleService.class,
    MembershipInvitationDeliveryService.class,AuthenticationKeyringMacService.class,PublicApplicationUriService.class,
-   VerificationTokenService.class,EmailNormalizationService.class})
+   VerificationTokenService.class,EmailNormalizationService.class,JdbcContractBootstrapService.class,
+   JdbcTenantUserCapacityService.class,MembershipPlanCapacityAdapter.class})
  static class Config{}
  private record OperationalSetup(UUID accountPublicId,long accountId,long tenantId,long membershipId){}
 }

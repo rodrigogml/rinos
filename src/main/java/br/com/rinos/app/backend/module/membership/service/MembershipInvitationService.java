@@ -15,6 +15,7 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import br.com.rinos.app.api.module.account.enums.AccountStatus;
 import br.com.rinos.app.api.module.membership.enums.*;
 import br.com.rinos.app.api.module.membership.vo.MembershipInvitationResult;
+import br.com.rinos.app.api.module.plans.enums.TenantUserCapacityStatus;
 import br.com.rinos.app.backend.module.account.enums.TenantStatus;
 import br.com.rinos.app.backend.module.account.repository.*;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
@@ -59,7 +60,9 @@ public class MembershipInvitationService {
     if(pending!=null)return new MembershipInvitationResult(MembershipInvitationResultStatus.ALREADY_PENDING,
       pending.getPublicId(),null,pending.getExpiresAt(),null);
     try{return transactions.execute(status->{var result=createInvitation(context,normalized,role,canonicalOrigin,correlationId,occurredAt);
-      if(result.status()==MembershipInvitationResultStatus.RATE_LIMITED)status.setRollbackOnly();return result;});}
+      if(result.status()==MembershipInvitationResultStatus.RATE_LIMITED
+          ||result.status()==MembershipInvitationResultStatus.REJECTED
+          ||result.status()==MembershipInvitationResultStatus.UNAVAILABLE)status.setRollbackOnly();return result;});}
     catch(DataIntegrityViolationException collision){
       var winner=pending(context.accountId(),normalized,occurredAt);
       if(winner!=null)return new MembershipInvitationResult(MembershipInvitationResultStatus.ALREADY_PENDING,
@@ -81,14 +84,20 @@ public class MembershipInvitationService {
     var account=accounts.findById(invitation.getAccountId()).filter(a->a.getStatus()==AccountStatus.ACTIVE).orElse(null);
     if(user==null||account==null||tenants.findById(account.getTenantId()).filter(t->t.getStatus()==TenantStatus.OPERATIONAL).isEmpty()
         ||!matches(invitation,proof))return rejected("MEMBERSHIP_INVITATION_INVALID");
-    if(!accept){invitation.decline(userId,occurredAt);outbox.cancelInvitationDelivery(invitation.getId());invitations.save(invitation);
+    if(!accept){var release=plans.release(account.getId(),invitation.getPublicId(),correlationId);
+      if(release.status()==TenantUserCapacityStatus.SOURCE_UNAVAILABLE)return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
+      if(release.status()!=TenantUserCapacityStatus.RELEASED)return rejected("MEMBERSHIP_INVITATION_INVALID");
+      invitation.decline(userId,occurredAt);outbox.cancelInvitationDelivery(invitation.getId());invitations.save(invitation);
       auditAndPublish(invitation,null,userId,"INVITATION_DECLINED",correlationId,occurredAt);
       return new MembershipInvitationResult(MembershipInvitationResultStatus.DECLINED,invitationPublicId,null,null,null);}
-    var plan=plans.evaluate(account.getId(),userId);
-    if(!plan.sourceAvailable())return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
-    if(!plan.allowed())return rejected("MEMBERSHIP_PLAN_LIMIT_REACHED");
     if(memberships.findByAccountIdAndUserIdAndCurrentMarker(account.getId(),userId,1).isPresent())
       return rejected("MEMBERSHIP_ALREADY_CURRENT");
+    var conversion=plans.convert(account.getId(),userId,invitation.getPublicId(),correlationId);
+    if(conversion.status()==TenantUserCapacityStatus.SOURCE_UNAVAILABLE)
+      return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
+    if(conversion.status()!=TenantUserCapacityStatus.OCCUPIED
+        &&conversion.status()!=TenantUserCapacityStatus.ALREADY_OCCUPIED)
+      return rejected("MEMBERSHIP_PLAN_LIMIT_REACHED");
     var membership=memberships.saveAndFlush(new AccountMembershipEntity(UUID.randomUUID(),account.getId(),userId,
       invitation.getProposedRoleType(),MembershipOriginType.INVITATION,occurredAt));
     invitation.accept(userId,occurredAt);outbox.cancelInvitationDelivery(invitation.getId());invitations.save(invitation);
@@ -106,6 +115,9 @@ public class MembershipInvitationService {
     if(invitation==null||invitation.getStatus()!=MembershipInvitationStatus.PENDING
         ||!occurredAt.isBefore(invitation.getExpiresAt())||!sameActiveInviterAccount(inviterMembershipId,invitation.getAccountId()))
       return rejected("MEMBERSHIP_INVITATION_INVALID");
+    var release=plans.release(invitation.getAccountId(),invitation.getPublicId(),correlationId);
+    if(release.status()==TenantUserCapacityStatus.SOURCE_UNAVAILABLE)return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
+    if(release.status()!=TenantUserCapacityStatus.RELEASED)return rejected("MEMBERSHIP_INVITATION_INVALID");
     invitation.supersede();outbox.cancelInvitationDelivery(invitation.getId());invitations.saveAndFlush(invitation);
     auditAndPublish(invitation,null,memberships.findById(inviterMembershipId).orElseThrow().getUserId(),
       "INVITATION_SUPERSEDED",correlationId,occurredAt);
@@ -123,6 +135,9 @@ public class MembershipInvitationService {
     var invitation=invitations.findByPublicIdForUpdate(invitationPublicId).orElse(null);
     if(invitation==null||invitation.getStatus()!=MembershipInvitationStatus.PENDING
         ||!sameActiveInviterAccount(inviterMembershipId,invitation.getAccountId()))return rejected("MEMBERSHIP_INVITATION_INVALID");
+    var release=plans.release(invitation.getAccountId(),invitation.getPublicId(),correlationId);
+    if(release.status()==TenantUserCapacityStatus.SOURCE_UNAVAILABLE)return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
+    if(release.status()!=TenantUserCapacityStatus.RELEASED)return rejected("MEMBERSHIP_INVITATION_INVALID");
     invitation.revoke();outbox.cancelInvitationDelivery(invitation.getId());invitations.save(invitation);long actor=memberships.findById(inviterMembershipId).orElseThrow().getUserId();
     auditAndPublish(invitation,null,actor,"INVITATION_REVOKED",correlationId,occurredAt);
     return new MembershipInvitationResult(MembershipInvitationResultStatus.REVOKED,invitationPublicId,null,null,null);
@@ -139,6 +154,14 @@ public class MembershipInvitationService {
     var protectedProof=macs.protect(PROOF_DOMAIN,proofInput(publicId,proof));
     var invitation=invitations.saveAndFlush(new MembershipInvitationEntity(publicId,context.accountId(),context.membershipId(),email,
       role,protectedProof.digest(),protectedProof.keyVersion(),occurredAt.plus(properties.validity())));
+    var target=users.findByNormalizedEmail(email).orElse(null);
+    var capacity=plans.reserve(context.accountId(),publicId,email,target==null?null:target.getId(),
+      occurredAt,invitation.getExpiresAt(),correlationId);
+    if(capacity.status()==TenantUserCapacityStatus.SOURCE_UNAVAILABLE)return unavailable("MEMBERSHIP_PLAN_UNAVAILABLE");
+    if(capacity.status()!=TenantUserCapacityStatus.RESERVED
+        &&capacity.status()!=TenantUserCapacityStatus.ALREADY_RESERVED
+        &&capacity.status()!=TenantUserCapacityStatus.ALREADY_OCCUPIED)
+      return rejected("MEMBERSHIP_PLAN_LIMIT_REACHED");
     auditAndPublishIssued(invitation,context.userId(),correlationId,occurredAt,proof);
     return new MembershipInvitationResult(MembershipInvitationResultStatus.ISSUED,publicId,proof,invitation.getExpiresAt(),null);
   }
@@ -163,7 +186,9 @@ public class MembershipInvitationService {
     var value=invitations.findByAccountIdAndNormalizedEmailAndPendingMarker(accountId,email,1).orElse(null);
     if(value!=null&&!at.isBefore(value.getExpiresAt())){transactions.executeWithoutResult(s->{
       invitations.findByPublicIdForUpdate(value.getPublicId()).filter(i->i.getStatus()==MembershipInvitationStatus.PENDING)
-        .ifPresent(i->{i.expire();outbox.cancelInvitationDelivery(i.getId());invitations.saveAndFlush(i);});});return null;}return value;
+        .ifPresent(i->{var release=plans.release(i.getAccountId(),i.getPublicId(),"membership-lazy-expiry-"+UUID.randomUUID());
+          if(release.status()!=TenantUserCapacityStatus.RELEASED)throw new IllegalStateException("plan capacity unavailable");
+          i.expire();outbox.cancelInvitationDelivery(i.getId());invitations.saveAndFlush(i);});});return null;}return value;
   }
   private InviterContext inviterContext(long membershipId,UUID accountPublicId){
     var membership=memberships.findById(membershipId).filter(m->m.getStatus()==MembershipStatus.ACTIVE).orElse(null);
