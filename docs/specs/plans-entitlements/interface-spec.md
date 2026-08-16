@@ -42,14 +42,16 @@ colunas, banners, botões, grupos de controles, i18n, tokens e layout responsivo
 ## Lacunas prévias à implementação
 
 Não foi localizado contrato público revisado para árvore de categorias, matriz editável de composição nem protocolo
-genérico de prévia de impacto. Antes das telas administrativas, deve-se apresentar separadamente ao usuário:
+genérico de prévia de impacto. A [análise de lacunas RFW](rfw-gap-analysis.md) registra evidências, APIs candidatas,
+compatibilidade e impacto no showroom. Antes das telas administrativas, deve-se decidir separadamente:
 
 1. problema genérico e exemplos de outras hospedeiras;
 2. API pública candidata para navegação hierárquica/matriz/prévia;
 3. compatibilidade, acessibilidade e impacto no showroom;
 4. decisão entre evolução do RFW e composição local estritamente de domínio.
 
-Nenhuma alteração no submódulo está autorizada por esta especificação.
+Nenhuma alteração no submódulo está autorizada por esta especificação. As telas também aguardam facades públicas de
+consulta/administração do Rinos; bootstrap, avaliação e capacidade não constituem API de apresentação.
 
 ## Segurança e acessibilidade
 

@@ -1,7 +1,8 @@
 # Análise de Lacuna RFW — Operação de Criação de Conta
 
 **Data**: 2026-08-15
-**Estado**: resolvida no RFW pela revisão `ba1bfda` em 2026-08-15
+**Estado**: resolvida no RFW pela revisão `ba1bfda` em 2026-08-15; o ponteiro versionado do Rinos ainda referencia
+`7559314` e precisa ser atualizado em ciclo separado após validação do submódulo
 
 ## Problema
 

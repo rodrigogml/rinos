@@ -63,6 +63,8 @@ Evidência: [validação cruzada de planos](evidence/6/README.md).
 
 ## Fase 7 — Interface posterior
 
-- [ ] 7.1 Apresentar análise das lacunas RFW antes de qualquer tela.
+- [x] 7.1 Apresentar análise das lacunas RFW antes de qualquer tela.
 - [ ] 7.2 Obter autorização separada para eventual evolução do submódulo.
 - [ ] 7.3 Implementar superfícies pessoais, tenant e administrativas usando APIs públicas aprovadas.
+
+Análise: [lacunas RFW e pré-condições da interface](rfw-gap-analysis.md).
