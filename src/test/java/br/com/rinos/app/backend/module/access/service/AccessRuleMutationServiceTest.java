@@ -160,7 +160,7 @@ class AccessRuleMutationServiceTest {
         ? "global.platform.directory.view"
         : "tenant.foundation.access.manage";
     AccessKeyEntity key = new AccessKeyEntity(
-        code, scope, 3L, "access-control", "name", "description", null,
+        code, scope, 3L, "access-control", "name", "description", null, null,
         AccessRecordStatus.ACTIVE, 1);
     ReflectionTestUtils.setField(key, "id", 7L);
     return key;

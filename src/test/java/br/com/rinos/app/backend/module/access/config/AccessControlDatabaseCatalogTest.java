@@ -15,6 +15,8 @@ class AccessControlDatabaseCatalogTest {
   private static final String UPDATE = "db/global/update/20260815_001_update.sql";
   private static final String MEMBERSHIP_UPDATE =
       "db/global/update/20260815_003_update.sql";
+  private static final String PLANS_UPDATE =
+      "db/global/update/20260816_002_update.sql";
 
   @Test
   void initAndUpdate_shouldPublishTheSameAccessControlSchema() throws IOException {
@@ -22,6 +24,13 @@ class AccessControlDatabaseCatalogTest {
     String update = read(UPDATE);
 
     String initAccess = accessSchema(init)
+        .replace("  entitlementScope VARCHAR(16) NULL,\n", "")
+        .replace("""
+              CONSTRAINT ck_access_key_entitlement CHECK (
+                (entitlementScope IS NULL AND entitlementCode IS NULL)
+                OR (entitlementScope IN ('PERSONAL', 'TENANT') AND entitlementCode IS NOT NULL)
+              ),
+            """, "")
         .replace("""
               CONSTRAINT fk_access_group_subject_membership FOREIGN KEY (idAccountMembership)
                 REFERENCES membership_accountMembership (idAccountMembership)
@@ -50,6 +59,9 @@ class AccessControlDatabaseCatalogTest {
     assertThat(read(MEMBERSHIP_UPDATE)).contains(
         "ADD CONSTRAINT fk_access_group_subject_membership",
         "ADD CONSTRAINT fk_access_rule_membership");
+    assertThat(read(PLANS_UPDATE)).contains(
+        "ADD COLUMN entitlementScope VARCHAR(16)",
+        "ADD CONSTRAINT ck_access_key_entitlement");
   }
 
   @Test
@@ -59,13 +71,19 @@ class AccessControlDatabaseCatalogTest {
     assertThat(update.indexOf("CREATE TABLE access_auditEvent"))
         .isLessThan(update.indexOf("SELECT '20260815001' AS version"));
     assertThat(read("db/global/init/99-database-version.sql"))
-        .contains("SELECT '20260816001' AS version");
+        .contains("SELECT '20260816002' AS version");
   }
 
   private static String accessSchema(String sql) {
     int start = sql.indexOf("CREATE TABLE access_keyCategory");
     int version = sql.indexOf("CREATE OR REPLACE", start);
-    return sql.substring(start, version < 0 ? sql.length() : version).strip();
+    int plans = sql.indexOf("CREATE TABLE plans_plan", start);
+    int end = version < 0 ? sql.length() : version;
+    if (plans >= 0 && plans < end) {
+      int accessSeed = sql.indexOf("INSERT INTO access_contextRevision", plans);
+      return (sql.substring(start, plans) + sql.substring(accessSeed, end)).strip();
+    }
+    return sql.substring(start, end).strip();
   }
 
   private static String read(String location) throws IOException {

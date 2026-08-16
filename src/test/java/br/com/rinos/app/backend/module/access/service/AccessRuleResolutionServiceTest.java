@@ -207,7 +207,7 @@ class AccessRuleResolutionServiceTest {
   private static AccessKeyEntity keyEntity(Long id, AccessKeyDescriptor descriptor) {
     AccessKeyEntity key = new AccessKeyEntity(
         descriptor.code(), descriptor.scope(), 3L, descriptor.ownerModule(),
-        descriptor.nameI18nKey(), descriptor.descriptionI18nKey(), null,
+        descriptor.nameI18nKey(), descriptor.descriptionI18nKey(), null, null,
         AccessRecordStatus.ACTIVE, 1);
     ReflectionTestUtils.setField(key, "id", id);
     return key;

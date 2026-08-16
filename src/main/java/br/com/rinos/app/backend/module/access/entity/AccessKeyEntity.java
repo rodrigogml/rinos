@@ -3,6 +3,7 @@ package br.com.rinos.app.backend.module.access.entity;
 import java.time.Instant;
 
 import br.com.rinos.app.api.module.access.enums.AccessScope;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
 import br.com.rinos.app.backend.module.access.enums.AccessRecordStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +43,10 @@ public class AccessKeyEntity {
   @Column(name = "descriptionI18nKey", nullable = false, length = 200)
   private String descriptionI18nKey;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "entitlementScope", length = 16)
+  private ContractScope entitlementScope;
+
   @Column(name = "entitlementCode", length = 200)
   private String entitlementCode;
 
@@ -62,7 +67,8 @@ public class AccessKeyEntity {
   }
 
   public AccessKeyEntity(String code, AccessScope scope, Long categoryId, String ownerModule,
-      String nameI18nKey, String descriptionI18nKey, String entitlementCode,
+      String nameI18nKey, String descriptionI18nKey, ContractScope entitlementScope,
+      String entitlementCode,
       AccessRecordStatus status, int descriptorVersion) {
     this.code = code;
     this.scope = scope;
@@ -70,6 +76,7 @@ public class AccessKeyEntity {
     this.ownerModule = ownerModule;
     this.nameI18nKey = nameI18nKey;
     this.descriptionI18nKey = descriptionI18nKey;
+    this.entitlementScope = entitlementScope;
     this.entitlementCode = entitlementCode;
     this.status = status;
     this.descriptorVersion = descriptorVersion;
@@ -82,6 +89,7 @@ public class AccessKeyEntity {
   public String getOwnerModule() { return ownerModule; }
   public String getNameI18nKey() { return nameI18nKey; }
   public String getDescriptionI18nKey() { return descriptionI18nKey; }
+  public ContractScope getEntitlementScope() { return entitlementScope; }
   public String getEntitlementCode() { return entitlementCode; }
   public AccessRecordStatus getStatus() { return status; }
   public int getDescriptorVersion() { return descriptorVersion; }
@@ -89,11 +97,13 @@ public class AccessKeyEntity {
   public Instant getUpdatedAt() { return updatedAt; }
 
   public void synchronize(Long newCategoryId, String newNameI18nKey,
-      String newDescriptionI18nKey, String newEntitlementCode,
+      String newDescriptionI18nKey, ContractScope newEntitlementScope,
+      String newEntitlementCode,
       AccessRecordStatus newStatus, int newDescriptorVersion) {
     categoryId = newCategoryId;
     nameI18nKey = newNameI18nKey;
     descriptionI18nKey = newDescriptionI18nKey;
+    entitlementScope = newEntitlementScope;
     entitlementCode = newEntitlementCode;
     status = newStatus;
     descriptorVersion = newDescriptorVersion;

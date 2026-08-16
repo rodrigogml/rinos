@@ -11,11 +11,13 @@ Evidência: [contratos públicos e entitlement tipado](./evidence/1/README.md).
 
 ## Fase 2 — Schema global
 
-- [ ] 2.1 Criar catálogo, versões, definições e composição com integridade de escopo.
-- [ ] 2.2 Criar contratos, titulares e atribuições com unicidade vigente.
-- [ ] 2.3 Criar ocupações históricas e reservas de capacidade tenant.
-- [ ] 2.4 Criar auditoria, outbox, índices, checks e optimistic version.
-- [ ] 2.5 Atualizar init, update incremental, versão do banco e testes MySQL.
+- [x] 2.1 Criar catálogo, versões, definições e composição com integridade de escopo.
+- [x] 2.2 Criar contratos, titulares e atribuições com unicidade vigente.
+- [x] 2.3 Criar ocupações históricas e reservas de capacidade tenant.
+- [x] 2.4 Criar auditoria, outbox, índices, checks e optimistic version.
+- [x] 2.5 Atualizar init, update incremental, versão do banco e testes MySQL.
+
+Evidência: [schema global e migração MySQL](./evidence/2/README.md).
 
 ## Fase 3 — Bootstrap e backfill
 

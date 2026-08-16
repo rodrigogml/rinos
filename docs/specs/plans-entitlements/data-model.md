@@ -32,14 +32,15 @@ Contrato, versão, escopo, início, término, estado, origem, motivo e idempoten
 
 ### `TenantUserCapacityOccupancy`
 
-Contrato tenant, tenant, user global, primeira associação, instante e origem. Único por `(tenantId, userId)` e nunca é
-apagado por mudança de estado da membership.
+Contrato tenant, tenant, conta, user global, primeira associação, instante e origem. Único por `(tenantId, userId)`
+e nunca é apagado por mudança de estado da membership. FKs compostas garantem que contrato, tenant, conta,
+associação e usuário pertençam ao mesmo contexto.
 
 ### `TenantUserCapacityReservation`
 
-Contrato tenant, intenção/convite, destinatário normalizado protegido, user quando conhecido, estado, expiração e
-idempotency key. Estados: `RESERVED`, `CONVERTED`, `RELEASED`, `EXPIRED`. Conversão cria/reutiliza ocupação e não conta
-duas vezes.
+Contrato tenant, tenant, conta, intenção/convite, digest protegido do destinatário, user quando conhecido, estado,
+expiração e idempotency key. Estados: `RESERVED`, `CONVERTED`, `RELEASED`, `EXPIRED`. Conversão cria/reutiliza ocupação
+do mesmo contexto e não conta duas vezes.
 
 ### Auditoria, outbox e revisão
 

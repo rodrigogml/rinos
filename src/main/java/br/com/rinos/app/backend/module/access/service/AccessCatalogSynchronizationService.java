@@ -112,10 +112,6 @@ public class AccessCatalogSynchronizationService {
     Map<String, AccessKeyEntity> persisted = new HashMap<>();
     keyRepository.findAll().forEach(key -> persisted.put(key.getCode(), key));
     for (AccessKeyDescriptor descriptor : descriptors) {
-      if (descriptor.entitlementRequirement() != null) {
-        throw new IllegalStateException(
-            "typed entitlement persistence requires the entitlement scope migration");
-      }
       AccessKeyCategoryEntity category = categories.get(descriptor.categoryCode());
       AccessKeyEntity entity = persisted.get(descriptor.code());
       if (entity != null && (entity.getScope() != descriptor.scope()
@@ -128,11 +124,11 @@ public class AccessCatalogSynchronizationService {
         entity = new AccessKeyEntity(
             descriptor.code(), descriptor.scope(), category.getId(), descriptor.ownerModule(),
             descriptor.nameI18nKey(), descriptor.descriptionI18nKey(),
-            entitlementCode(descriptor), status, DESCRIPTOR_VERSION);
+            entitlementScope(descriptor), entitlementCode(descriptor), status, DESCRIPTOR_VERSION);
       } else {
         entity.synchronize(
             category.getId(), descriptor.nameI18nKey(), descriptor.descriptionI18nKey(),
-            entitlementCode(descriptor), status, DESCRIPTOR_VERSION);
+            entitlementScope(descriptor), entitlementCode(descriptor), status, DESCRIPTOR_VERSION);
       }
       entity = keyRepository.saveAndFlush(entity);
       synchronizeRequirements(entity, descriptor);
@@ -183,5 +179,11 @@ public class AccessCatalogSynchronizationService {
   private static String entitlementCode(AccessKeyDescriptor descriptor) {
     return descriptor.entitlementRequirement() == null
         ? null : descriptor.entitlementRequirement().code();
+  }
+
+  private static br.com.rinos.app.api.module.plans.enums.ContractScope entitlementScope(
+      AccessKeyDescriptor descriptor) {
+    return descriptor.entitlementRequirement() == null
+        ? null : descriptor.entitlementRequirement().subjectScope();
   }
 }
