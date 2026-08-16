@@ -16,7 +16,7 @@ import br.com.rinos.app.backend.module.access.service.GlobalAccessBootstrapServi
 /** Tenta o bootstrap após a sincronização do catálogo; ausência do candidato ainda é um estado normal. */
 @Component
 @ConditionalOnBean(DataSource.class)
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class GlobalAccessBootstrapReadinessRunner implements ApplicationRunner {
   private final GlobalAccessBootstrapService bootstrap;
 

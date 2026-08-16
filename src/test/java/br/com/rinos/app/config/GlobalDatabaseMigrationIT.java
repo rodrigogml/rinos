@@ -25,8 +25,10 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.com.rinos.app.backend.module.plans.service.PlansCatalogReadinessService;
 import br.eng.rodrigogml.rfw.database.config.RFWDatabaseAutoConfiguration;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
@@ -62,8 +64,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260815_002_update.sql",
       "classpath:db/global/update/20260815_003_update.sql",
       "classpath:db/global/update/20260816_001_update.sql",
-      "classpath:db/global/update/20260816_002_update.sql");
-  private static final String TARGET_VERSION = "20260816002";
+      "classpath:db/global/update/20260816_002_update.sql",
+      "classpath:db/global/update/20260816_003_update.sql");
+  private static final String TARGET_VERSION = "20260816003";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -207,7 +210,7 @@ class GlobalDatabaseMigrationIT {
       throws SQLException {
     initializeDatabase();
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260816_003_update.sql";
+        + ",classpath:db/global/failure/20260816_004_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();
@@ -255,6 +258,94 @@ class GlobalDatabaseMigrationIT {
     assertThat(readTimestamp("identity_localCredential", "compromisedAt", 1L)).isNull();
     assertThat(readTimestamp("identity_externalIdentity", "lastUsedAt", 1L)).isNull();
     assertAuthenticationTables();
+  }
+
+  /**
+   * Comprova seed, contratos, atribuições e capacidade ao evoluir o schema anterior.
+   *
+   * @throws SQLException quando o cenário legado não pode ser preparado
+   */
+  @Test
+  void startup_shouldBackfillPlansContractsAndCapacityIdempotently() throws SQLException {
+    initializePlansPreBootstrapDatabase();
+    executeUpdate("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES
+          ('backfill-one@example.com', 'backfill-one@example.com', 'ACTIVE'),
+          ('backfill-two@example.com', 'backfill-two@example.com', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO account_tenant (publicId, status)
+        VALUES (UUID_TO_BIN(UUID()), 'OPERATIONAL')
+        """);
+    executeUpdate("""
+        INSERT INTO account_account
+          (publicId, idTenant, founderUserId, displayName, baseCurrency, timeZoneId, status)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'Backfill', 'BRL', 'America/Sao_Paulo', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO membership_accountMembership
+          (publicId, idAccount, idUser, roleType, originType, status,
+           currentMarker, startedAt, endedAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'ACCOUNT_ADMINISTRATOR', 'FOUNDER',
+           'ACTIVE', 1, TIMESTAMPADD(DAY, -3, CURRENT_TIMESTAMP(6)), NULL),
+          (UUID_TO_BIN(UUID()), 1, 2, 'COLLABORATOR', 'INVITATION',
+           'REMOVED', NULL, TIMESTAMPADD(DAY, -2, CURRENT_TIMESTAMP(6)),
+           TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP(6))),
+          (UUID_TO_BIN(UUID()), 1, 2, 'COLLABORATOR', 'INVITATION',
+           'ACTIVE', 1, CURRENT_TIMESTAMP(6), NULL)
+        """);
+    executeUpdate("""
+        INSERT INTO membership_invitation
+          (publicId, idAccount, inviterMembershipId, normalizedEmail, proposedRoleType,
+           proofDigest, proofKeyId, status, pendingMarker, expiresAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'pending@example.com', 'COLLABORATOR',
+           UNHEX(REPEAT('31', 32)), 'backfill-key', 'PENDING', 1,
+           TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6))),
+          (UUID_TO_BIN(UUID()), 1, 1, 'backfill-one@example.com', 'COLLABORATOR',
+           UNHEX(REPEAT('32', 32)), 'backfill-key', 'PENDING', 1,
+           TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)))
+        """);
+    executeUpdate("""
+        INSERT INTO plans_serviceContract
+          (publicId, scopeType, status, startedAt, sourceType, correlationId)
+        VALUES
+          (UUID_TO_BIN('30000000-0000-4000-8000-000000000001'), 'PERSONAL',
+           'ACTIVE', CURRENT_TIMESTAMP(6), 'SYSTEM', 'existing-personal-contract')
+        """);
+    executeUpdate("""
+        INSERT INTO plans_personalContractHolder (idServiceContract, scopeType, idUser)
+        VALUES (1, 'PERSONAL', 1)
+        """);
+
+    runUpdater();
+    runUpdater();
+
+    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_plan WHERE defaultPlan = TRUE")).isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_personalContractHolder")).isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantContractHolder")).isOne();
+    assertThat(readLong("SELECT COUNT(*) FROM plans_serviceContract")).isEqualTo(3);
+    assertThat(readLong("""
+        SELECT COUNT(*) FROM plans_serviceContract
+        WHERE correlationId = 'existing-personal-contract'
+        """)).isOne();
+    assertThat(readLong("SELECT COUNT(*) FROM plans_planAssignment WHERE currentMarker = 1"))
+        .isEqualTo(3);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantUserCapacityOccupancy"))
+        .isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantUserCapacityReservation"))
+        .isOne();
+    assertThat(readLong("""
+        SELECT quantityValue FROM plans_planVersionEntitlement composition
+        JOIN plans_entitlementDefinition definition
+          ON definition.idEntitlementDefinition = composition.idEntitlementDefinition
+        WHERE definition.entitlementCode = 'membership.associated-users.limit'
+        """)).isEqualTo(10);
+    new PlansCatalogReadinessService(dataSource).validate();
   }
 
   /**
@@ -371,43 +462,14 @@ class GlobalDatabaseMigrationIT {
            TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)))
         """);
     executeUpdate("""
-        INSERT INTO plans_plan
-          (publicId, scopeType, planCode, nameI18nKey, descriptionI18nKey,
-           status, freePlan, defaultPlan)
-        VALUES
-          (UUID_TO_BIN(UUID()), 'PERSONAL', 'FREE', 'personal.name', 'personal.description',
-           'ACTIVE', TRUE, TRUE),
-          (UUID_TO_BIN(UUID()), 'TENANT', 'FREE', 'tenant.name', 'tenant.description',
-           'ACTIVE', TRUE, TRUE)
-        """);
-    executeUpdate("""
-        INSERT INTO plans_planVersion
-          (idPlan, scopeType, versionNumber, status, publishedAt, validFrom)
-        VALUES
-          (1, 'PERSONAL', 1, 'PUBLISHED', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)),
-          (2, 'TENANT', 1, 'PUBLISHED', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-        """);
-    executeUpdate("""
-        INSERT INTO plans_entitlementDefinition
-          (scopeType, entitlementCode, ownerModule, entitlementType, unitCode,
-           countingSemantics, nameI18nKey, descriptionI18nKey, status)
-        VALUES
-          ('TENANT', 'membership.associated-users.limit', 'membership',
-           'MAXIMUM_QUANTITY', 'DISTINCT_USER', 'EVER_ASSOCIATED',
-           'limit.name', 'limit.description', 'ACTIVE')
-        """);
-    executeUpdate("""
-        INSERT INTO plans_planVersionEntitlement
-          (idPlanVersion, idEntitlementDefinition, scopeType, quantityValue)
-        VALUES (2, 1, 'TENANT', 10)
-        """);
-    executeUpdate("""
         INSERT INTO plans_serviceContract
-          (publicId, scopeType, status, startedAt, sourceType, correlationId)
+          (publicId, scopeType, status, startedAt, sourceType, idempotencyKey, correlationId)
         VALUES
           (UUID_TO_BIN(UUID()), 'TENANT', 'ACTIVE', CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UNHEX(REPEAT('a1', 32)),
            'tenant-contract'),
           (UUID_TO_BIN(UUID()), 'PERSONAL', 'ACTIVE', CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UNHEX(REPEAT('b2', 32)),
            'personal-contract')
         """);
     executeUpdate("""
@@ -586,6 +648,26 @@ class GlobalDatabaseMigrationIT {
         new ClassPathResource("db/global/update/20260729_005_update.sql"),
         new ClassPathResource("db/global/update/20260802_001_update.sql"));
     populator.execute(dataSource);
+  }
+
+  /** Reproduz exatamente o marco imediatamente anterior ao bootstrap de planos. */
+  private void initializePlansPreBootstrapDatabase() throws SQLException {
+    initializeDatabase();
+    executeUpdate("DELETE FROM plans_planVersionEntitlement");
+    executeUpdate("DELETE FROM plans_entitlementDefinition");
+    executeUpdate("DELETE FROM plans_planVersion");
+    executeUpdate("DELETE FROM plans_plan");
+    executeUpdate("""
+        ALTER TABLE plans_serviceContract
+          DROP INDEX uk_plans_service_contract_key,
+          DROP COLUMN idempotencyKey
+        """);
+    executeUpdate("""
+        CREATE OR REPLACE
+        SQL SECURITY INVOKER
+        VIEW databaseVersion AS
+        SELECT '20260816002' AS version
+        """);
   }
 
   /**

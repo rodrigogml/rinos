@@ -23,8 +23,9 @@ Versão, definição, escopo e valor tipado. Único por versão/definição. `TE
 
 ### `ServiceContract`
 
-`id`, `publicId`, `scope`, estado, início, origem, correlation e version. Subtipos referenciais ligam exatamente um
-`User` ou `Tenant`; há no máximo um contrato inicial por titular.
+`id`, `publicId`, `scope`, estado, início, origem, chave opaca de idempotência, correlation e version. Subtipos
+referenciais ligam exatamente um `User` ou `Tenant`; há no máximo um contrato inicial por titular. A chave de
+idempotência impede contrato órfão duplicado quando bootstrap ou backfill é retomado.
 
 ### `PlanAssignment`
 

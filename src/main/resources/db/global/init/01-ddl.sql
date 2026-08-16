@@ -1416,6 +1416,7 @@ CREATE TABLE plans_serviceContract (
   startedAt TIMESTAMP(6) NOT NULL,
   endedAt TIMESTAMP(6) NULL,
   sourceType VARCHAR(32) NOT NULL,
+  idempotencyKey BINARY(32) NOT NULL,
   correlationId VARCHAR(100) NOT NULL,
   version BIGINT NOT NULL DEFAULT 0,
   createdAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -1423,6 +1424,7 @@ CREATE TABLE plans_serviceContract (
   CONSTRAINT pk_plans_service_contract PRIMARY KEY (idServiceContract),
   CONSTRAINT uk_plans_service_contract_public UNIQUE (publicId),
   CONSTRAINT uk_plans_service_contract_scope UNIQUE (idServiceContract, scopeType),
+  CONSTRAINT uk_plans_service_contract_key UNIQUE (scopeType, idempotencyKey),
   CONSTRAINT ck_plans_service_contract_scope CHECK (scopeType IN ('PERSONAL', 'TENANT')),
   CONSTRAINT ck_plans_service_contract_status CHECK (
     status IN ('ACTIVE', 'SUSPENDED', 'CANCELLED')

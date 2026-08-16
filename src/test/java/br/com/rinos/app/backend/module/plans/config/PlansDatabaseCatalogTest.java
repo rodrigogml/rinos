@@ -13,13 +13,17 @@ class PlansDatabaseCatalogTest {
 
   private static final String INIT = "db/global/init/01-ddl.sql";
   private static final String UPDATE = "db/global/update/20260816_002_update.sql";
+  private static final String BOOTSTRAP_UPDATE = "db/global/update/20260816_003_update.sql";
 
   @Test
   void initAndUpdate_shouldPublishTheSamePlansSchema() throws IOException {
     String init = read(INIT);
     String update = read(UPDATE);
 
-    assertThat(plansSchema(init)).isEqualTo(plansSchema(update));
+    String initBeforeBootstrap = plansSchema(init)
+        .replace("  idempotencyKey BINARY(32) NOT NULL,\n", "")
+        .replace("  CONSTRAINT uk_plans_service_contract_key UNIQUE (scopeType, idempotencyKey),\n", "");
+    assertThat(initBeforeBootstrap).isEqualTo(plansSchema(update));
     assertThat(update).contains(
         "ADD COLUMN entitlementScope VARCHAR(16)",
         "uk_account_account_tenant_ref",
@@ -31,6 +35,15 @@ class PlansDatabaseCatalogTest {
         "CREATE TABLE plans_tenantUserCapacityReservation",
         "CREATE TABLE plans_auditEvent",
         "CREATE TABLE plans_outboxEvent");
+    assertThat(read(BOOTSTRAP_UPDATE)).contains(
+        "ADD COLUMN idempotencyKey BINARY(32)",
+        "'PERSONAL', 'FREE'",
+        "'TENANT', 'FREE'",
+        "'membership.associated-users.limit'",
+        "plans_personalContractHolder",
+        "plans_tenantUserCapacityOccupancy",
+        "plans_tenantUserCapacityReservation",
+        "SELECT '20260816003' AS version");
   }
 
   @Test

@@ -21,11 +21,13 @@ Evidência: [schema global e migração MySQL](./evidence/2/README.md).
 
 ## Fase 3 — Bootstrap e backfill
 
-- [ ] 3.1 Semear idempotentemente `PERSONAL/FREE` vazio.
-- [ ] 3.2 Semear `TENANT/FREE` com `membership.associated-users.limit = 10`.
-- [ ] 3.3 Fazer backfill de contratos pessoais e tenant existentes sem duplicar vínculo válido.
-- [ ] 3.4 Criar ocupação para cada identidade distinta já associada e reconciliar convites pendentes.
-- [ ] 3.5 Bloquear startup/readiness se padrão, versão ou composição obrigatória forem inconsistentes.
+- [x] 3.1 Semear idempotentemente `PERSONAL/FREE` vazio.
+- [x] 3.2 Semear `TENANT/FREE` com `membership.associated-users.limit = 10`.
+- [x] 3.3 Fazer backfill de contratos pessoais e tenant existentes sem duplicar vínculo válido.
+- [x] 3.4 Criar ocupação para cada identidade distinta já associada e reconciliar convites pendentes.
+- [x] 3.5 Bloquear startup/readiness se padrão, versão ou composição obrigatória forem inconsistentes.
+
+Evidência: [bootstrap, backfill e readiness](./evidence/3/README.md).
 
 ## Fase 4 — Núcleo
 

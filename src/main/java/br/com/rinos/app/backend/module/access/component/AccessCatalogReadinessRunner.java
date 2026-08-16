@@ -20,7 +20,7 @@ import java.util.Set;
 /** Sincroniza o catálogo depois das migrations e antes de a aplicação ficar pronta. */
 @Component
 @ConditionalOnBean(DataSource.class)
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class AccessCatalogReadinessRunner implements ApplicationRunner {
 
   private final AccessCatalogSynchronizationService synchronizationService;
