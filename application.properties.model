@@ -69,6 +69,18 @@ rinos.registration.resend-window=15m
 rinos.registration.cancellation-request-limit=3
 rinos.registration.cancellation-request-window=15m
 rinos.verification.validity=24h
+
+# Cadastro de contas: o limiar zero mantém Turnstile obrigatório para toda origem.
+rinos.account-creation.turnstile-required-after=0
+rinos.account-creation.origin-window=15m
+rinos.account-creation.origin-limit=5
+rinos.account-creation.origin-block-period=15m
+# Chaves de repetição e a outbox são dados operacionais duráveis do cadastro.
+rinos.account-creation.idempotency-retention=30d
+rinos.account-creation.outbox-batch-size=25
+rinos.account-creation.outbox-lease=2m
+rinos.account-creation.outbox-retry-base=1m
+rinos.account-creation.outbox-retry-maximum=1h
 # Recuperação de senha local: provas, limites por usuário/origem e retenção técnica.
 rinos.password-recovery.validity=1h
 rinos.password-recovery.request-limit=3

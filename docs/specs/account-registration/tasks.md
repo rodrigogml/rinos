@@ -6,7 +6,7 @@ Legenda: `[ ]` pendente, `[~]` em andamento, `[x]` concluído, `[!]` bloqueado.
 
 - [x] 1.1 Publicar DTOs, VOs, enums e facades de criação/status.
 - [x] 1.2 Publicar portas de provisioning, membership, bootstrap ACL, plano e estado operacional.
-- [ ] 1.3 Configurar antiabuso, idempotência, outbox e validação de moeda/fuso.
+- [x] 1.3 Configurar antiabuso, idempotência, outbox e validação de moeda/fuso.
 - [x] 1.4 Testar validações, redação de `toString` e motivos seguros.
 
 ## FASE 2 — Schema global e persistência básica
