@@ -55,8 +55,8 @@ Ref: FR-ACL-AUTHZ-001..006; SC-ACL-002..008
 
 Ref: FR-ACL-AUTHZ-007..012
 
-- [~] 3.2.1 Integrar identidade, associação, contexto e conta operacional.
-- [~] 3.2.2 Integrar entitlement e garantia de autenticação sem misturar motivos.
+- [x] 3.2.1 Integrar identidade, associação, contexto e conta operacional <!-- validado por MembershipPersistenceIT -->
+- [x] 3.2.2 Integrar entitlement e garantia de autenticação sem misturar motivos <!-- validado por JdbcEntitlementEvaluationServiceIT e matriz unitária -->
 - [x] 3.2.3 Testar operação composta, plano ausente, fator insuficiente e falha segura.
 
 ### 3.3 Criar cache revisionado `[C]`
@@ -85,11 +85,8 @@ Ref: FR-ACL-GRP-*, RULE-* e ADM-*
 Ref: FR-ACL-CONT-*; SC-ACL-010
 
 - [x] 4.2.1 Implementar baseline de grupo protegido e administrador apto.
-- [~] 4.2.2 Validar transacionalmente regra, grupo, associação, estado e fator forte — regras, grupos,
-  memberships e remoção de TOTP/passkey forte estão protegidos; transições de estado da identidade ainda precisam
-  migrar para a mesma ordem canônica de locks.
-- [~] 4.2.3 Testar perda do último administrador, expiração futura e rollback — cobertura unitária global/tenant e gate
-  MySQL de rollback prontos; falta o cenário concorrente específico de transição de estado da identidade.
+- [x] 4.2.2 Validar transacionalmente regra, grupo, associação, estado e fator forte <!-- estado da identidade usa a ordem canônica, flush e reavaliação -->
+- [x] 4.2.3 Testar perda do último administrador, expiração futura e rollback <!-- concorrência identidade/regra validada no MySQL -->
 
 ### 4.3 Implementar bootstrap e origem sistêmica `[C]`
 
@@ -142,24 +139,24 @@ Ref: INT-WEB-ACL-004..005
 Ref: account-registration, membership, tenant-context, parties e payment-details
 
 - [x] 6.1.1 Substituir verificações locais pelas chaves canônicas da fundação.
-- [ ] 6.1.2 Integrar pessoas, relacionamentos e dados sensíveis de pagamento.
-- [ ] 6.1.3 Executar testes de permissão, bloqueio e isolamento para cada consumidor.
+- [!] 6.1.2 Integrar pessoas, relacionamentos e dados sensíveis de pagamento. Bloqueada: os três domínios ainda possuem somente especificações; não há consumidor Java onde aplicar a autorização.
+- [!] 6.1.3 Executar testes de permissão, bloqueio e isolamento para cada consumidor. Bloqueada pelos consumidores ausentes em 6.1.2.
 
 ### 6.2 Migrar financeiro por ondas `[C]`
 
 Ref: catálogo financeiro; FR-ACL-AUTHZ-005
 
-- [ ] 6.2.1 Integrar contas, categorias, dimensões e lançamentos.
-- [ ] 6.2.2 Integrar transferências, títulos, cartões, recorrências e fechamento.
-- [ ] 6.2.3 Integrar extratos/conciliação e validar operações compostas sem efeito parcial.
+- [!] 6.2.1 Integrar contas, categorias, dimensões e lançamentos. Bloqueada: os módulos financeiros ainda não possuem implementação Java consumidora.
+- [!] 6.2.2 Integrar transferências, títulos, cartões, recorrências e fechamento. Bloqueada: os módulos financeiros ainda não possuem implementação Java consumidora.
+- [!] 6.2.3 Integrar extratos/conciliação e validar operações compostas sem efeito parcial. Bloqueada: os módulos financeiros ainda não possuem implementação Java consumidora.
 
 ### 6.3 Validar entrega `[C]`
 
 Ref: checklists, quickstart e SC-ACL-*
 
-- [ ] 6.3.1 Executar matriz unitária, integração MySQL e cenários quickstart.
-- [ ] 6.3.2 Medir separadamente leitura de revisão, hit/miss, resolução fria/quente, uso de memória e decisão em lote;
-      documentar resultado contra as metas.
+- [!] 6.3.1 Executar matriz unitária, integração MySQL e cenários quickstart. Bloqueada: a matriz completa depende dos consumidores ainda inexistentes em 6.1.2 e 6.2.
+- [!] 6.3.2 Medir separadamente leitura de revisão, hit/miss, resolução fria/quente, uso de memória e decisão em lote;
+      documentar resultado contra as metas. Bloqueada: faltam metas e protocolo reproduzível de benchmark no SDD.
 - [ ] 6.3.3 Executar revisão de segurança, acessibilidade, build e análise cross-artifact.
 
 ## Matriz de Dependências

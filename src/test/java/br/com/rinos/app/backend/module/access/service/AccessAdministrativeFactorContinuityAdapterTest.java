@@ -13,11 +13,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import br.com.rinos.app.api.module.access.enums.AccessScope;
 import br.com.rinos.app.backend.module.account.entity.AccountEntity;
 import br.com.rinos.app.backend.module.account.repository.AccountRepository;
 import br.com.rinos.app.backend.module.identity.service.AdministrativeFactorContinuityContext;
+import br.com.rinos.app.backend.module.identity.service.AdministrativeIdentityContinuityContext;
 import br.com.rinos.app.backend.module.membership.entity.AccountMembershipEntity;
 import br.com.rinos.app.backend.module.membership.repository.AccountMembershipRepository;
 import br.com.rinos.app.backend.module.membership.service.MembershipContinuityDecision;
@@ -60,13 +62,17 @@ class AccessAdministrativeFactorContinuityAdapterTest {
     AdministrativeFactorContinuityContext context = adapter.lockContexts(7L);
     adapter.validateAndRevise(context, NOW);
 
-    var order = inOrder(revisions);
+    InOrder order = inOrder(revisions);
     order.verify(revisions).lock(AccessScope.GLOBAL, null);
     order.verify(revisions).lock(AccessScope.TENANT, 10L);
     order.verify(revisions).lock(AccessScope.TENANT, 20L);
     order.verify(revisions).lockAndIncrement(AccessScope.GLOBAL, null);
     order.verify(revisions).lockAndIncrement(AccessScope.TENANT, 10L);
     order.verify(revisions).lockAndIncrement(AccessScope.TENANT, 20L);
+
+    InOrder contextDiscovery = inOrder(revisions, memberships);
+    contextDiscovery.verify(revisions).lock(AccessScope.GLOBAL, null);
+    contextDiscovery.verify(memberships).findByUserIdAndCurrentMarkerOrderByAccountId(7L, 1);
   }
 
   @Test
@@ -80,5 +86,31 @@ class AccessAdministrativeFactorContinuityAdapterTest {
 
     verify(revisions, never()).lockAndIncrement(any(), any());
     verify(invalidation, never()).afterCommit(any(), any());
+  }
+
+  @Test
+  void shouldApplyTheSameCanonicalContextOrderForIdentityStateChanges() {
+    AccountMembershipEntity membership = mock(AccountMembershipEntity.class);
+    when(membership.getAccountId()).thenReturn(10L);
+    when(memberships.findByUserIdAndCurrentMarkerOrderByAccountId(7L, 1))
+        .thenReturn(List.of(membership));
+    AccountEntity account = mock(AccountEntity.class);
+    when(account.getTenantId()).thenReturn(20L);
+    when(accounts.findAllById(List.of(10L))).thenReturn(List.of(account));
+    when(continuity.evaluateContext(any(), any(), any()))
+        .thenReturn(MembershipContinuityDecision.permit());
+
+    AdministrativeIdentityContinuityContext context = adapter.lockIdentityContexts(7L);
+    adapter.validateAndRevise(context, NOW);
+
+    InOrder order = inOrder(revisions);
+    order.verify(revisions).lock(AccessScope.GLOBAL, null);
+    order.verify(revisions).lock(AccessScope.TENANT, 20L);
+    order.verify(revisions).lockAndIncrement(AccessScope.GLOBAL, null);
+    order.verify(revisions).lockAndIncrement(AccessScope.TENANT, 20L);
+
+    InOrder contextDiscovery = inOrder(revisions, memberships);
+    contextDiscovery.verify(revisions).lock(AccessScope.GLOBAL, null);
+    contextDiscovery.verify(memberships).findByUserIdAndCurrentMarkerOrderByAccountId(7L, 1);
   }
 }

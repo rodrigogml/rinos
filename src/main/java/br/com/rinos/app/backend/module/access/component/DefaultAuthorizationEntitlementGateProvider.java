@@ -19,7 +19,12 @@ import br.com.rinos.app.backend.module.access.service.AuthorizationEntitlementGa
 import br.com.rinos.app.backend.module.access.service.PlanEntitlementAccessPort;
 import br.com.rinos.app.backend.module.access.service.PlanEntitlementAccessSnapshot;
 
-/** Fail-safe para direitos de plano enquanto o módulo de entitlements não publica sua porta. */
+/**
+ * Avalia direitos de plano pela porta publicada pelo módulo de planos, sem convertê-los em regras ACL.
+ *
+ * <p>A ausência do direito e a indisponibilidade da fonte continuam distintos na decisão. Quando nenhuma fonte de
+ * planos estiver disponível, o adapter de fallback nega de forma segura.</p>
+ */
 @Component
 @org.springframework.context.annotation.Lazy
 public class DefaultAuthorizationEntitlementGateProvider

@@ -16,7 +16,12 @@ import br.com.rinos.app.backend.module.access.service.SystemOperationAuthorizer;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 
-/** Provider conservador até que o módulo de membership publique sua porta de associação. */
+/**
+ * Avalia identidade, associação e disponibilidade operacional pelo estado corrente dos módulos proprietários.
+ *
+ * <p>A requisição não é fonte de verdade para a associação: a porta de membership confirma a identidade, o tenant,
+ * o estado da associação e o estado operacional do tenant antes da resolução de regras.</p>
+ */
 @Component
 @org.springframework.context.annotation.Lazy
 public class DefaultAuthorizationStructuralGateProvider

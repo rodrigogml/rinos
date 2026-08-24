@@ -112,9 +112,16 @@ participação em vários tenants — a ordem canônica é a guarda global, segu
 crescente, e somente depois os locks da identidade, fator ou membership. Todos os contextos são validados antes de
 qualquer incremento de revisão; uma negação reverte a transação inteira.
 
+Para transições de estado da identidade e de fator forte, a guarda global deve ser a primeira leitura da transação,
+antes mesmo de descobrir memberships afetados. Em MySQL com `REPEATABLE READ`, uma leitura ordinária anterior pode
+fixar um snapshot anterior ao aguardo de uma mutação ACL concorrente e permitir uma segunda redução administrativa
+contra dados obsoletos. Somente após obter a guarda global a operação descobre os tenants, trava-os em ordem crescente
+e consulta os dados que serão reavaliados.
+
 **Rationale**: validar antes sem serialização permite que duas transações removam administradores diferentes e ambas
-observem continuidade inexistente após os commits. Validar somente o instante atual permitiria agendar uma expiração
-que eliminasse toda a administração sem nova mutação.
+observem continuidade inexistente após os commits. Uma leitura antes da guarda também pode produzir esse resultado por
+snapshot antigo. Validar somente o instante atual permitiria agendar uma expiração que eliminasse toda a administração
+sem nova mutação.
 
 **Alternatives considered**: validação eventual, lock apenas em Java e compensação posterior foram rejeitados porque
 podem deixar o sistema sem administrador e não funcionam entre instâncias.

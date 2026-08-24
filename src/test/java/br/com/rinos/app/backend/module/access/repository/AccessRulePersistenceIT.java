@@ -53,6 +53,8 @@ import br.com.rinos.app.backend.module.access.service.AccessMutationMetadata;
 import br.com.rinos.app.backend.module.access.service.AccessRuleDeactivationCommand;
 import br.com.rinos.app.backend.module.access.service.AccessRuleMutationCommand;
 import br.com.rinos.app.backend.module.access.service.AccessRuleMutationService;
+import br.com.rinos.app.backend.module.access.service.AccessAdministrativeFactorContinuityAdapter;
+import br.com.rinos.app.backend.module.access.service.AdministrativeContinuityEvaluationService;
 import br.com.rinos.app.backend.module.access.service.AdministrativeContinuityEvaluator;
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessPort;
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessSnapshot;
@@ -61,10 +63,20 @@ import br.com.rinos.app.backend.module.access.service.GlobalAccessBootstrapServi
 import br.com.rinos.app.backend.module.access.enums.GlobalAccessBootstrapStatus;
 import br.com.rinos.app.backend.module.access.enums.AccessAdministrationAction;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
+import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEnum;
+import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
+import br.com.rinos.app.backend.module.identity.service.AdministrativeIdentityContinuityPort;
+import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.AuthenticationMethodInventoryService;
 import br.com.rinos.app.backend.module.identity.service.EmailNormalizationService;
+import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.vo.AuthenticationMethodInventoryVO;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
+import br.com.rinos.app.backend.module.account.entity.AccountEntity;
+import br.com.rinos.app.backend.module.account.repository.AccountRepository;
+import br.com.rinos.app.backend.module.membership.entity.AccountMembershipEntity;
+import br.com.rinos.app.backend.module.membership.repository.AccountMembershipRepository;
 import br.com.rinos.app.config.AccessBootstrapPropertiesConfig;
 import br.com.rinos.app.config.AccessCachePropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
@@ -346,12 +358,71 @@ class AccessRulePersistenceIT {
     });
   }
 
+  @Test
+  void identityStateTransition_shouldSerializeWithRuleMutationAndKeepOneAdministrator() throws SQLException {
+    execute("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES ('administrator-two@example.com', 'administrator-two@example.com', 'ACTIVE')
+        """);
+    prepareGlobalBootstrapCandidate();
+
+    contextRunnerWithActualContinuity().run(context -> {
+      AccessRuleMutationService rules = context.getBean(AccessRuleMutationService.class);
+      rules.apply(globalUserCommand(1L, AccessRuleEffect.PERMITIR, "first-administrator"));
+      rules.apply(globalUserCommand(3L, AccessRuleEffect.PERMITIR, "second-administrator"));
+      UserRepository users = context.getBean(UserRepository.class);
+      PlatformTransactionManager transactions = context.getBean(PlatformTransactionManager.class);
+      AdministrativeIdentityContinuityPort continuity =
+          context.getBean(AdministrativeIdentityContinuityPort.class);
+      UserLifecycleService lifecycle = new UserLifecycleService(
+          org.mockito.Mockito.mock(AuthSessionService.class),
+          org.mockito.Mockito.mock(PersonalContractBootstrapPort.class), users, continuity);
+      CyclicBarrier ready = new CyclicBarrier(2);
+      java.util.concurrent.ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+        Callable<Boolean> blockFirstIdentity = () -> transitionIdentity(
+            lifecycle, users, transactions, ready, 1L);
+        Callable<Boolean> blockSecondAdministratorRule = () -> mutateRule(
+            rules, ready, globalUserCommand(3L, AccessRuleEffect.BLOQUEAR, "block-second"));
+        List<Boolean> results = executor.invokeAll(
+            List.of(blockFirstIdentity, blockSecondAdministratorRule), 15, TimeUnit.SECONDS)
+            .stream().map(future -> {
+              try {
+                return future.get();
+              } catch (Exception exception) {
+                throw new IllegalStateException(exception);
+              }
+            }).toList();
+
+        assertThat(results).containsExactlyInAnyOrder(true, false);
+        assertThat(context.getBean(AdministrativeContinuityEvaluator.class)
+            .inspectContext(AccessScope.GLOBAL, null, Instant.parse("2026-08-23T21:00:00Z")).allowed())
+                .isTrue();
+        assertThat(scalar("SELECT COUNT(*) FROM identity_user WHERE id IN (1, 3) AND status='ACTIVE'"))
+            .isOne();
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(exception);
+      } finally {
+        executor.shutdownNow();
+      }
+    });
+  }
+
   private ApplicationContextRunner contextRunner() {
     return contextRunner("admin@rinos.com.br");
   }
 
+  private ApplicationContextRunner contextRunnerWithActualContinuity() {
+    return contextRunner("admin@rinos.com.br", true);
+  }
+
   private ApplicationContextRunner contextRunner(String bootstrapEmail) {
-    return new ApplicationContextRunner()
+    return contextRunner(bootstrapEmail, false);
+  }
+
+  private ApplicationContextRunner contextRunner(String bootstrapEmail, boolean actualContinuity) {
+    ApplicationContextRunner runner = new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(
             DataSourceAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class,
@@ -366,12 +437,6 @@ class AccessRulePersistenceIT {
             new AccessCachePropertiesConfig(10_000, Duration.ofMinutes(30))))
         .withBean(AccountMembershipAccessPort.class,
             () -> membershipId -> AccountMembershipAccessSnapshot.unavailable())
-        .withBean(AdministrativeContinuityEvaluator.class, () ->
-            org.mockito.Mockito.mock(AdministrativeContinuityEvaluator.class,
-                invocation -> invocation.getMethod().getReturnType()
-                    == br.com.rinos.app.backend.module.membership.service.MembershipContinuityDecision.class
-                        ? br.com.rinos.app.backend.module.membership.service.MembershipContinuityDecision.permit()
-                        : null))
         .withBean(AccessBootstrapPropertiesConfig.class,
             () -> new AccessBootstrapPropertiesConfig(bootstrapEmail))
         .withBean(AuthenticationMethodInventoryService.class, () ->
@@ -380,6 +445,15 @@ class AccessRulePersistenceIT {
                     ? new AuthenticationMethodInventoryVO(true, 0, 0, 1, true, 0)
                     : null))
         .withBean(DataSource.class, () -> dataSource);
+    if (actualContinuity) {
+      return runner.withUserConfiguration(ActualContinuityTestConfig.class);
+    }
+    return runner.withBean(AdministrativeContinuityEvaluator.class, () ->
+        org.mockito.Mockito.mock(AdministrativeContinuityEvaluator.class,
+            invocation -> invocation.getMethod().getReturnType()
+                == br.com.rinos.app.backend.module.membership.service.MembershipContinuityDecision.class
+                    ? br.com.rinos.app.backend.module.membership.service.MembershipContinuityDecision.permit()
+                    : null));
   }
 
   private void prepareGlobalBootstrapCandidate() throws SQLException {
@@ -395,10 +469,59 @@ class AccessRulePersistenceIT {
   }
 
   private static AccessRuleMutationCommand command(AccessRuleEffect effect, String correlation) {
+    return globalUserCommand(1L, effect, correlation);
+  }
+
+  private static AccessRuleMutationCommand globalUserCommand(
+      long userId, AccessRuleEffect effect, String correlation) {
     return new AccessRuleMutationCommand(
-        AccessScope.GLOBAL, null, AccessRuleOriginType.DIRECT_USER, 1L, null, null,
+        AccessScope.GLOBAL, null, AccessRuleOriginType.DIRECT_USER, userId, null, null,
         "global.platform.directory.view", effect, null, null, 2L, null, "test",
         correlation, Instant.parse("2026-08-15T12:00:00Z"));
+  }
+
+  private static Boolean transitionIdentity(
+      UserLifecycleService lifecycle,
+      UserRepository users,
+      PlatformTransactionManager transactions,
+      CyclicBarrier ready,
+      long userId) {
+    try {
+      new TransactionTemplate(transactions).executeWithoutResult(status -> {
+        await(ready);
+        lifecycle.transition(
+            users.findById(userId).orElseThrow(),
+            UserStatusEnum.BLOCKED,
+            IdentityTransitionOriginEnum.SYSTEM,
+            "CONCURRENCY_TEST",
+            Instant.parse("2026-08-23T21:00:00Z"),
+            UUID.randomUUID());
+      });
+      return true;
+    } catch (RuntimeException exception) {
+      return false;
+    }
+  }
+
+  private static Boolean mutateRule(
+      AccessRuleMutationService rules,
+      CyclicBarrier ready,
+      AccessRuleMutationCommand command) {
+    try {
+      await(ready);
+      rules.apply(command);
+      return true;
+    } catch (RuntimeException exception) {
+      return false;
+    }
+  }
+
+  private static void await(CyclicBarrier barrier) {
+    try {
+      barrier.await(5, TimeUnit.SECONDS);
+    } catch (Exception exception) {
+      throw new IllegalStateException(exception);
+    }
   }
 
   private static AccessRuleMutationCommand tenantCommand(
@@ -463,8 +586,13 @@ class AccessRulePersistenceIT {
 
   @Configuration(proxyBeanMethods = false)
   @EnableTransactionManagement
-  @EntityScan(basePackageClasses = {AccessRuleEntity.class, UserEntity.class})
-  @EnableJpaRepositories(basePackageClasses = {AccessRuleRepository.class, UserRepository.class})
+  @EntityScan(basePackageClasses = {
+      AccessRuleEntity.class, UserEntity.class, AccountEntity.class, AccountMembershipEntity.class
+  })
+  @EnableJpaRepositories(basePackageClasses = {
+      AccessRuleRepository.class, UserRepository.class, AccountRepository.class,
+      AccountMembershipRepository.class
+  })
   @Import({
       AccessRuleMutationService.class,
       AccessAdministrationMutationService.class,
@@ -474,5 +602,13 @@ class AccessRulePersistenceIT {
       AccessContextCacheInvalidationService.class
   })
   static class RepositoryTestConfig {
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  @Import({
+      AdministrativeContinuityEvaluationService.class,
+      AccessAdministrativeFactorContinuityAdapter.class
+  })
+  static class ActualContinuityTestConfig {
   }
 }

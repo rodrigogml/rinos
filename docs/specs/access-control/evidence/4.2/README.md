@@ -14,12 +14,15 @@
 - Revogação de TOTP ativo ou passkey administrativa bloqueia, em ordem canônica, o contexto global e todos os tenants em
   que a identidade possui membership corrente. Depois do `flush` do fator, todos os contextos são reavaliados; somente
   quando todos permitem as revisões são incrementadas e os caches invalidados.
+- Transições de `identity_user` que retiram uma identidade de `ACTIVE` seguem a mesma ordem: a guarda global é a
+  primeira leitura transacional, antes da descoberta dos memberships, para não fixar snapshot anterior no MySQL;
+  depois bloqueiam tenants em ordem crescente, bloqueiam a identidade, aplicam e fazem `flush` do novo estado, reavaliam a
+  continuidade e somente então revogam sessões. A falha reverte a transação antes da revogação e da revisão de cache.
 - `AdministrativeContinuityEvaluationServiceTest` cobre permissão efetiva, ausência de fator, precedência de bloqueio,
   remoção do último administrador, expiração futura e contexto global. `AccessRulePersistenceIT`, no MySQL 9.7.2,
-  comprova rollback conjunto da troca `PERMITIR` → `BLOQUEAR`, histórico, auditoria e revisão. Os testes do adapter de
-  fator comprovam a ordem global/tenants e ausência de incremento diante de negação.
-
-Pendente para concluir 4.2.2/4.2.3: integrar as transições que retiram a identidade do estado `ACTIVE` à mesma ordem de
-locks e adicionar o cenário concorrente correspondente.
+  comprova rollback conjunto da troca `PERMITIR` → `BLOQUEAR`, histórico, auditoria e revisão, além da concorrência
+  entre bloqueio de identidade e regra do outro administrador: somente uma alteração que reduziria a administração
+  pode concluir, e a outra é revertida. Os testes do adapter de fator e de identidade comprovam a ordem global/tenants
+  e ausência de incremento diante de negação.
 
 Ref: FR-ACL-CONT-*; SC-ACL-010

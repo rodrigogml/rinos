@@ -2,14 +2,18 @@ package br.com.rinos.app.backend.module.identity.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -17,7 +21,9 @@ import br.com.rinos.app.backend.module.identity.enums.IdentityTransitionOriginEn
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.UserStatusTransitionEnum;
 import br.com.rinos.app.backend.module.identity.enums.AuthSessionRevocationReasonEnum;
+import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.IdentityTransitionVO;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
 
 @DisplayName("Lifecycle da identidade global")
 class UserLifecycleServiceTest {
@@ -107,6 +113,69 @@ class UserLifecycleServiceTest {
         AuthSessionRevocationReasonEnum.SECURITY_EVENT,
         OCCURRED_AT,
         CORRELATION_ID);
+  }
+
+  @Test
+  void transition_shouldLockContextsFlushAndReviseBeforeRevokingSessions_whenActiveIdentityIsBlocked() {
+    AuthSessionService sessions = mock(AuthSessionService.class);
+    PersonalContractBootstrapPort contracts = mock(PersonalContractBootstrapPort.class);
+    UserRepository users = mock(UserRepository.class);
+    AdministrativeIdentityContinuityPort continuity = mock(AdministrativeIdentityContinuityPort.class);
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    ReflectionTestUtils.setField(user, "id", 41L);
+    AdministrativeIdentityContinuityContext context =
+        new AdministrativeIdentityContinuityContext(41L, java.util.List.of(8L));
+    when(continuity.lockIdentityContexts(41L)).thenReturn(context);
+    when(users.findByIdForUpdate(41L)).thenReturn(java.util.Optional.of(user));
+    UserLifecycleService operationalService = new UserLifecycleService(
+        sessions, contracts, users, continuity);
+
+    operationalService.transition(
+        user,
+        UserStatusEnum.BLOCKED,
+        IdentityTransitionOriginEnum.SYSTEM,
+        "RISK",
+        OCCURRED_AT,
+        CORRELATION_ID);
+
+    InOrder order = inOrder(continuity, users, sessions);
+    order.verify(continuity).lockIdentityContexts(41L);
+    order.verify(users).findByIdForUpdate(41L);
+    order.verify(users).flush();
+    order.verify(continuity).validateAndRevise(context, OCCURRED_AT);
+    order.verify(sessions).revokeAll(
+        41L, null, AuthSessionRevocationReasonEnum.SECURITY_EVENT, OCCURRED_AT, CORRELATION_ID);
+  }
+
+  @Test
+  void transition_shouldAbortBeforeSessionRevocation_whenIdentityWouldRemoveLastAdministrator() {
+    AuthSessionService sessions = mock(AuthSessionService.class);
+    PersonalContractBootstrapPort contracts = mock(PersonalContractBootstrapPort.class);
+    UserRepository users = mock(UserRepository.class);
+    AdministrativeIdentityContinuityPort continuity = mock(AdministrativeIdentityContinuityPort.class);
+    UserEntity user = user(UserStatusEnum.ACTIVE);
+    ReflectionTestUtils.setField(user, "id", 41L);
+    AdministrativeIdentityContinuityContext context =
+        new AdministrativeIdentityContinuityContext(41L, java.util.List.of());
+    when(continuity.lockIdentityContexts(41L)).thenReturn(context);
+    when(users.findByIdForUpdate(41L)).thenReturn(java.util.Optional.of(user));
+    org.mockito.Mockito.doThrow(new IllegalArgumentException("administrative continuity would be lost"))
+        .when(continuity).validateAndRevise(context, OCCURRED_AT);
+    UserLifecycleService operationalService = new UserLifecycleService(
+        sessions, contracts, users, continuity);
+
+    assertThatThrownBy(() -> operationalService.transition(
+        user,
+        UserStatusEnum.BLOCKED,
+        IdentityTransitionOriginEnum.SYSTEM,
+        "RISK",
+        OCCURRED_AT,
+        CORRELATION_ID))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("continuity would be lost");
+
+    verify(users).flush();
+    verifyNoInteractions(sessions);
   }
 
   private static UserEntity user(UserStatusEnum status) {

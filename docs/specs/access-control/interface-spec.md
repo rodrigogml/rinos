@@ -6,7 +6,7 @@
 
 | Surface ID | Surface Type | Users | Coverage | Entry points |
 |------------|--------------|-------|----------|--------------|
-| `SURF-WEB-RINOS` | WEB | administradores globais e de tenant autorizados | FULL | Administração do sistema ou Configurações da conta |
+| SURF-WEB-RINOS | WEB | administradores globais e de tenant autorizados | FULL | Administração do sistema ou Configurações da conta |
 
 Não há aplicativo nativo, CLI ou API REST pública nesta feature.
 
@@ -38,11 +38,11 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 | Interaction ID | Surface ID | Surface Type | Change Type | Actors and Permissions | Summary |
 |----------------|------------|--------------|-------------|------------------------|---------|
-| `INT-WEB-ACL-001` | `SURF-WEB-RINOS` | WEB | NEW | Administrador do contexto com consulta ACL | Central de acessos |
-| `INT-WEB-ACL-002` | `SURF-WEB-RINOS` | WEB | NEW | Administrador com gestão de grupos e regras | Editor de grupo e matriz |
-| `INT-WEB-ACL-003` | `SURF-WEB-RINOS` | WEB | NEW | Administrador com gestão de regras | Regra direta do sujeito |
-| `INT-WEB-ACL-004` | `SURF-WEB-RINOS` | WEB | NEW | Administrador com explicação ACL | Explicação do acesso efetivo |
-| `INT-WEB-ACL-005` | `SURF-WEB-RINOS` | WEB | NEW | Administrador apto a alterar baseline | Prévia de alteração protegida |
+| INT-WEB-ACL-001 | SURF-WEB-RINOS | WEB | NEW | Administrador do contexto com consulta ACL | Central de acessos |
+| INT-WEB-ACL-002 | SURF-WEB-RINOS | WEB | NEW | Administrador com gestão de grupos e regras | Editor de grupo e matriz |
+| INT-WEB-ACL-003 | SURF-WEB-RINOS | WEB | NEW | Administrador com gestão de regras | Regra direta do sujeito |
+| INT-WEB-ACL-004 | SURF-WEB-RINOS | WEB | NEW | Administrador com explicação ACL | Explicação do acesso efetivo |
+| INT-WEB-ACL-005 | SURF-WEB-RINOS | WEB | NEW | Administrador apto a alterar baseline | Prévia de alteração protegida |
 
 ## Shared Rules
 
@@ -63,7 +63,7 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 ### INT-WEB-ACL-001 — Central de acessos
 
-**Surface**: `SURF-WEB-RINOS`
+**Surface**: SURF-WEB-RINOS
 **Surface Type**: WEB
 **Change Type**: NEW
 **Actors and Permissions**: administrador do contexto com chave de consulta de catálogo, grupos ou regras.
@@ -112,7 +112,7 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 ### INT-WEB-ACL-002 — Editor de grupo e matriz
 
-**Surface**: `SURF-WEB-RINOS`
+**Surface**: SURF-WEB-RINOS
 **Surface Type**: WEB
 **Change Type**: NEW
 **Actors and Permissions**: administrador do contexto com gestão de grupos e regras.
@@ -160,7 +160,7 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 ### INT-WEB-ACL-003 — Regra direta do sujeito
 
-**Surface**: `SURF-WEB-RINOS`
+**Surface**: SURF-WEB-RINOS
 **Surface Type**: WEB
 **Change Type**: NEW
 **Actors and Permissions**: administrador do contexto com gestão de regras diretas.
@@ -187,7 +187,7 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 **Telemetry**: tentativa e resultado sem expor alvo a quem não pode consultá-lo.
 
-**Wireframe Requirement**: N/A — reutiliza o wireframe do editor de grupo com origem direta explícita.
+**Wireframe Requirement**: N/A
 **Wireframe**: N/A
 
 **States**:
@@ -208,7 +208,7 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 
 ### INT-WEB-ACL-004 — Explicação do acesso efetivo
 
-**Surface**: `SURF-WEB-RINOS`
+**Surface**: SURF-WEB-RINOS
 **Surface Type**: WEB
 **Change Type**: NEW
 **Actors and Permissions**: administrador com chave de explicação no mesmo contexto do alvo.
@@ -238,11 +238,25 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 **Wireframe Requirement**: REQUIRED
 **Wireframe**: wireframes/access-explanation.md
 
-**States**: aplica a tabela de `INT-WEB-ACL-001`; `partial-stale` exige nova consulta, não mistura versões.
+**States**:
+
+| State | Expected Presentation | Available Actions | Transition/Exit |
+|-------|-----------------------|-------------------|-----------------|
+| initial | resumo vazio | voltar | loading |
+| loading | explicação carregando | voltar | ready ou remote-error |
+| empty | N/A — decisão sempre possui resultado | voltar | saída |
+| ready | decisão detalhada | expandir ou voltar | saída |
+| processing | N/A — somente leitura | voltar | saída |
+| success | N/A — consulta não altera dados | voltar | saída |
+| validation-error | N/A — sem edição | voltar | saída |
+| remote-error | banner seguro | tentar novamente | loading |
+| offline | N/A — server-side | recarregar | loading |
+| access-denied | retorno seguro | voltar | central |
+| partial-stale | versão divergiu | consultar novamente | loading |
 
 ### INT-WEB-ACL-005 — Prévia de alteração protegida
 
-**Surface**: `SURF-WEB-RINOS`
+**Surface**: SURF-WEB-RINOS
 **Surface Type**: WEB
 **Change Type**: NEW
 **Actors and Permissions**: administrador autorizado a alterar grupo, regra, associação ou estado protegido.
@@ -272,7 +286,21 @@ pública proposta, compatibilidade e impacto para hospedeiras, testes e atualiza
 **Wireframe Requirement**: N/A
 **Wireframe**: N/A — modal derivado do editor de grupo.
 
-**States**: aplica estados `initial`, `loading`, `ready`, `processing`, `success`, `validation-error`, `remote-error`, `offline`, `access-denied` e `partial-stale` de `INT-WEB-ACL-002`; `empty` é N/A porque não há prévia sem mudança.
+**States**:
+
+| State | Expected Presentation | Available Actions | Transition/Exit |
+|-------|-----------------------|-------------------|-----------------|
+| initial | dialog sem cálculo | cancelar | loading |
+| loading | impacto calculando | cancelar | ready ou remote-error |
+| empty | N/A — não abre sem mudança | cancelar | saída |
+| ready | impacto e decisão | confirmar ou cancelar | processing |
+| processing | confirmação em curso | aguardar | success ou validation-error |
+| success | dialog fecha e toast aparece | continuar | editor |
+| validation-error | impedimento explicado | corrigir ou cancelar | editor |
+| remote-error | banner no dialog | tentar novamente | loading |
+| offline | N/A — server-side | recarregar | loading |
+| access-denied | dialog fecha seguro | voltar | editor |
+| partial-stale | mudança concorrente | recarregar editor | loading |
 
 ## Traceability
 
