@@ -37,15 +37,25 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import br.com.rinos.app.api.module.account.dto.AccountCreationRequest;
 import br.com.rinos.app.api.module.account.enums.AccountCreationResultStatus;
+import br.com.rinos.app.api.module.account.vo.AccountCreationResult;
 import br.com.rinos.app.backend.module.account.entity.AccountEntity;
 import br.com.rinos.app.backend.module.account.service.AccountCreationAcceptanceService;
+import br.com.rinos.app.backend.module.account.service.AccountCreationAdmissionService;
 import br.com.rinos.app.backend.module.account.service.AccountCreationStatusService;
+import br.com.rinos.app.backend.module.identity.entity.OriginWindowEntity;
+import br.com.rinos.app.backend.module.identity.repository.OriginWindowRepository;
+import br.com.rinos.app.backend.module.identity.service.OriginAddressService;
+import br.com.rinos.app.backend.module.identity.service.OriginLimitService;
+import br.com.rinos.app.backend.module.identity.vo.OriginAddressVO;
+import br.com.rinos.app.config.AccountCreationPropertiesConfig;
+import br.com.rinos.app.config.OriginPropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
 
 /** Gate MySQL do aceite atômico e idempotente de uma conta. */
 class AccountPersistenceIT {
 
   private static final Instant NOW = Instant.parse("2026-08-15T12:00:00Z");
+  private static final OriginAddressVO ORIGIN = new OriginAddressService().normalize("203.0.113.10");
   private static MySqlTestDatabase testDatabase;
   private DataSource dataSource;
 
@@ -82,8 +92,8 @@ class AccountPersistenceIT {
           context.getBean(AccountCreationAcceptanceService.class);
       AccountCreationRequest request = request(UUID.randomUUID(), "Conta A");
 
-      var accepted = service.accept(1L, request, "accept", NOW);
-      var replayed = service.accept(1L, request, "replay", NOW.plusSeconds(1));
+      var accepted = service.accept(1L, request, "accept", NOW, ORIGIN, true);
+      var replayed = service.accept(1L, request, "replay", NOW.plusSeconds(1), ORIGIN, true);
 
       assertThat(accepted.status()).isEqualTo(AccountCreationResultStatus.ACCEPTED);
       assertThat(replayed.status()).isEqualTo(AccountCreationResultStatus.REPLAYED);
@@ -100,8 +110,8 @@ class AccountPersistenceIT {
           context.getBean(AccountCreationAcceptanceService.class);
       UUID key = UUID.randomUUID();
 
-      service.accept(1L, request(key, "Conta A"), "first", NOW);
-      var conflict = service.accept(1L, request(key, "Conta B"), "second", NOW);
+      service.accept(1L, request(key, "Conta A"), "first", NOW, ORIGIN, true);
+      var conflict = service.accept(1L, request(key, "Conta B"), "second", NOW, ORIGIN, true);
 
       assertThat(conflict.status()).isEqualTo(AccountCreationResultStatus.CONFLICT);
       assertThat(conflict.safeReasonCode()).isEqualTo("ACCOUNT_IDEMPOTENCY_CONFLICT");
@@ -116,7 +126,7 @@ class AccountPersistenceIT {
           context.getBean(AccountCreationAcceptanceService.class);
 
       assertThatThrownBy(() -> service.accept(
-          1L, request(UUID.randomUUID(), "Conta"), "x".repeat(101), NOW))
+          1L, request(UUID.randomUUID(), "Conta"), "x".repeat(101), NOW, ORIGIN, true))
           .isInstanceOf(DataAccessException.class);
 
       assertCoreRows(0);
@@ -132,7 +142,7 @@ class AccountPersistenceIT {
       var executor = Executors.newFixedThreadPool(2);
       try {
         Callable<AccountCreationResultStatus> call =
-            () -> service.accept(1L, request, UUID.randomUUID().toString(), NOW).status();
+            () -> service.accept(1L, request, UUID.randomUUID().toString(), NOW, ORIGIN, true).status();
         List<AccountCreationResultStatus> results = executor.invokeAll(
             List.of(call, call), 15, TimeUnit.SECONDS).stream().map(future -> {
               try {
@@ -160,13 +170,59 @@ class AccountPersistenceIT {
       var acceptance = context.getBean(AccountCreationAcceptanceService.class);
       var status = context.getBean(AccountCreationStatusService.class);
       var accepted = acceptance.accept(
-          1L, request(UUID.randomUUID(), "Conta"), "status", NOW);
+          1L, request(UUID.randomUUID(), "Conta"), "status", NOW, ORIGIN, true);
 
       assertThat(status.find(1L, accepted.protocolId()).accountPublicId())
           .isEqualTo(accepted.accountPublicId());
       assertThatThrownBy(() -> status.find(2L, accepted.protocolId()))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("account creation status is unavailable");
+    });
+  }
+
+  @Test
+  void accept_shouldKeepOriginBlockedAfterItsCountingWindowExpires() {
+    contextRunner().run(context -> {
+      AccountCreationAcceptanceService service =
+          context.getBean(AccountCreationAcceptanceService.class);
+      for (int index = 0; index < 5; index++) {
+        AccountCreationResultStatus status = service.accept(
+            1L,
+            request(UUID.randomUUID(), "Conta " + index),
+            "limit-" + index,
+            Instant.now(),
+            ORIGIN,
+            true).status();
+        assertThat(status).isEqualTo(AccountCreationResultStatus.ACCEPTED);
+      }
+      assertThat(service.accept(
+          1L,
+          request(UUID.randomUUID(), "Bloqueada"),
+          "limit-block",
+          Instant.now(),
+          ORIGIN,
+          true).safeReasonCode()).isEqualTo("ACCOUNT_RATE_LIMITED");
+      try {
+        execute("""
+            UPDATE security_originWindow
+            SET windowEndsAt = TIMESTAMPADD(MINUTE, -1, CURRENT_TIMESTAMP(6))
+            WHERE operation = 'ACCOUNT_CREATION'
+            """);
+      } catch (SQLException exception) {
+        throw new IllegalStateException(exception);
+      }
+
+      AccountCreationResult result = service.accept(
+          1L,
+          request(UUID.randomUUID(), "Ainda bloqueada"),
+          "limit-after-window",
+          Instant.now(),
+          ORIGIN,
+          true);
+
+      assertThat(result.status()).isEqualTo(AccountCreationResultStatus.REJECTED);
+      assertThat(result.safeReasonCode()).isEqualTo("ACCOUNT_RATE_LIMITED");
+      assertCoreRows(5);
     });
   }
 
@@ -219,9 +275,32 @@ class AccountPersistenceIT {
 
   @Configuration(proxyBeanMethods = false)
   @EnableTransactionManagement
-  @EntityScan(basePackageClasses = AccountEntity.class)
-  @EnableJpaRepositories(basePackageClasses = AccountRepository.class)
-  @Import({AccountCreationAcceptanceService.class, AccountCreationStatusService.class})
+  @EntityScan(basePackageClasses = {AccountEntity.class, OriginWindowEntity.class})
+  @EnableJpaRepositories(basePackageClasses = {AccountRepository.class, OriginWindowRepository.class})
+  @Import({
+      OriginLimitService.class,
+      AccountCreationAdmissionService.class,
+      AccountCreationAcceptanceService.class,
+      AccountCreationStatusService.class})
   static class RepositoryTestConfig {
+
+    @org.springframework.context.annotation.Bean
+    OriginPropertiesConfig originPropertiesConfig() {
+      return new OriginPropertiesConfig(0, 20, java.time.Duration.ofHours(24), java.time.Duration.ofDays(30));
+    }
+
+    @org.springframework.context.annotation.Bean
+    AccountCreationPropertiesConfig accountCreationPropertiesConfig() {
+      return new AccountCreationPropertiesConfig(
+          0,
+          java.time.Duration.ofHours(1),
+          5,
+          java.time.Duration.ofMinutes(15),
+          java.time.Duration.ofDays(30),
+          25,
+          java.time.Duration.ofMinutes(2),
+          java.time.Duration.ofMinutes(1),
+          java.time.Duration.ofHours(1));
+    }
   }
 }

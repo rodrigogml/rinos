@@ -31,6 +31,11 @@ public enum ReauthenticationOperationEnum {
   REVOKE_ALL_SESSIONS(
       "revoke-all-sessions",
       "ui.securitySettings.reauthentication.operation.revokeAllSessions"),
+  CREATE_ACCOUNT(
+      "create-account", "account.reauthentication.operation.create",
+      AuthenticationAssuranceEnum.SINGLE_FACTOR,
+      Set.of(AuthenticationMethodEnum.PASSWORD, AuthenticationMethodEnum.TOTP,
+          AuthenticationMethodEnum.PASSKEY)),
   MANAGE_ACCESS(
       "manage-access", "access.reauthentication.operation.manage",
       AuthenticationAssuranceEnum.MULTI_FACTOR,

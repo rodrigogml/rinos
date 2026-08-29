@@ -71,6 +71,13 @@ próximo instante, versão e timestamps. Unique `(idAccount, stepType)`.
 Append-only: tipo, conta, tenant, ator ou origem sistêmica, correlação, resultado seguro, detalhes JSON minimizados e
 instante. Não contém token Turnstile, IP puro ou stack trace.
 
+## `security_originWindow` — uso por criação de conta
+
+Tabela global temporária compartilhada pelo módulo de identidade. Para esta feature, a linha usa
+`operation = ACCOUNT_CREATION` e a política de limite absoluto. O endereço fica somente no formato binário canônico,
+com janela de contagem, número de eventos e `blockedUntil` independente. A conta, a intenção e a auditoria não recebem
+cópia desse endereço. A limpeza coordenada pela plataforma remove janelas expiradas conforme a retenção de origem.
+
 ## Invariantes
 
 1. Cada conta referencia exatamente um tenant e cada tenant no máximo uma conta.

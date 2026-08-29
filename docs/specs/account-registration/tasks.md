@@ -18,10 +18,9 @@ Legenda: `[ ]` pendente, `[~]` em andamento, `[x]` concluído, `[!]` bloqueado.
 ## FASE 3 — Aceite idempotente
 
 - [x] 3.1 Implementar criação atômica e replay pelo mesmo payload.
-- [~] 3.2 Integrar identidade ativa, garantia recente, origem, rate limit e Turnstile RFW — operação e adapter RFW
-  concluídos; orquestração de identidade, garantia e limite permanece pendente.
+- [x] 3.2 Integrar identidade ativa, garantia recente, origem, rate limit e Turnstile RFW.
 - [x] 3.3 Implementar consulta segura por protocolo.
-- [~] 3.4 Testar replay, conflito, falha antes do aceite, duas instâncias e indisponibilidade; falta o adapter RFW.
+- [x] 3.4 Testar replay, conflito, falha antes do aceite, duas instâncias e indisponibilidade.
 
 ## FASE 4 — Saga de ativação
 
@@ -52,4 +51,5 @@ F1 -> F2 -> F3 -> F4 -> F5 -> F6
         tenant-storage  account-membership + access-control + plans-entitlements
 ```
 
-O próximo incremento autorizado é Fase 1 e Fase 2 do slice básico. Fase 4 não pode simular adapters ausentes.
+O próximo incremento depende da publicação concreta de `tenant-storage-provisioning`. Fase 4 não pode simular
+adapters ausentes.

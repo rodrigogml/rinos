@@ -12,6 +12,9 @@
 - `confirmed`: confirmação explícita dos três dados.
 
 Identidade, garantia, origem e correlação são derivados por adapter confiável, não por campos livres da UI.
+Antes de consumir prova humana ou cota, a fachada verifica a intenção existente do mesmo usuário: replay idêntico devolve o
+protocolo anterior e payload divergente devolve conflito. Isso preserva a repetição segura depois de perda de conexão sem
+reutilizar um token Turnstile de uso único.
 
 ### `AccountCreationResult`
 
@@ -97,3 +100,7 @@ tenant. Essa porta não informa permissões, plano, participantes ou dados cadas
 - Repetição nunca cria outra conta para a mesma intenção.
 - Exceção interna não atravessa o contrato público.
 - `UNAVAILABLE` e ausência de plano/permissão permanecem motivos diferentes.
+- A criação exige a garantia recente da operação de reautenticação catalogada `create-account`; a interface futura abre o
+  protocolo RFW correspondente quando a sessão já não a satisfaz.
+- A janela de origem e o bloqueio temporário são globais e técnicos. A origem somente é persistida no contador temporário,
+  nunca no registro da conta ou em sua auditoria.

@@ -37,12 +37,18 @@ import br.com.rinos.app.api.module.membership.enums.*;
 import br.com.rinos.app.backend.module.account.entity.AccountEntity;
 import br.com.rinos.app.backend.module.account.repository.*;
 import br.com.rinos.app.backend.module.account.service.AccountCreationAcceptanceService;
+import br.com.rinos.app.backend.module.account.service.AccountCreationAdmissionService;
 import br.com.rinos.app.backend.module.membership.component.*;
 import br.com.rinos.app.backend.module.membership.entity.AccountMembershipEntity;
 import br.com.rinos.app.backend.module.membership.service.*;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
+import br.com.rinos.app.backend.module.identity.entity.OriginWindowEntity;
 import br.com.rinos.app.backend.module.identity.repository.UserRepository;
+import br.com.rinos.app.backend.module.identity.repository.OriginWindowRepository;
 import br.com.rinos.app.backend.module.identity.service.*;
+import br.com.rinos.app.backend.module.identity.vo.OriginAddressVO;
+import br.com.rinos.app.config.AccountCreationPropertiesConfig;
+import br.com.rinos.app.config.OriginPropertiesConfig;
 import br.com.rinos.app.config.AuthenticationKeyringPropertiesConfig;
 import br.com.rinos.app.config.ApplicationPropertiesConfig;
 import br.com.rinos.app.config.MembershipInvitationPropertiesConfig;
@@ -59,6 +65,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class MembershipPersistenceIT {
  private static MySqlTestDatabase database; private DataSource dataSource;
+ private static final OriginAddressVO ACCOUNT_ORIGIN=new OriginAddressService().normalize("203.0.113.10");
  @BeforeAll static void start(){database=MySqlTestDatabase.openIfAvailable().orElse(null);}
  @AfterAll static void stop(){if(database!=null)database.close();}
  @BeforeEach void reset() throws SQLException{
@@ -241,7 +248,7 @@ class MembershipPersistenceIT {
        operation,role,version,true,true,correlation,Instant.now());}
  private OperationalSetup operationalAccount(org.springframework.context.ApplicationContext context,String name){
   var creation=context.getBean(AccountCreationAcceptanceService.class);var accepted=creation.accept(1L,
-    new AccountCreationRequest(UUID.randomUUID(),name,"BRL","UTC",null,true),UUID.randomUUID().toString(),Instant.now());
+    new AccountCreationRequest(UUID.randomUUID(),name,"BRL","UTC",null,true),UUID.randomUUID().toString(),Instant.now(),ACCOUNT_ORIGIN,true);
   var account=context.getBean(AccountRepository.class).findByPublicId(accepted.accountPublicId()).orElseThrow();
   var tenant=context.getBean(TenantRepository.class).findById(account.getTenantId()).orElseThrow();
   var bootstrap=context.getBean(FoundingMembershipBootstrapAdapter.class);bootstrap.bootstrapMembership(new AccountBootstrapRequest(
@@ -255,7 +262,7 @@ class MembershipPersistenceIT {
  }
  @Test void founderBootstrap_shouldBeIdempotentAndFeedTheStructuralGate(){
   runner().run(context->{var creation=context.getBean(AccountCreationAcceptanceService.class);
-   var accepted=creation.accept(1L,new AccountCreationRequest(UUID.randomUUID(),"Conta","BRL","UTC",null,true),"create",Instant.now());
+   var accepted=creation.accept(1L,new AccountCreationRequest(UUID.randomUUID(),"Conta","BRL","UTC",null,true),"create",Instant.now(),ACCOUNT_ORIGIN,true);
    var accounts=context.getBean(AccountRepository.class);var tenants=context.getBean(TenantRepository.class);
    var account=accounts.findByPublicId(accepted.accountPublicId()).orElseThrow();var tenant=tenants.findById(account.getTenantId()).orElseThrow();
    var request=new AccountBootstrapRequest(accepted.protocolId(),account.getPublicId(),tenant.getPublicId(),1L,"founder");
@@ -276,7 +283,7 @@ class MembershipPersistenceIT {
  }
  @Test void founderBootstrap_shouldConvergeAcrossConcurrentExecutions(){
   runner().run(context->{var creation=context.getBean(AccountCreationAcceptanceService.class);
-   var accepted=creation.accept(1L,new AccountCreationRequest(UUID.randomUUID(),"Conta 2","BRL","UTC",null,true),"create2",Instant.now());
+   var accepted=creation.accept(1L,new AccountCreationRequest(UUID.randomUUID(),"Conta 2","BRL","UTC",null,true),"create2",Instant.now(),ACCOUNT_ORIGIN,true);
    var account=context.getBean(AccountRepository.class).findByPublicId(accepted.accountPublicId()).orElseThrow();
    var tenant=context.getBean(TenantRepository.class).findById(account.getTenantId()).orElseThrow();
    var request=new AccountBootstrapRequest(accepted.protocolId(),account.getPublicId(),tenant.getPublicId(),1L,"race");
@@ -302,6 +309,8 @@ class MembershipPersistenceIT {
    .withBean(MembershipInvitationPropertiesConfig.class,()->new MembershipInvitationPropertiesConfig(
      java.time.Duration.ofDays(15),java.time.Duration.ofMinutes(15),100,20,5,50,100,25,
      java.time.Duration.ofMinutes(2),java.time.Duration.ofMinutes(1),java.time.Duration.ofHours(1)))
+   .withBean(OriginPropertiesConfig.class,()->new OriginPropertiesConfig(0,20,java.time.Duration.ofHours(24),java.time.Duration.ofDays(30)))
+   .withBean(AccountCreationPropertiesConfig.class,()->new AccountCreationPropertiesConfig(0,java.time.Duration.ofMinutes(15),5,java.time.Duration.ofMinutes(15),java.time.Duration.ofDays(30),25,java.time.Duration.ofMinutes(2),java.time.Duration.ofMinutes(1),java.time.Duration.ofHours(1)))
    .withBean(MeterRegistry.class,SimpleMeterRegistry::new)
    .withBean(MembershipAdministrativeContinuityPort.class,()->request->continuity)
    .withBean(MembershipContextInvalidationPort.class,()->new MembershipContextInvalidationPort(){
@@ -311,9 +320,9 @@ class MembershipPersistenceIT {
  private long longValue(String sql){try(Connection c=dataSource.getConnection();Statement s=c.createStatement();ResultSet r=s.executeQuery(sql)){r.next();return r.getLong(1);}catch(SQLException e){throw new IllegalStateException(e);}}
  private String stringValue(String sql){try(Connection c=dataSource.getConnection();Statement s=c.createStatement();ResultSet r=s.executeQuery(sql)){r.next();return r.getString(1);}catch(SQLException e){throw new IllegalStateException(e);}}
  @Configuration(proxyBeanMethods=false) @EnableTransactionManagement
- @EntityScan(basePackageClasses={AccountEntity.class,AccountMembershipEntity.class,UserEntity.class})
- @EnableJpaRepositories(basePackageClasses={AccountRepository.class,AccountMembershipRepository.class,UserRepository.class})
- @Import({AccountCreationAcceptanceService.class,FoundingMembershipBootstrapAdapter.class,AccountMembershipAccessAdapter.class,
+ @EntityScan(basePackageClasses={AccountEntity.class,AccountMembershipEntity.class,UserEntity.class,OriginWindowEntity.class})
+ @EnableJpaRepositories(basePackageClasses={AccountRepository.class,AccountMembershipRepository.class,UserRepository.class,OriginWindowRepository.class})
+ @Import({OriginLimitService.class,AccountCreationAdmissionService.class,AccountCreationAcceptanceService.class,FoundingMembershipBootstrapAdapter.class,AccountMembershipAccessAdapter.class,
    MembershipInvitationService.class,MembershipInvitationExpiryService.class,MembershipInvitationRateLimitService.class,MembershipLifecycleService.class,
    MembershipInvitationDeliveryService.class,AuthenticationKeyringMacService.class,PublicApplicationUriService.class,
    VerificationTokenService.class,EmailNormalizationService.class,JdbcContractBootstrapService.class,

@@ -35,14 +35,15 @@ AccountProvisioningOutboxDispatcher
 
 ## Fluxo de aceite
 
-1. Adapter deriva a identidade autenticada, garantia e origem confiável.
-2. Valida identidade ativa, autenticação recente, limite rígido e Turnstile quando exigido.
-3. Normaliza nome; valida ISO 4217 suportada e `ZoneId` IANA.
-4. Calcula hash canônico do payload.
-5. Sob transação, procura `(creator, idempotencyKey)`.
-6. Mesmo hash retorna protocolo existente; hash diferente retorna conflito.
-7. Cria tenant, conta `CREATING`, intenção, auditoria e evento outbox.
-8. Depois do commit, dispatcher pode antecipar o processamento; a linha durável continua sendo a autoridade.
+1. Adapter deriva a identidade autenticada, referência de sessão e origem confiável, sem aceitar esses valores do formulário.
+2. A fachada revalida identidade/sessão ativa e garantia recente para a operação catalogada `create-account`.
+3. Calcula o replay antes da prova: mesmo payload retorna o protocolo; payload divergente retorna conflito; ambos não consomem cota nem token Turnstile.
+4. Normaliza nome; valida ISO 4217 suportada e `ZoneId` IANA.
+5. Avalia o limiar de origem e valida Turnstile no servidor quando obrigatório. Token inválido ou provider indisponível não cria estado da conta.
+6. Sob a transação, reavalia o limiar e reserva a origem em `security_originWindow` com `ACCOUNT_CREATION`; assim uma corrida que tornou a prova obrigatória é negada e uma falha posterior não consome cota.
+7. Ao atingir o limite rígido, registra `blockedUntil` pela duração configurada, independente da janela de contagem.
+8. Cria tenant, conta `CREATING`, intenção, auditoria e evento outbox.
+9. Depois do commit, dispatcher pode antecipar o processamento; a linha durável continua sendo a autoridade.
 
 ## Transações e falhas
 
@@ -54,7 +55,7 @@ AccountProvisioningOutboxDispatcher
 
 ## Segurança e privacidade
 
-- Tokens, prova de reautenticação, IP puro e detalhes internos de storage não entram em entidades, DTOs de status ou logs.
+- Tokens, prova de reautenticação e detalhes internos de storage não entram em entidades de conta, DTOs de status ou logs. A origem binária canônica existe somente no contador global temporário `security_originWindow`, submetida à retenção de origem; ela não é copiada para a auditoria de conta.
 - Auditoria registra ator, correlação, resultado, conta/tenant e campos alterados minimizados.
 - UUIDs públicos evitam enumeração por IDs sequenciais.
 - Consultas sempre restringem por ator autorizado ou contexto tenant explicitamente validado.
