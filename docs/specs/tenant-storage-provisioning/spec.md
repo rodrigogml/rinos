@@ -2,7 +2,7 @@
 
 **Feature**: `tenant-storage-provisioning`
 **Created**: 2026-07-20
-**Status**: Clarified — pronta para planejamento
+**Status**: Planejada — pronta para implementação
 
 ## Escopo
 

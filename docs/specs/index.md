@@ -16,7 +16,7 @@ Este documento organiza a sequência recomendada das especificações funcionais
 | 5 | FND-005 | `account-membership` | Associar uma identidade de usuário a múltiplas contas, inclusive por convite | FND-001, FND-003, FND-004 | Planejada; associação fundadora e gate estrutural implementados |
 | 6 | FND-006 | `access-control` | Definir grupos, regras de permissão e bloqueio e chaves de acesso nos níveis do sistema e da conta | FND-005 | Fases 1, 2, 3.1, 3.3 e 4.1 implementadas; gates de membership e plano aguardam adapters concretos |
 | 7 | FND-007 | `tenant-context-isolation` | Selecionar o contexto ativo e impedir acesso cruzado entre tenants | FND-004, FND-005, FND-006 | Especificada e clarificada |
-| 7.1 | FND-007A | `tenant-storage-provisioning` | Provisionar, versionar, recuperar e desativar o armazenamento físico de cada tenant | FND-004, FND-007 | Especificada e clarificada |
+| 7.1 | FND-007A | `tenant-storage-provisioning` | Provisionar, versionar, recuperar e desativar o armazenamento físico de cada tenant | FND-004, FND-007 | Planejada; backlog pronto |
 | 7.2 | FND-007B | `tenant-data-governance` | Definir integridade global/tenant, auditoria, backup, restauração, retenção e transferência de dados | FND-007, FND-007A | Especificada e clarificada |
 | 8 | FND-008 | `plans-entitlements` | Contratos pessoais e de tenant independentes, dois `FREE` tipados e limite tenant de dez usuários associados | FND-004, FND-007 | Planejamento documental concluído; código pendente |
 | 9 | FND-009 | `system-administration` | Iniciativa composta para administração segura da plataforma | FND-006, FND-007 | Decomposta |

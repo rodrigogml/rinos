@@ -56,7 +56,7 @@ interface AccountMaintenanceFacade {
 
 ```java
 interface TenantProvisioningRequestPort {
-  ProvisioningRequestOutcome request(TenantProvisioningRequest request);
+  AccountBootstrapResult requestProvisioning(AccountBootstrapRequest request);
 }
 
 interface FoundingMembershipBootstrapPort {
@@ -75,7 +75,10 @@ interface TenantContractBootstrapPort {
 `DefaultPlanAssignmentPort` permanece como adapter transitório para `TenantContractBootstrapPort`. O resultado somente
 é concluído depois de criar/confirmar contrato `TENANT`, atribuição `TENANT/FREE` e ocupação do fundador.
 
-Outcomes distinguem `COMPLETED`, `PENDING`, `REJECTED` e `UNAVAILABLE`, carregam referência opaca e são idempotentes.
+Todas as portas de bootstrap recebem o mesmo `AccountBootstrapRequest` — protocolo, UUIDs públicos de conta e tenant,
+fundador e correlação — e devolvem `AccountBootstrapResult`. Os estados `ACCEPTED`, `ALREADY_COMPLETED`, `REJECTED` e
+`UNAVAILABLE` carregam referência opaca e preservam a idempotência da saga. Cada módulo traduz internamente o estado
+genérico para o seu checkpoint, sem expor tipos de transporte incompatíveis entre account e storage.
 
 ## Porta publicada
 
