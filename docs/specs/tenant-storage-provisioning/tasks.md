@@ -29,10 +29,10 @@ Escopo: implementar o registro global, o ciclo físico durável e idempotente, a
 
 Ref: [plan.md](./plan.md) §Contexto Técnico e §Segurança; [research.md](./research.md) Decisão 2; Spec FR-TSP-SEC-004..007.
 
-- [ ] 1.1.1 Declarar propriedades fixas `rinos.storage.*` no modelo e no binding tipado, com defaults documentados para fila, lease, heartbeat, tentativas e concorrência igual a um.
-- [ ] 1.1.2 Garantir que a fábrica de datasource derive somente o catálogo tenant da fonte `spring.datasource` já carregada, sem URL, usuário, senha, root ou variável de ambiente paralelos.
-- [ ] 1.1.3 Implementar validação fechada de URL/catalog e do formato interno do identificador físico antes de qualquer conexão tenant.
-- [ ] 1.1.4 Cobrir propriedades ausentes/inválidas, origem exclusiva da configuração e rejeição de identificador físico malformado em testes unitários.
+- [x] 1.1.1 Declarar propriedades fixas `rinos.storage.*` no modelo e no binding tipado, com defaults documentados para fila, lease, heartbeat, tentativas e concorrência igual a um.
+- [x] 1.1.2 Garantir que a fábrica de datasource derive somente o catálogo tenant da fonte `spring.datasource` já carregada, sem URL, usuário, senha, root ou variável de ambiente paralelos.
+- [x] 1.1.3 Implementar validação fechada de URL/catalog e do formato interno do identificador físico antes de qualquer conexão tenant.
+- [x] 1.1.4 Cobrir propriedades ausentes/inválidas, origem exclusiva da configuração e rejeição de identificador físico malformado em testes unitários.
 
 ### 1.2 Registro global e auditoria do armazenamento `[C]`
 

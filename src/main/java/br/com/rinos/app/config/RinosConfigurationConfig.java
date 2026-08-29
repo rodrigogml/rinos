@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Configuration;
     ProxyPropertiesConfig.class,
     PwnedPasswordsPropertiesConfig.class,
     RegistrationPropertiesConfig.class,
+    StoragePropertiesConfig.class,
     VerificationPropertiesConfig.class
 })
 public class RinosConfigurationConfig {

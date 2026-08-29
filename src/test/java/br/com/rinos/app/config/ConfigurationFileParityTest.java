@@ -92,6 +92,25 @@ class ConfigurationFileParityTest {
         .isEqualTo("rinos_test");
   }
 
+  /**
+   * Comprova que a fila estrutural do storage é explicitamente configurada no modelo, sem depender de ambiente.
+   *
+   * @throws Exception quando o modelo não pode ser lido
+   */
+  @Test
+  void model_shouldDeclareTenantStorageDefaults() throws Exception {
+    Properties properties = new Properties();
+    try (Reader reader = Files.newBufferedReader(MODEL_FILE, StandardCharsets.UTF_8)) {
+      properties.load(reader);
+    }
+
+    assertThat(properties.getProperty("rinos.storage.queue-poll-interval")).isEqualTo("30s");
+    assertThat(properties.getProperty("rinos.storage.operation-lease")).isEqualTo("10m");
+    assertThat(properties.getProperty("rinos.storage.operation-heartbeat-interval")).isEqualTo("30s");
+    assertThat(properties.getProperty("rinos.storage.provisioning-maximum-attempts")).isEqualTo("3");
+    assertThat(properties.getProperty("rinos.storage.maximum-concurrent-operations")).isEqualTo("1");
+  }
+
   private static List<String> structure(Path file) throws Exception {
     return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
         .map(line -> {

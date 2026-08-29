@@ -61,6 +61,13 @@ rinos.maintenance.lease-timeout=4h
 rinos.maintenance.stabilization-period=10m
 rinos.maintenance.batch-transaction-timeout=5m
 
+# Fila estrutural de armazenamento dos tenants; configurações fixas da instalação.
+rinos.storage.queue-poll-interval=30s
+rinos.storage.operation-lease=10m
+rinos.storage.operation-heartbeat-interval=30s
+rinos.storage.provisioning-maximum-attempts=3
+rinos.storage.maximum-concurrent-operations=1
+
 # Cadastro e comprovação
 rinos.registration.pending-retention=15d
 rinos.registration.resend-limit=3

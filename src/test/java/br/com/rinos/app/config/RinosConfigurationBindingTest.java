@@ -37,6 +37,12 @@ class RinosConfigurationBindingTest {
           assertThat(maintenance.leaseTimeout()).isEqualTo(Duration.ofHours(4));
           assertThat(maintenance.stabilizationPeriod()).isEqualTo(Duration.ofMinutes(10));
           assertThat(maintenance.batchTransactionTimeout()).isEqualTo(Duration.ofMinutes(5));
+          StoragePropertiesConfig storage = context.getBean(StoragePropertiesConfig.class);
+          assertThat(storage.queuePollInterval()).isEqualTo(Duration.ofSeconds(30));
+          assertThat(storage.operationLease()).isEqualTo(Duration.ofMinutes(10));
+          assertThat(storage.operationHeartbeatInterval()).isEqualTo(Duration.ofSeconds(30));
+          assertThat(storage.provisioningMaximumAttempts()).isEqualTo(3);
+          assertThat(storage.maximumConcurrentOperations()).isOne();
           RegistrationPropertiesConfig registration =
               context.getBean(RegistrationPropertiesConfig.class);
           assertThat(registration.pendingRetention()).isEqualTo(Duration.ofDays(15));
@@ -248,6 +254,35 @@ class RinosConfigurationBindingTest {
           assertThat(context).hasFailed();
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage("Os tempos de manutenção devem ser maiores que zero.");
+        });
+  }
+
+  /** Comprova que o worker de storage não pode renovar um lease já expirado. */
+  @Test
+  void bind_shouldFail_whenStorageHeartbeatIsNotShorterThanOperationLease() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.storage.operation-heartbeat-interval=10m",
+            "rinos.storage.operation-lease=10m")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("storage properties are invalid");
+        });
+  }
+
+  /** Comprova que a fila estrutural exige limites positivos mesmo com defaults disponíveis. */
+  @Test
+  void bind_shouldFail_whenStorageConcurrencyIsNotPositive() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.storage.maximum-concurrent-operations=0")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("storage properties are invalid");
         });
   }
 
