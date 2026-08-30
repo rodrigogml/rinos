@@ -83,6 +83,33 @@ Provisionamento transitório retoma até o limite; estados definitivos exigem in
 global autorizada e idempotente, posterior às políticas de retenção: ela impede acesso e preserva o identificador; não
 há comando de backup, restauração, rollback ou repetição de migration na UI.
 
+### Máquina de estados e projeções
+
+A máquina de estados é validada antes de persistir cada transição e a transição/auditoria serão gravadas pela mesma
+transação global nas tarefas da fila. Não há repetição de estado, regressão, salto ou promoção manual para `READY`.
+
+| Estado atual | Próximos estados permitidos |
+|---|---|
+| `REQUESTED` | `PROVISIONING`, `FAILED`, `DEACTIVATING` |
+| `PROVISIONING` | `INITIALIZING`, `FAILED`, `QUARANTINED`, `DEACTIVATING` |
+| `INITIALIZING` | `MIGRATING`, `FAILED`, `QUARANTINED`, `DEACTIVATING` |
+| `MIGRATING` | `READY`, `QUARANTINED`, `DEACTIVATING` |
+| `READY` | `MIGRATING`, `QUARANTINED`, `DEACTIVATING` |
+| `FAILED` | `QUARANTINED`, `DEACTIVATING` |
+| `QUARANTINED` | `DEACTIVATING` |
+| `DEACTIVATING` | `INACTIVE` |
+| `INACTIVE` | nenhum |
+
+Somente a origem sistêmica pode concluir `MIGRATING` em `READY`, depois de comprovar a versão exata. A eventual
+retomada por lease ou repetição controlada seguirá a fila e não cria atalho de estado. Operações e etapas possuem
+máquinas independentes: operação segue `QUEUED → CLAIMED → RUNNING` e termina, aguarda retry ou é cancelada; etapa
+segue `PENDING → RUNNING → COMPLETED|FAILED`.
+
+O gate `TenantStorageReadinessPort` lê apenas o catálogo global e responde falhado fechado. Ele retorna `READY` só
+para o registro estrutural pronto com versão observada igual à esperada; não aceita identidade, não autoriza e não abre
+o datasource funcional. A projeção do criador reduz a resposta interna aos quatro estados `WAITING`, `PREPARING`,
+`READY` e `ATTENTION`, sem motivo técnico, versão, schema, host, URL ou credencial.
+
 ## Transações, Concorrência e Falhas
 
 - Reserva de registry/operação/etapas, transições e auditoria usam transações do global e optimistic locking.

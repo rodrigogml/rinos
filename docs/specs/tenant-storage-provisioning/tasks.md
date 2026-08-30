@@ -60,10 +60,10 @@ Ref: [docs/architecture/database-scripts.md](../../architecture/database-scripts
 
 Ref: [plan.md](./plan.md) §Arquitetura de Componentes e §Fluxos Estruturais; Spec FR-TSP-STATE-001..010 e PROV-013..014.
 
-- [ ] 2.1.1 Implementar a máquina explícita de estados, etapas e resultados, rejeitando regressões, saltos e promoção manual para pronto.
-- [ ] 2.1.2 Separar a projeção interna/administrativa do resumo público `WAITING`, `PREPARING`, `READY` e `ATTENTION` usado pelo criador.
-- [ ] 2.1.3 Implementar `TenantStorageReadinessPort` como gate de segurança, sem transportar autorização nem expor localização física.
-- [ ] 2.1.4 Cobrir todas as transições permitidas/proibidas, quarantena, versão incompatível e filtragem de informações técnicas em testes unitários.
+- [x] 2.1.1 Implementar a máquina explícita de estados, etapas e resultados, rejeitando regressões, saltos e promoção manual para pronto.
+- [x] 2.1.2 Separar a projeção interna/administrativa do resumo público `WAITING`, `PREPARING`, `READY` e `ATTENTION` usado pelo criador.
+- [x] 2.1.3 Implementar `TenantStorageReadinessPort` como gate de segurança, sem transportar autorização nem expor localização física.
+- [x] 2.1.4 Cobrir todas as transições permitidas/proibidas, quarantena, versão incompatível e filtragem de informações técnicas em testes unitários.
 
 ### 2.2 Reserva idempotente e contratos de operação `[C]`
 
