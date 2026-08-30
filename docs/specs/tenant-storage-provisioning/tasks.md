@@ -101,9 +101,9 @@ Ref: [plan.md](./plan.md) §Provisionamento; [quickstart.md](./quickstart.md) Ce
 Ref: [plan.md](./plan.md) §Migration no deploy; [research.md](./research.md) Decisões 3 e 5; Spec FR-TSP-MIG-001..023.
 
 - [x] 3.2.1 Integrar o startup: RFW atualiza o global primeiro e a aplicação só fica operacional após compatibilidade global verificável.
-- [ ] 3.2.2 Enfileirar migrations pendentes de tenants e invocar o orquestrador RFW com datasource/location isolados por tenant.
-- [ ] 3.2.3 Registrar execução, versão anterior/resultante, checksum, início/fim e resultado; falha de migration deve quarantinar apenas o tenant e nunca receber retry ou rollback interno.
-- [ ] 3.2.4 Testar ordem, execução única, falha isolada, bloqueio global e incompatibilidade após restauração externa simulada.
+- [x] 3.2.2 Enfileirar migrations pendentes de tenants e invocar o orquestrador RFW com datasource/location isolados por tenant.
+- [x] 3.2.3 Registrar execução, versão anterior/resultante, checksum, início/fim e resultado; falha de migration deve quarantinar apenas o tenant e nunca receber retry ou rollback interno.
+- [x] 3.2.4 Testar ordem, execução única, falha isolada, bloqueio global e incompatibilidade após restauração externa simulada.
 
 ### 3.3 Reconciliação segura e desativação controlada `[A]`
 
