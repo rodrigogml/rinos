@@ -212,6 +212,8 @@ class GlobalDatabaseMigrationIT {
   void startup_shouldStopWithoutAdvancingVersion_whenUpdateFailsPartially()
       throws SQLException {
     initializeDatabase();
+    removeStorageSchema();
+    replaceVersion("20260816003");
     String locations = GLOBAL_UPDATE_LOCATIONS
         + ",classpath:db/global/failure/20260816_004_update.sql";
 
@@ -656,6 +658,7 @@ class GlobalDatabaseMigrationIT {
   /** Reproduz exatamente o marco imediatamente anterior ao bootstrap de planos. */
   private void initializePlansPreBootstrapDatabase() throws SQLException {
     initializeDatabase();
+    removeStorageSchema();
     executeUpdate("DELETE FROM plans_planVersionEntitlement");
     executeUpdate("DELETE FROM plans_entitlementDefinition");
     executeUpdate("DELETE FROM plans_planVersion");
@@ -665,12 +668,24 @@ class GlobalDatabaseMigrationIT {
           DROP INDEX uk_plans_service_contract_key,
           DROP COLUMN idempotencyKey
         """);
-    executeUpdate("""
-        CREATE OR REPLACE
-        SQL SECURITY INVOKER
-        VIEW databaseVersion AS
-        SELECT '20260816002' AS version
-        """);
+    replaceVersion("20260816002");
+  }
+
+  /**
+   * Remove somente as estruturas introduzidas depois do marco que os cenários legados simulam.
+   *
+   * <p>O método reproduz um banco anterior à migration de storage sem alterar artefatos publicados. A ordem inversa
+   * das dependências preserva as chaves estrangeiras reais do MySQL.</p>
+   *
+   * @throws SQLException quando o schema descartável não puder ser ajustado para o cenário histórico
+   */
+  private void removeStorageSchema() throws SQLException {
+    executeUpdate("DROP TABLE storage_auditEvent");
+    executeUpdate("DROP TABLE storage_stateTransition");
+    executeUpdate("DROP TABLE storage_migrationExecution");
+    executeUpdate("DROP TABLE storage_operationStep");
+    executeUpdate("DROP TABLE storage_operation");
+    executeUpdate("DROP TABLE storage_tenantRegistry");
   }
 
   /**
@@ -701,14 +716,24 @@ class GlobalDatabaseMigrationIT {
    * @throws SQLException quando a view de versão não pode ser substituída
    */
   private void replaceVersionWithNewerArtifact() throws SQLException {
+    replaceVersion("99999999999");
+  }
+
+  /**
+   * Substitui o marco de versão somente no schema controlado pelo teste.
+   *
+   * @param version versão compacta usada para reproduzir o estado histórico do cenário
+   * @throws SQLException quando a view não puder ser substituída
+   */
+  private void replaceVersion(String version) throws SQLException {
     try (Connection connection = dataSource.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("""
+      statement.execute(("""
             CREATE OR REPLACE
             SQL SECURITY INVOKER
             VIEW databaseVersion AS
-            SELECT '99999999999' AS version
-            """);
+            SELECT '%s' AS version
+            """).formatted(version));
     }
   }
 

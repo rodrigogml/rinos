@@ -58,9 +58,13 @@ class PlansDatabaseCatalogTest {
     int start = sql.indexOf("CREATE TABLE plans_plan");
     int version = sql.indexOf("CREATE OR REPLACE", start);
     int accessSeed = sql.indexOf("INSERT INTO access_contextRevision", start);
+    int storage = sql.indexOf("CREATE TABLE storage_tenantRegistry", start);
     int end = version >= 0 ? version : sql.length();
     if (accessSeed >= 0 && accessSeed < end) {
       end = accessSeed;
+    }
+    if (storage >= 0 && storage < end) {
+      end = storage;
     }
     return sql.substring(start, end).strip();
   }
