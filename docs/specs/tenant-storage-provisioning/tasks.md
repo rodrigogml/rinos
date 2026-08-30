@@ -69,10 +69,10 @@ Ref: [plan.md](./plan.md) §Arquitetura de Componentes e §Fluxos Estruturais; S
 
 Ref: [contracts/tenant-storage-provisioning.md](./contracts/tenant-storage-provisioning.md) §Solicitação e §Gate; Spec FR-TSP-PROV-001..009 e INFRA-IDEMP.
 
-- [ ] 2.2.1 Implementar `TenantProvisioningRequestPort` real para reservar tenant, identificador físico e operação antes de criação de schema.
-- [ ] 2.2.2 Preservar protocolo, correlação e referência idempotente em replay, concorrência e reinício sem reservar segundo storage.
-- [ ] 2.2.3 Publicar os DTOs/ports de status, readiness e eventos internos com erros seguros, sem expor schema, URL, SQL ou credencial.
-- [ ] 2.2.4 Criar testes de concorrência e replay que comprovem no máximo uma reserva física por intenção.
+- [x] 2.2.1 Implementar `TenantProvisioningRequestPort` real para reservar tenant, identificador físico e operação antes de criação de schema.
+- [x] 2.2.2 Preservar protocolo, correlação e referência idempotente em replay, concorrência e reinício sem reservar segundo storage.
+- [x] 2.2.3 Publicar os DTOs/ports de status, readiness e eventos internos com erros seguros, sem expor schema, URL, SQL ou credencial.
+- [x] 2.2.4 Criar testes de concorrência e replay que comprovem no máximo uma reserva física por intenção.
 
 ### 2.3 Despachante durável, leases e locks distribuídos `[C]`
 

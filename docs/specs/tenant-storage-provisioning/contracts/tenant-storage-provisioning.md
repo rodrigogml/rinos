@@ -76,6 +76,11 @@ estado, versão, tentativa, etapa e motivo seguro, mas nunca localização, coma
 Eventos carregam `operationPublicId`, `tenantPublicId`, estado público, correlação e instante. Eles não carregam
 schema, URLs, credenciais, SQL, hashes de conteúdo ou dados de tenant.
 
+O evento de aceitação da fila usa o contrato Java `TenantStorageOperationQueuedEventVO`. Nesta etapa ele apenas
+padroniza os quatro campos seguros para o despachante durável; a publicação confiável pela fila/outbox é introduzida
+somente com os leases e o worker. Nenhuma chamada de reserva considera o evento como evidência de schema criado ou de
+tenant pronto.
+
 ## Erros seguros
 
 `TENANT_STORAGE_UNAVAILABLE`, `TENANT_STORAGE_NOT_READY`, `TENANT_STORAGE_INCOMPATIBLE`,
