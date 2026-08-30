@@ -70,8 +70,9 @@ account outbox dispatcher
 ### Migration no deploy
 
 1. O auto-updater RFW aplica e valida exclusivamente `db/global/update` antes de o contexto Spring estar pronto.
-2. Depois do startup, a instância eleita identifica registries com versão diferente, enfileira migrations em ordem e
-   coloca cada tenant em `MIGRATING` antes de abrir sua conexão funcional.
+2. Ainda no refresh do startup, depois da confirmação global e antes de a aplicação anunciar disponibilidade, cada
+   instância identifica registries com versão diferente. O lock global do registro torna a decisão idempotente,
+   enfileira migrations em ordem e coloca cada tenant em `MIGRATING` antes de abrir sua conexão funcional.
 3. Cada operação chama o updater explícito RFW com somente `db/tenant/update` e o `DataSource` daquele schema.
 4. Sucesso atualiza `observedVersion` e retorna a `READY`; falha não é repetida e coloca somente aquele tenant em
    `QUARANTINED`.

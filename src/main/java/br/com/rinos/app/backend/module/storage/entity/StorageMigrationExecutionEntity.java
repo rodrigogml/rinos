@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.storage.entity;
 
 import java.time.Instant;
+import java.util.Objects;
 
 import br.com.rinos.app.backend.module.storage.enums.StorageMigrationExecutionState;
 import jakarta.persistence.Column;
@@ -88,4 +89,35 @@ public class StorageMigrationExecutionEntity {
   public Instant getFinishedAt() { return finishedAt; }
   public String getSafeFailureCode() { return safeFailureCode; }
   public Instant getCreatedAt() { return createdAt; }
+
+  /**
+   * Confirma a aplicação observada do script sem modificar sua identificação ou evidência de conteúdo.
+   *
+   * @param version versão estrutural resultante depois da execução
+   * @param completedAt instante UTC da confirmação
+   */
+  public void complete(String version, Instant completedAt) {
+    if (version == null || version.isBlank()) {
+      throw new IllegalArgumentException("version must not be blank");
+    }
+    this.resultingVersion = version;
+    this.executionState = StorageMigrationExecutionState.COMPLETED;
+    this.finishedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
+    this.safeFailureCode = null;
+  }
+
+  /**
+   * Registra a interrupção definitiva da execução, preservando a identidade do script que exigirá intervenção externa.
+   *
+   * @param failureCode código seguro, sem SQL, URL, schema ou stack trace
+   * @param failedAt instante UTC no qual a execução terminou
+   */
+  public void fail(String failureCode, Instant failedAt) {
+    if (failureCode == null || failureCode.isBlank()) {
+      throw new IllegalArgumentException("failureCode must not be blank");
+    }
+    this.executionState = StorageMigrationExecutionState.FAILED;
+    this.finishedAt = Objects.requireNonNull(failedAt, "failedAt must not be null");
+    this.safeFailureCode = failureCode;
+  }
 }

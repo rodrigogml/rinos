@@ -107,6 +107,21 @@ public class TenantStorageRegistryEntity {
     this.quarantineReasonCode = null;
   }
 
+  /**
+   * Atualiza a versão que o código atual exigirá antes de o tenant voltar a operar.
+   *
+   * <p>A alteração não promove a compatibilidade nem substitui a versão observada; o worker de migration continua
+   * responsável por comprovar o schema físico e então registrar a observação correspondente.</p>
+   *
+   * @param version versão alvo validada pelo catálogo distribuído de tenant
+   */
+  public void expectVersion(String version) {
+    if (version == null || version.isBlank()) {
+      throw new IllegalArgumentException("version must not be blank");
+    }
+    this.expectedVersion = version;
+  }
+
   /** Registra motivo seguro da quarentena sem persistir detalhes técnicos da falha. */
   public void quarantine(String safeReasonCode) {
     if (safeReasonCode == null || safeReasonCode.isBlank()) {

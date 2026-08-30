@@ -159,6 +159,17 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
     });
   }
 
+  /**
+   * Declara a responsabilidade exclusiva pelo provisionamento inicial de um tenant.
+   *
+   * @param operationType tipo consultado pelo despachante estrutural
+   * @return {@code true} somente para {@link StorageOperationType#PROVISION}
+   */
+  @Override
+  public boolean supports(StorageOperationType operationType) {
+    return operationType == StorageOperationType.PROVISION;
+  }
+
   private ProvisioningContext begin(StorageOperationClaimVO claim) {
     ExecutionRecord record = findOwnedRecord(claim);
     if (record == null) {

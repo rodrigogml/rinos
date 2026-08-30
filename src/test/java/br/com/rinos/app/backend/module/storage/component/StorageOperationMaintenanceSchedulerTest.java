@@ -9,11 +9,11 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 import br.com.rinos.app.backend.module.platform.service.MaintenanceCoordinatorService;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
@@ -28,9 +28,7 @@ class StorageOperationMaintenanceSchedulerTest {
   void dispatch_shouldNotClaimOperation_whenExecutorIsNotAvailable() {
     MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
     StorageOperationClaimService claims = mock(StorageOperationClaimService.class);
-    ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
-    when(executorProvider.getIfAvailable()).thenReturn(null);
-    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, executorProvider);
+    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, List.of());
 
     scheduler.dispatch();
 
@@ -41,11 +39,9 @@ class StorageOperationMaintenanceSchedulerTest {
   void dispatch_shouldNotClaimOperation_whenInstanceIsNotMaintenanceLeader() {
     MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
     StorageOperationClaimService claims = mock(StorageOperationClaimService.class);
-    ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
     StorageOperationExecutionPort executor = mock(StorageOperationExecutionPort.class);
-    when(executorProvider.getIfAvailable()).thenReturn(executor);
     when(coordinator.canStartJob()).thenReturn(false);
-    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, executorProvider);
+    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, List.of(executor));
 
     scheduler.dispatch();
 
@@ -58,19 +54,18 @@ class StorageOperationMaintenanceSchedulerTest {
   void dispatch_shouldExecuteClaimedOperation_whenLeaderAndExecutorAreAvailable() {
     MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
     StorageOperationClaimService claims = mock(StorageOperationClaimService.class);
-    ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
     StorageOperationExecutionPort executor = mock(StorageOperationExecutionPort.class);
     StorageOperationClaimVO claim = new StorageOperationClaimVO(UUID.randomUUID(), 8L,
         StorageOperationType.PROVISION, "instance-a", Instant.parse("2026-08-30T13:00:00Z"));
-    when(executorProvider.getIfAvailable()).thenReturn(executor);
     when(coordinator.canStartJob()).thenReturn(true, true);
+    when(executor.supports(StorageOperationType.PROVISION)).thenReturn(true);
     when(coordinator.executeBatch(any(Runnable.class))).thenAnswer(invocation -> {
       Runnable batch = invocation.getArgument(0);
       batch.run();
       return true;
     });
     when(claims.claimNext("instance-a")).thenReturn(Optional.of(claim));
-    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, executorProvider);
+    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, List.of(executor));
 
     scheduler.dispatch();
 
@@ -82,11 +77,9 @@ class StorageOperationMaintenanceSchedulerTest {
   void dispatch_shouldNotExecutePhysicalOperation_whenLeadershipIsLostAfterClaim() {
     MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
     StorageOperationClaimService claims = mock(StorageOperationClaimService.class);
-    ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
     StorageOperationExecutionPort executor = mock(StorageOperationExecutionPort.class);
     StorageOperationClaimVO claim = new StorageOperationClaimVO(UUID.randomUUID(), 8L,
         StorageOperationType.PROVISION, "instance-a", Instant.parse("2026-08-30T13:00:00Z"));
-    when(executorProvider.getIfAvailable()).thenReturn(executor);
     when(coordinator.canStartJob()).thenReturn(true, false);
     when(coordinator.executeBatch(any(Runnable.class))).thenAnswer(invocation -> {
       Runnable batch = invocation.getArgument(0);
@@ -94,7 +87,7 @@ class StorageOperationMaintenanceSchedulerTest {
       return true;
     });
     when(claims.claimNext("instance-a")).thenReturn(Optional.of(claim));
-    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, executorProvider);
+    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, List.of(executor));
 
     scheduler.dispatch();
 
@@ -103,9 +96,9 @@ class StorageOperationMaintenanceSchedulerTest {
   }
 
   private static StorageOperationMaintenanceScheduler scheduler(MaintenanceCoordinatorService coordinator,
-      StorageOperationClaimService claims, ObjectProvider<StorageOperationExecutionPort> executorProvider) {
+      StorageOperationClaimService claims, List<StorageOperationExecutionPort> executors) {
     MaintenancePropertiesConfig properties = new MaintenancePropertiesConfig("instance-a", Duration.ofMinutes(30),
         Duration.ofHours(4), Duration.ofMinutes(10), Duration.ofMinutes(5));
-    return new StorageOperationMaintenanceScheduler(coordinator, claims, executorProvider, properties);
+    return new StorageOperationMaintenanceScheduler(coordinator, claims, executors, properties);
   }
 }

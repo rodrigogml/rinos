@@ -72,7 +72,9 @@ O deploy segue esta ordem:
 1. a infraestrutura garante que o global já foi criado pelo init e inicia o novo JAR;
 2. o bootstrap descobre exclusivamente `db/global/update`, bloqueia a disponibilidade e valida ou atualiza o global;
 3. uma falha global encerra o startup; nenhum processamento de tenant ou interface fica disponível;
-4. com o global compatível, a fila estrutural identifica tenants pendentes e processa `db/tenant/update`;
+4. com o global compatível e antes de a aplicação anunciar disponibilidade, o startup identifica tenants pendentes,
+   os marca como `MIGRATING` de forma transacional e persiste suas operações; a fila estrutural então processa
+   `db/tenant/update`;
 5. cada tenant permanece indisponível enquanto aguarda ou executa sua migration e é liberado individualmente;
 6. a falha de um tenant o mantém em quarentena, mas não deve interromper os demais tenants elegíveis.
 

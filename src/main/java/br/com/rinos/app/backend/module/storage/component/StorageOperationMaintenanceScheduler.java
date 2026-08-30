@@ -1,8 +1,8 @@
 package br.com.rinos.app.backend.module.storage.component;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,16 +22,16 @@ import br.com.rinos.app.config.MaintenancePropertiesConfig;
 public class StorageOperationMaintenanceScheduler {
   private final MaintenanceCoordinatorService coordinator;
   private final StorageOperationClaimService claims;
-  private final ObjectProvider<StorageOperationExecutionPort> executorProvider;
+  private final List<StorageOperationExecutionPort> executors;
   private final String instanceId;
 
   /** Cria o agendador que reutiliza a eleição global existente. */
   public StorageOperationMaintenanceScheduler(MaintenanceCoordinatorService coordinator,
-      StorageOperationClaimService claims, ObjectProvider<StorageOperationExecutionPort> executorProvider,
+      StorageOperationClaimService claims, List<StorageOperationExecutionPort> executors,
       MaintenancePropertiesConfig properties) {
     this.coordinator = coordinator;
     this.claims = claims;
-    this.executorProvider = executorProvider;
+    this.executors = List.copyOf(executors);
     this.instanceId = properties.instanceId();
   }
 
@@ -40,15 +40,17 @@ public class StorageOperationMaintenanceScheduler {
    */
   @Scheduled(fixedDelayString = "${rinos.storage.queue-poll-interval:30s}")
   public void dispatch() {
-    StorageOperationExecutionPort executor = executorProvider.getIfAvailable();
-    if (executor == null || !coordinator.canStartJob()) {
+    if (executors.isEmpty() || !coordinator.canStartJob()) {
       return;
     }
     AtomicReference<StorageOperationClaimVO> claimedOperation = new AtomicReference<>();
     coordinator.executeBatch(() -> claims.claimNext(instanceId).ifPresent(claimedOperation::set));
     StorageOperationClaimVO claim = claimedOperation.get();
     if (claim != null && coordinator.canStartJob()) {
-      executor.execute(claim);
+      executors.stream()
+          .filter(executor -> executor.supports(claim.operationType()))
+          .findFirst()
+          .ifPresent(executor -> executor.execute(claim));
     }
   }
 }
