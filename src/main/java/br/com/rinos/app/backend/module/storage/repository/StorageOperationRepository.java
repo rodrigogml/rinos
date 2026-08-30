@@ -5,15 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.com.rinos.app.backend.module.storage.entity.StorageOperationEntity;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
-import jakarta.persistence.LockModeType;
 
 /** Acessa a fila de operações estruturais preservando a chave de idempotência de origem. */
 public interface StorageOperationRepository extends JpaRepository<StorageOperationEntity, Long> {
@@ -21,17 +18,23 @@ public interface StorageOperationRepository extends JpaRepository<StorageOperati
   Optional<StorageOperationEntity> findByTenantStorageRegistryIdAndOperationTypeAndIdempotencyReference(
       Long tenantStorageRegistryId, StorageOperationType operationType, UUID idempotencyReference);
 
-  /** Busca a próxima operação elegível sob lock, priorizando migrations já aceitas. */
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("""
-      select operation from StorageOperationEntity operation
-      where (operation.operationState = br.com.rinos.app.backend.module.storage.enums.StorageOperationState.QUEUED
-        and (operation.nextAttemptAt is null or operation.nextAttemptAt <= :now))
-        or (operation.operationState in (br.com.rinos.app.backend.module.storage.enums.StorageOperationState.CLAIMED,
-              br.com.rinos.app.backend.module.storage.enums.StorageOperationState.RUNNING)
-            and operation.leaseUntil <= :now)
-      order by case when operation.operationType = br.com.rinos.app.backend.module.storage.enums.StorageOperationType.MIGRATE
-                       then 0 else 1 end, operation.id
-      """)
-  List<StorageOperationEntity> findEligibleForUpdate(@Param("now") Instant now, Pageable pageable);
+  /**
+   * Busca uma operação elegível sem esperar nem abortar quando outro worker já tiver reservado a primeira posição.
+   *
+   * <p>O {@code SKIP LOCKED} do MySQL impede que dois despachantes concorrentes formem um deadlock sobre o mesmo
+   * item. A consulta é usada exclusivamente dentro da transação que grava o lease.</p>
+   *
+   * @param now instante UTC usado para avaliar fila e leases vencidos
+   * @return no máximo uma operação que permanece bloqueada até o fim da transação chamadora
+   */
+  @Query(value = """
+      SELECT *
+      FROM storage_operation
+      WHERE (operationState = 'QUEUED' AND (nextAttemptAt IS NULL OR nextAttemptAt <= :now))
+         OR (operationState IN ('CLAIMED', 'RUNNING') AND leaseUntil <= :now)
+      ORDER BY CASE WHEN operationType = 'MIGRATE' THEN 0 ELSE 1 END, idStorageOperation
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+      """, nativeQuery = true)
+  List<StorageOperationEntity> findNextEligibleForUpdate(@Param("now") Instant now);
 }

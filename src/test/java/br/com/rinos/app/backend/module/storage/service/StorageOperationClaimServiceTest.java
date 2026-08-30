@@ -32,7 +32,7 @@ class StorageOperationClaimServiceTest {
     StorageOperationEntity operation = new StorageOperationEntity(UUID.randomUUID(), 7L,
         StorageOperationType.MIGRATE, UUID.randomUUID(), "claim-test");
     Instant now = Instant.parse("2026-08-30T12:00:00Z");
-    when(repository.findEligibleForUpdate(any(), any())).thenReturn(List.of(operation));
+    when(repository.findNextEligibleForUpdate(any())).thenReturn(List.of(operation));
     StorageOperationClaimService service = new StorageOperationClaimService(repository, properties(),
         Clock.fixed(now, ZoneOffset.UTC));
 
@@ -43,7 +43,7 @@ class StorageOperationClaimServiceTest {
     assertThat(claim.orElseThrow().operationType()).isEqualTo(StorageOperationType.MIGRATE);
     assertThat(claim.orElseThrow().leaseUntil()).isEqualTo(now.plus(Duration.ofMinutes(10)));
     assertThat(operation.getLeaseOwner()).isEqualTo("instance-a");
-    verify(repository).findEligibleForUpdate(any(), any());
+    verify(repository).findNextEligibleForUpdate(any());
   }
 
   private static StoragePropertiesConfig properties() {

@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +26,7 @@ public class StorageOperationClaimService {
   private final Clock clock;
 
   /** Cria o serviço com relógio UTC da instância. */
+  @Autowired
   public StorageOperationClaimService(StorageOperationRepository repository, StoragePropertiesConfig properties) {
     this(repository, properties, Clock.systemUTC());
   }
@@ -50,7 +51,7 @@ public class StorageOperationClaimService {
       throw new IllegalArgumentException("instanceId must not be blank");
     }
     Instant now = clock.instant();
-    return repository.findEligibleForUpdate(now, PageRequest.of(0, 1)).stream().findFirst().map(operation -> {
+    return repository.findNextEligibleForUpdate(now).stream().findFirst().map(operation -> {
       Instant leaseUntil = now.plus(properties.operationLease());
       operation.claim(instanceId, leaseUntil);
       return new StorageOperationClaimVO(operation.getPublicId(), operation.getTenantStorageRegistryId(),

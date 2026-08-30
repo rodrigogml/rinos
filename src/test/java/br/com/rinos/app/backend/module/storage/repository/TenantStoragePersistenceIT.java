@@ -3,13 +3,18 @@ package br.com.rinos.app.backend.module.storage.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sql.DataSource;
 
@@ -35,6 +40,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.rinos.app.backend.module.storage.entity.StorageAuditEventEntity;
@@ -52,14 +58,20 @@ import br.com.rinos.app.backend.module.account.repository.TenantRepository;
 import br.com.rinos.app.api.module.account.enums.AccountBootstrapResultStatus;
 import br.com.rinos.app.api.module.account.vo.AccountBootstrapRequest;
 import br.com.rinos.app.backend.module.storage.component.TenantDatabaseCatalogService;
+import br.com.rinos.app.backend.module.storage.component.TenantStorageNamedLockComponent;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationStepType;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
 import br.com.rinos.app.backend.module.storage.enums.StorageTransitionOriginType;
 import br.com.rinos.app.backend.module.storage.enums.TenantStorageState;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
 import br.com.rinos.app.backend.module.storage.service.TenantStorageProvisioningService;
+import br.com.rinos.app.backend.module.storage.service.StorageOperationClaimService;
 import br.com.rinos.app.backend.module.storage.vo.TenantDatabaseCatalogVO;
+import br.com.rinos.app.backend.module.storage.vo.StorageOperationClaimVO;
+import br.com.rinos.app.config.StoragePropertiesConfig;
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.eng.rodrigogml.rfw.database.service.DatabaseUpdateStrategyResolverService;
+import br.eng.rodrigogml.rfw.database.strategy.MySQLDatabaseUpdateStrategy;
 import br.eng.rodrigogml.rfw.database.vo.DatabaseVersionVO;
 
 import static org.mockito.Mockito.mock;
@@ -230,6 +242,98 @@ class TenantStoragePersistenceIT {
     });
   }
 
+  @Test
+  void claim_shouldPrioritizeMigrationAndResumeExpiredLease_whenQueueContainsBothCases() {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      TenantStorageRegistryRepository registries = context.getBean(TenantStorageRegistryRepository.class);
+      StorageOperationRepository operations = context.getBean(StorageOperationRepository.class);
+      StorageOperationClaimService claims = context.getBean(StorageOperationClaimService.class);
+      StorageOperationEntity provisioning = transaction.execute(status -> createOperation(registries, operations,
+          StorageOperationType.PROVISION));
+      StorageOperationEntity migration = transaction.execute(status -> createOperation(registries, operations,
+          StorageOperationType.MIGRATE));
+
+      Optional<StorageOperationClaimVO> firstClaim = claims.claimNext("instance-a");
+
+      assertThat(firstClaim).isPresent();
+      assertThat(firstClaim.orElseThrow().operationPublicId()).isEqualTo(migration.getPublicId());
+      transaction.executeWithoutResult(status -> {
+        StorageOperationEntity claimedProvisioning = operations.findById(provisioning.getId()).orElseThrow();
+        claimedProvisioning.claim("instance-a", Instant.now().minusSeconds(1));
+        operations.saveAndFlush(claimedProvisioning);
+      });
+
+      Optional<StorageOperationClaimVO> resumedClaim = claims.claimNext("instance-b");
+
+      assertThat(resumedClaim).isPresent();
+      assertThat(resumedClaim.orElseThrow().operationPublicId()).isEqualTo(provisioning.getPublicId());
+      assertThat(operations.findById(provisioning.getId()).orElseThrow().getLeaseOwner()).isEqualTo("instance-b");
+      assertThat(operations.findById(provisioning.getId()).orElseThrow().getAttemptCount()).isEqualTo(2);
+    });
+  }
+
+  @Test
+  void claim_shouldAllowOnlyOneInstanceToAcquireSameQueuedOperation_whenInstancesRace()
+      throws InterruptedException {
+    contextRunner().run(context -> {
+      TransactionTemplate transaction = transaction(context);
+      TenantStorageRegistryRepository registries = context.getBean(TenantStorageRegistryRepository.class);
+      StorageOperationRepository operations = context.getBean(StorageOperationRepository.class);
+      StorageOperationClaimService claims = context.getBean(StorageOperationClaimService.class);
+      transaction.executeWithoutResult(status -> createOperation(registries, operations, StorageOperationType.PROVISION));
+      ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+        Callable<Optional<StorageOperationClaimVO>> first = () -> claims.claimNext("instance-a");
+        Callable<Optional<StorageOperationClaimVO>> second = () -> claims.claimNext("instance-b");
+        List<Future<Optional<StorageOperationClaimVO>>> results = executor.invokeAll(List.of(first, second), 15,
+            TimeUnit.SECONDS);
+
+        long acquired = results.stream().map(this::getFuture).filter(Optional::isPresent).count();
+
+        assertThat(acquired).isOne();
+      } finally {
+        executor.shutdownNow();
+      }
+    });
+  }
+
+  @Test
+  void namedLock_shouldSerializeSameTenantCatalogAcrossInstances() throws Exception {
+    TenantStorageNamedLockComponent locks = new TenantStorageNamedLockComponent(
+        new DatabaseUpdateStrategyResolverService(List.of(new MySQLDatabaseUpdateStrategy())));
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    CountDownLatch firstEntered = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+    CountDownLatch secondEntered = new CountDownLatch(1);
+    AtomicInteger running = new AtomicInteger();
+    AtomicInteger maximumRunning = new AtomicInteger();
+    try {
+      Future<?> first = executor.submit(() -> locks.executeExclusive(dataSource, Duration.ofSeconds(5), () -> {
+        maximumRunning.accumulateAndGet(running.incrementAndGet(), Math::max);
+        firstEntered.countDown();
+        await(releaseFirst);
+        running.decrementAndGet();
+      }));
+      assertThat(firstEntered.await(5, TimeUnit.SECONDS)).isTrue();
+      Future<?> second = executor.submit(() -> locks.executeExclusive(dataSource, Duration.ofSeconds(5), () -> {
+        maximumRunning.accumulateAndGet(running.incrementAndGet(), Math::max);
+        secondEntered.countDown();
+        running.decrementAndGet();
+      }));
+
+      assertThat(secondEntered.await(250, TimeUnit.MILLISECONDS)).isFalse();
+      releaseFirst.countDown();
+      first.get(5, TimeUnit.SECONDS);
+      second.get(5, TimeUnit.SECONDS);
+
+      assertThat(maximumRunning.get()).isOne();
+    } finally {
+      releaseFirst.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   private long insertTenant() {
     JdbcTemplate jdbc = new JdbcTemplate(dataSource);
     jdbc.update("""
@@ -237,6 +341,34 @@ class TenantStoragePersistenceIT {
         VALUES (UUID_TO_BIN(UUID()), 'RESERVED', 0)
         """);
     return jdbc.queryForObject("SELECT MAX(idTenant) FROM account_tenant", Long.class);
+  }
+
+  private StorageOperationEntity createOperation(TenantStorageRegistryRepository registries,
+      StorageOperationRepository operations, StorageOperationType type) {
+    long tenantId = insertTenant();
+    TenantStorageRegistryEntity registry = registries.saveAndFlush(new TenantStorageRegistryEntity(tenantId,
+        identifier(UUID.randomUUID().toString().replace("-", "")), "20260829001"));
+    return operations.saveAndFlush(new StorageOperationEntity(UUID.randomUUID(), registry.getId(), type,
+        UUID.randomUUID(), "storage-operation-claim"));
+  }
+
+  private Optional<StorageOperationClaimVO> getFuture(Future<Optional<StorageOperationClaimVO>> future) {
+    try {
+      return future.get(5, TimeUnit.SECONDS);
+    } catch (Exception exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
+  private static void await(CountDownLatch latch) {
+    try {
+      if (!latch.await(5, TimeUnit.SECONDS)) {
+        throw new IllegalStateException("Timed out waiting for structural lock test");
+      }
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting for structural lock test", exception);
+    }
   }
 
   private AccountBootstrapRequest insertAccountBootstrapContext() {
@@ -284,6 +416,9 @@ class TenantStoragePersistenceIT {
                 + "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl",
             "spring.jpa.properties.hibernate.jdbc.time_zone=UTC")
         .withBean(DataSource.class, () -> dataSource)
+        .withBean(StoragePropertiesConfig.class,
+            () -> new StoragePropertiesConfig(Duration.ofSeconds(30), Duration.ofMinutes(10),
+                Duration.ofSeconds(30), 3, 1))
         .withBean(TenantDatabaseCatalogService.class, TenantStoragePersistenceIT::catalogService);
   }
 
@@ -292,11 +427,12 @@ class TenantStoragePersistenceIT {
   }
 
   @Configuration(proxyBeanMethods = false)
+  @EnableTransactionManagement
   @EntityScan(basePackageClasses = {TenantStorageRegistryEntity.class, AccountEntity.class,
       AccountCreationIntentEntity.class, TenantEntity.class})
   @EnableJpaRepositories(basePackageClasses = {TenantStorageRegistryRepository.class, AccountRepository.class,
       AccountCreationIntentRepository.class, TenantRepository.class})
-  @Import(TenantStorageProvisioningService.class)
+  @Import({TenantStorageProvisioningService.class, StorageOperationClaimService.class})
   static class RepositoryTestConfig {
   }
 
