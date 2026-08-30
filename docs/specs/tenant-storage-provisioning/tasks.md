@@ -78,7 +78,7 @@ Ref: [contracts/tenant-storage-provisioning.md](./contracts/tenant-storage-provi
 
 Ref: [plan.md](./plan.md) §Transações, Concorrência e Falhas; Spec FR-TSP-PROV-011..012, MIG-006..007, INFRA-SCHED/LOCK/RECOVERY.
 
-- [ ] 2.3.1 Implementar consulta FIFO da fila global e aquisição transacional de lease por operação, respeitando prioridade das migrations já enfileiradas.
+- [x] 2.3.1 Implementar consulta FIFO da fila global e aquisição transacional de lease por operação, respeitando prioridade das migrations já enfileiradas.
 - [ ] 2.3.2 Integrar o worker somente à instância de manutenção eleita, com heartbeat, retomada de lease vencido e limite configurável de concorrência igual a um por padrão.
 - [ ] 2.3.3 Usar lock nomeado do RFW/MySQL por tenant e liberar recursos em sucesso, falha ou abandono controlado.
 - [ ] 2.3.4 Testar duas instâncias simuladas, lease expirado, ordenação migration-before-provisioning e exclusividade por tenant.

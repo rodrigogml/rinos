@@ -116,4 +116,17 @@ public class StorageOperationEntity {
   public long getVersion() { return version; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  /**
+   * Registra a posse temporária da operação por uma instância de manutenção.
+   *
+   * @param owner identidade da instância vencedora
+   * @param until instante UTC de expiração do lease
+   */
+  public void claim(String owner, Instant until) {
+    this.operationState = StorageOperationState.CLAIMED;
+    this.leaseOwner = owner;
+    this.leaseUntil = until;
+    this.attemptCount++;
+  }
 }
