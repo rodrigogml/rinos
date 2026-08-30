@@ -2,10 +2,13 @@ package br.com.rinos.app.backend.module.storage.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.sql.SQLTransientException;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -29,6 +32,9 @@ import br.com.rinos.app.backend.module.storage.repository.StorageStateTransition
 import br.com.rinos.app.backend.module.storage.repository.TenantStorageRegistryRepository;
 import br.com.rinos.app.backend.module.storage.vo.StorageOperationClaimVO;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
+import br.com.rinos.app.config.StoragePropertiesConfig;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
 
 /**
  * Executa o provisionamento físico com confirmações duráveis independentes no catálogo global.
@@ -54,6 +60,7 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
   private final StorageOperationStepStateTransitionService stepTransitions;
   private final TenantStorageStateTransitionService registryTransitions;
   private final TenantSchemaInitializer schemaInitializer;
+  private final StoragePropertiesConfig storageProperties;
   private final TransactionTemplate transactions;
   private final Clock clock;
 
@@ -78,9 +85,9 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
       StorageOperationStateTransitionService operationTransitions,
       StorageOperationStepStateTransitionService stepTransitions,
       TenantStorageStateTransitionService registryTransitions, TenantSchemaInitializer schemaInitializer,
-      PlatformTransactionManager transactionManager) {
+      StoragePropertiesConfig storageProperties, PlatformTransactionManager transactionManager) {
     this(operationRepository, stepRepository, registryRepository, transitionRepository, auditRepository,
-        operationTransitions, stepTransitions, registryTransitions, schemaInitializer, transactionManager,
+        operationTransitions, stepTransitions, registryTransitions, schemaInitializer, storageProperties, transactionManager,
         Clock.systemUTC());
   }
 
@@ -90,7 +97,7 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
       StorageOperationStateTransitionService operationTransitions,
       StorageOperationStepStateTransitionService stepTransitions,
       TenantStorageStateTransitionService registryTransitions, TenantSchemaInitializer schemaInitializer,
-      PlatformTransactionManager transactionManager, Clock clock) {
+      StoragePropertiesConfig storageProperties, PlatformTransactionManager transactionManager, Clock clock) {
     this.operationRepository = Objects.requireNonNull(operationRepository, "operationRepository must not be null");
     this.stepRepository = Objects.requireNonNull(stepRepository, "stepRepository must not be null");
     this.registryRepository = Objects.requireNonNull(registryRepository, "registryRepository must not be null");
@@ -100,6 +107,7 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
     this.stepTransitions = Objects.requireNonNull(stepTransitions, "stepTransitions must not be null");
     this.registryTransitions = Objects.requireNonNull(registryTransitions, "registryTransitions must not be null");
     this.schemaInitializer = Objects.requireNonNull(schemaInitializer, "schemaInitializer must not be null");
+    this.storageProperties = Objects.requireNonNull(storageProperties, "storageProperties must not be null");
     this.transactions = new TransactionTemplate(Objects.requireNonNull(transactionManager,
         "transactionManager must not be null"));
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
@@ -131,7 +139,15 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
       return;
     }
 
-    schemaInitializer.initialize(context.physicalIdentifier(), context.expectedVersion());
+    try {
+      schemaInitializer.initialize(context.physicalIdentifier(), context.expectedVersion());
+    } catch (RuntimeException exception) {
+      executeInGlobalTransaction(() -> {
+        handlePhysicalFailure(claim, exception);
+        return null;
+      });
+      return;
+    }
 
     boolean confirmed = executeInGlobalTransaction(() -> confirmPhysicalExecution(claim));
     if (!confirmed) {
@@ -213,6 +229,77 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
     auditRepository.save(new StorageAuditEventEntity("TENANT_STORAGE_PROVISIONING_COMPLETED",
         record.registry().getId(), record.operation().getId(), null, SYSTEM_ORIGIN,
         record.operation().getCorrelationId(), "READY", null, now));
+  }
+
+  private void handlePhysicalFailure(StorageOperationClaimVO claim, RuntimeException exception) {
+    ExecutionRecord record = findOwnedRecord(claim);
+    if (record == null || record.operation().getOperationState() != StorageOperationState.RUNNING) {
+      return;
+    }
+    Instant now = clock.instant();
+    FailureDisposition disposition = classify(exception);
+    if (disposition.retryable() && record.operation().getAttemptCount() < storageProperties.provisioningMaximumAttempts()) {
+      operationTransitions.transition(StorageOperationState.RUNNING, StorageOperationState.RETRY_WAIT);
+      record.operation().scheduleRetry(now.plus(storageProperties.queuePollInterval()), disposition.safeCode());
+      operationRepository.saveAndFlush(record.operation());
+      auditRepository.save(new StorageAuditEventEntity("TENANT_STORAGE_PROVISIONING_RETRY_SCHEDULED",
+          record.registry().getId(), record.operation().getId(), null, SYSTEM_ORIGIN,
+          record.operation().getCorrelationId(), disposition.safeCode(), null, now));
+      return;
+    }
+
+    failRunningSteps(record.operation(), disposition.safeCode(), now);
+    operationTransitions.transition(StorageOperationState.RUNNING, StorageOperationState.FAILED_FINAL);
+    record.operation().failFinal(now, disposition.safeCode());
+    operationRepository.saveAndFlush(record.operation());
+    quarantineRegistry(record, disposition.safeCode(), now);
+    auditRepository.save(new StorageAuditEventEntity("TENANT_STORAGE_PROVISIONING_ATTENTION",
+        record.registry().getId(), record.operation().getId(), null, SYSTEM_ORIGIN,
+        record.operation().getCorrelationId(), disposition.safeCode(), null, now));
+  }
+
+  private void failRunningSteps(StorageOperationEntity operation, String safeFailureCode, Instant now) {
+    for (StorageOperationStepType type : new StorageOperationStepType[] {StorageOperationStepType.CREATE_SCHEMA,
+        StorageOperationStepType.INITIALIZE, StorageOperationStepType.VERIFY_VERSION}) {
+      Optional<StorageOperationStepEntity> step = stepRepository.findByStorageOperationIdAndStepType(operation.getId(), type);
+      if (step.isPresent() && step.get().getStepState() == StorageOperationStepState.RUNNING) {
+        stepTransitions.transition(StorageOperationStepState.RUNNING, StorageOperationStepState.FAILED);
+        step.get().fail(now, safeFailureCode);
+        stepRepository.saveAndFlush(step.get());
+      }
+    }
+  }
+
+  private void quarantineRegistry(ExecutionRecord record, String safeFailureCode, Instant now) {
+    TenantStorageState current = record.registry().getStorageState();
+    if (current != TenantStorageState.QUARANTINED) {
+      registryTransitions.transition(current, TenantStorageState.QUARANTINED, StorageTransitionOriginType.SYSTEM);
+      record.registry().changeState(TenantStorageState.QUARANTINED);
+      transitionRepository.save(new StorageStateTransitionEntity(record.registry().getId(), record.operation().getId(),
+          current, TenantStorageState.QUARANTINED, StorageOperationStepType.VERIFY_VERSION,
+          StorageTransitionOriginType.SYSTEM, null, SYSTEM_ORIGIN, record.operation().getCorrelationId(),
+          safeFailureCode, now));
+    }
+    record.registry().quarantine(safeFailureCode);
+    registryRepository.saveAndFlush(record.registry());
+  }
+
+  private static FailureDisposition classify(RuntimeException exception) {
+    for (Throwable current = exception; current != null; current = current.getCause()) {
+      if (current instanceof TransientDataAccessException || current instanceof DataAccessResourceFailureException
+          || current instanceof SQLTransientException) {
+        return new FailureDisposition(true, "TENANT_STORAGE_TRANSIENT_FAILURE");
+      }
+      if (current instanceof RFWDatabaseUpdateException rfwException) {
+        if (rfwException.getCategory() == RFWDatabaseUpdateErrorCategoryEnum.LOCK_TIMEOUT) {
+          return new FailureDisposition(true, "TENANT_STORAGE_LOCK_TIMEOUT");
+        }
+        if (rfwException.getCategory() != RFWDatabaseUpdateErrorCategoryEnum.EXECUTION) {
+          return new FailureDisposition(false, "TENANT_STORAGE_REQUIRES_INFRASTRUCTURE");
+        }
+      }
+    }
+    return new FailureDisposition(false, "TENANT_STORAGE_REQUIRES_INFRASTRUCTURE");
   }
 
   private ExecutionRecord findOwnedRecord(StorageOperationClaimVO claim) {
@@ -301,6 +388,9 @@ public class TenantStorageProvisioningOperationExecutor implements StorageOperat
   }
 
   private record ProvisioningContext(TenantPhysicalIdentifier physicalIdentifier, String expectedVersion) {
+  }
+
+  private record FailureDisposition(boolean retryable, String safeCode) {
   }
 
   @FunctionalInterface

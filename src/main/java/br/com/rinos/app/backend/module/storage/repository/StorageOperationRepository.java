@@ -41,7 +41,7 @@ public interface StorageOperationRepository extends JpaRepository<StorageOperati
   @Query(value = """
       SELECT *
       FROM storage_operation
-      WHERE (operationState = 'QUEUED' AND (nextAttemptAt IS NULL OR nextAttemptAt <= :now))
+      WHERE (operationState IN ('QUEUED', 'RETRY_WAIT') AND (nextAttemptAt IS NULL OR nextAttemptAt <= :now))
          OR (operationState IN ('CLAIMED', 'RUNNING') AND leaseUntil <= :now)
       ORDER BY CASE WHEN operationType = 'MIGRATE' THEN 0 ELSE 1 END, idStorageOperation
       LIMIT 1

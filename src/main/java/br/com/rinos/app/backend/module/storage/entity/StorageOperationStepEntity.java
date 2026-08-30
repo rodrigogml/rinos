@@ -108,4 +108,11 @@ public class StorageOperationStepEntity {
     this.completedAt = now;
     this.safeFailureCode = null;
   }
+
+  /** Registra uma falha definitiva da etapa sem expor detalhes de infraestrutura. */
+  public void fail(Instant now, String safeFailureCode) {
+    this.stepState = StorageOperationStepState.FAILED;
+    this.completedAt = Objects.requireNonNull(now, "now must not be null");
+    this.safeFailureCode = Objects.requireNonNull(safeFailureCode, "safeFailureCode must not be null");
+  }
 }

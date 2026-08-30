@@ -123,6 +123,10 @@ o datasource funcional. A projeção do criador reduz a resposta interna aos qua
   existente. Ela usa o lock nomeado da RFW para observar schema e versão; uma estrutura parcial não é mascarada por
   nova execução e segue para a classificação segura de falha da fila.
 - A fila mantém `leaseOwner`/`leaseUntil`; uma instância não confirma etapa se perdeu seu claim.
+- Para provisionamento, somente indisponibilidade de recurso, lock/timeout e erro SQL explicitamente transitório
+  podem voltar a `RETRY_WAIT`; a próxima elegibilidade respeita `rinos.storage.queue-poll-interval`. Catálogo,
+  versão, script, configuração, erro desconhecido ou esgotamento de `rinos.storage.provisioning-maximum-attempts`
+  encerram a operação, preservam o schema parcial e colocam somente o tenant em `QUARANTINED`.
 - O updater RFW acrescenta lock nomeado no `DataSource` físico. Falha ao ler registry, versão, catálogo ou lock bloqueia
   o tenant; nenhum cache amplia prontidão.
 - O worker não promove estado por timeout ou por alteração manual. Ele registra um alerta seguro quando não há

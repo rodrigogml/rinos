@@ -169,4 +169,24 @@ public class StorageOperationEntity {
     this.nextAttemptAt = null;
     this.finishedAt = now;
   }
+
+  /** Agenda nova tentativa sem liberar o histórico ou a identidade física já reservada. */
+  public void scheduleRetry(Instant nextAttempt, String safeFailureCode) {
+    this.operationState = StorageOperationState.RETRY_WAIT;
+    this.nextAttemptAt = Objects.requireNonNull(nextAttempt, "nextAttempt must not be null");
+    this.safeFailureCode = Objects.requireNonNull(safeFailureCode, "safeFailureCode must not be null");
+    this.leaseOwner = null;
+    this.leaseUntil = null;
+  }
+
+  /** Encerra definitivamente uma operação que exige intervenção externa. */
+  public void failFinal(Instant now, String safeFailureCode) {
+    this.operationState = StorageOperationState.FAILED_FINAL;
+    this.safeFailureCode = Objects.requireNonNull(safeFailureCode, "safeFailureCode must not be null");
+    this.activeMarker = null;
+    this.leaseOwner = null;
+    this.leaseUntil = null;
+    this.nextAttemptAt = null;
+    this.finishedAt = Objects.requireNonNull(now, "now must not be null");
+  }
 }

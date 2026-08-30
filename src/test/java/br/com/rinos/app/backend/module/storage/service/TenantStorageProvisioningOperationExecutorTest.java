@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
@@ -39,6 +40,9 @@ import br.com.rinos.app.backend.module.storage.repository.TenantStorageRegistryR
 import br.com.rinos.app.backend.module.storage.vo.StorageOperationClaimVO;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
 import br.com.rinos.app.backend.module.storage.vo.TenantSchemaInitializationResultVO;
+import br.com.rinos.app.config.StoragePropertiesConfig;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
+import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
 
 class TenantStorageProvisioningOperationExecutorTest {
 
@@ -110,6 +114,78 @@ class TenantStorageProvisioningOperationExecutorTest {
     verify(registries, never()).findById(any());
   }
 
+  @Test
+  void execute_shouldScheduleRetry_whenPhysicalFailureIsTransientAndAttemptsRemain() {
+    StorageOperationRepository operations = mock(StorageOperationRepository.class);
+    StorageOperationStepRepository steps = mock(StorageOperationStepRepository.class);
+    TenantStorageRegistryRepository registries = mock(TenantStorageRegistryRepository.class);
+    StorageStateTransitionRepository transitions = mock(StorageStateTransitionRepository.class);
+    StorageAuditEventRepository audits = mock(StorageAuditEventRepository.class);
+    TenantSchemaInitializer initializer = mock(TenantSchemaInitializer.class);
+    StorageOperationEntity operation = operation();
+    TenantStorageRegistryEntity registry = registry();
+    Map<StorageOperationStepType, StorageOperationStepEntity> stepByType = new EnumMap<>(
+        StorageOperationStepType.class);
+    stepByType.put(StorageOperationStepType.RESERVE,
+        new StorageOperationStepEntity(operation.getId(), StorageOperationStepType.RESERVE));
+    configureStepRepository(steps, stepByType);
+    when(operations.findByPublicIdForUpdate(operation.getPublicId())).thenReturn(Optional.of(operation));
+    when(operations.saveAndFlush(any(StorageOperationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(registries.findById(registry.getId())).thenReturn(Optional.of(registry));
+    when(registries.saveAndFlush(any(TenantStorageRegistryEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(initializer.initialize(registry.getPhysicalIdentifier(), registry.getExpectedVersion()))
+        .thenThrow(new DataAccessResourceFailureException("temporary database connection failure"));
+    TenantStorageProvisioningOperationExecutor executor = executor(operations, steps, registries, transitions, audits,
+        initializer);
+
+    executor.execute(new StorageOperationClaimVO(operation.getPublicId(), registry.getId(),
+        StorageOperationType.PROVISION, "instance-a", NOW.plusSeconds(600)));
+
+    assertThat(operation.getOperationState()).isEqualTo(StorageOperationState.RETRY_WAIT);
+    assertThat(operation.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(30));
+    assertThat(operation.getSafeFailureCode()).isEqualTo("TENANT_STORAGE_TRANSIENT_FAILURE");
+    assertThat(operation.getLeaseOwner()).isNull();
+    assertThat(registry.getStorageState()).isEqualTo(TenantStorageState.INITIALIZING);
+  }
+
+  @Test
+  void execute_shouldQuarantineTenant_whenPhysicalFailureRequiresInfrastructure() {
+    StorageOperationRepository operations = mock(StorageOperationRepository.class);
+    StorageOperationStepRepository steps = mock(StorageOperationStepRepository.class);
+    TenantStorageRegistryRepository registries = mock(TenantStorageRegistryRepository.class);
+    StorageStateTransitionRepository transitions = mock(StorageStateTransitionRepository.class);
+    StorageAuditEventRepository audits = mock(StorageAuditEventRepository.class);
+    TenantSchemaInitializer initializer = mock(TenantSchemaInitializer.class);
+    StorageOperationEntity operation = operation();
+    TenantStorageRegistryEntity registry = registry();
+    Map<StorageOperationStepType, StorageOperationStepEntity> stepByType = new EnumMap<>(
+        StorageOperationStepType.class);
+    stepByType.put(StorageOperationStepType.RESERVE,
+        new StorageOperationStepEntity(operation.getId(), StorageOperationStepType.RESERVE));
+    configureStepRepository(steps, stepByType);
+    when(operations.findByPublicIdForUpdate(operation.getPublicId())).thenReturn(Optional.of(operation));
+    when(operations.saveAndFlush(any(StorageOperationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(registries.findById(registry.getId())).thenReturn(Optional.of(registry));
+    when(registries.saveAndFlush(any(TenantStorageRegistryEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(initializer.initialize(registry.getPhysicalIdentifier(), registry.getExpectedVersion()))
+        .thenThrow(new RFWDatabaseUpdateException(RFWDatabaseUpdateErrorCategoryEnum.VERSION_CONSISTENCY,
+            "incompatible tenant version"));
+    TenantStorageProvisioningOperationExecutor executor = executor(operations, steps, registries, transitions, audits,
+        initializer);
+
+    executor.execute(new StorageOperationClaimVO(operation.getPublicId(), registry.getId(),
+        StorageOperationType.PROVISION, "instance-a", NOW.plusSeconds(600)));
+
+    assertThat(operation.getOperationState()).isEqualTo(StorageOperationState.FAILED_FINAL);
+    assertThat(operation.getActiveMarker()).isNull();
+    assertThat(registry.getStorageState()).isEqualTo(TenantStorageState.QUARANTINED);
+    assertThat(registry.getQuarantineReasonCode()).isEqualTo("TENANT_STORAGE_REQUIRES_INFRASTRUCTURE");
+    assertThat(stepByType.get(StorageOperationStepType.CREATE_SCHEMA).getStepState())
+        .isEqualTo(StorageOperationStepState.FAILED);
+  }
+
   private static void configureStepRepository(StorageOperationStepRepository steps,
       Map<StorageOperationStepType, StorageOperationStepEntity> stepByType) {
     when(steps.findByStorageOperationIdAndStepType(any(), any())).thenAnswer(invocation ->
@@ -130,7 +206,9 @@ class TenantStorageProvisioningOperationExecutorTest {
     when(transactionManager.getTransaction(any())).thenReturn(transaction);
     return new TenantStorageProvisioningOperationExecutor(operations, steps, registries, transitions, audits,
         new StorageOperationStateTransitionService(), new StorageOperationStepStateTransitionService(),
-        new TenantStorageStateTransitionService(), initializer, transactionManager,
+        new TenantStorageStateTransitionService(), initializer,
+        new StoragePropertiesConfig(java.time.Duration.ofSeconds(30), java.time.Duration.ofMinutes(10),
+            java.time.Duration.ofSeconds(30), 3, 1), transactionManager,
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 

@@ -106,4 +106,12 @@ public class TenantStorageRegistryEntity {
     this.lastValidatedAt = Objects.requireNonNull(validatedAt, "validatedAt must not be null");
     this.quarantineReasonCode = null;
   }
+
+  /** Registra motivo seguro da quarentena sem persistir detalhes técnicos da falha. */
+  public void quarantine(String safeReasonCode) {
+    if (safeReasonCode == null || safeReasonCode.isBlank()) {
+      throw new IllegalArgumentException("safeReasonCode must not be blank");
+    }
+    this.quarantineReasonCode = safeReasonCode;
+  }
 }
