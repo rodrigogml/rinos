@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.mysql.MySQLContainer;
@@ -47,6 +50,7 @@ public final class MySqlTestDatabase implements AutoCloseable {
   private static final Pattern SCHEMA_NAME_PATTERN =
       Pattern.compile("rinos_test_[0-9a-f]{32}");
   private static final String CONTAINER_PASSWORD = "rinos-test";
+  private static final String GLOBAL_CATALOG = "rinos_global";
 
   private final MySQLContainer container;
   private final String serverUrl;
@@ -149,6 +153,36 @@ public final class MySqlTestDatabase implements AutoCloseable {
   }
 
   /**
+   * Cria uma conexão administrativa sem catálogo selecionado para um cenário estrutural controlado.
+   *
+   * <p>O chamador continua responsável por restringir seus comandos a schemas de teste conhecidos. Este método não
+   * expõe as credenciais e não aceita um catálogo de destino.</p>
+   *
+   * @return datasource conectado somente ao servidor MySQL de testes
+   */
+  public DataSource createServerDataSource() {
+    return serverDataSource();
+  }
+
+  /**
+   * Cria a fonte-base preguiçosa exigida pela factory de tenant, sem abrir ou usar o catálogo global.
+   *
+   * <p>A URL preserva a forma exigida pela aplicação para que a factory derive um tenant real. A inicialização
+   * preguiçosa impede qualquer conexão ao {@code rinos_global}, que permanece fora do escopo do usuário de testes.</p>
+   *
+   * @return datasource-base que declara exclusivamente o catálogo global sem acessá-lo
+   */
+  public HikariDataSource createLazyGlobalCatalogDataSource() {
+    HikariConfig configuration = new HikariConfig();
+    configuration.setJdbcUrl(catalogUrl(serverUrl, GLOBAL_CATALOG));
+    configuration.setUsername(username);
+    configuration.setPassword(password);
+    configuration.setInitializationFailTimeout(-1);
+    configuration.setMinimumIdle(0);
+    return new HikariDataSource(configuration);
+  }
+
+  /**
    * Remove o schema descartável e encerra o contêiner quando ele foi usado como provedor.
    *
    * @throws IllegalStateException quando o schema externo não pode ser removido
@@ -230,6 +264,26 @@ public final class MySqlTestDatabase implements AutoCloseable {
         + query
         + separator
         + "connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true";
+  }
+
+  /**
+   * Seleciona um catálogo interno conhecido sem ampliar a URL administrativa original.
+   *
+   * @param serverUrl URL JDBC administrativa já validada
+   * @param catalogName catálogo interno fixado pelo chamador controlado
+   * @return URL JDBC que seleciona o catálogo informado
+   */
+  private static String catalogUrl(String serverUrl, String catalogName) {
+    String validatedServerUrl = validateServerUrl(serverUrl);
+    int queryIndex = validatedServerUrl.indexOf('?');
+    String endpoint = queryIndex < 0
+        ? validatedServerUrl
+        : validatedServerUrl.substring(0, queryIndex);
+    String query = queryIndex < 0 ? "" : validatedServerUrl.substring(queryIndex);
+    while (endpoint.endsWith("/")) {
+      endpoint = endpoint.substring(0, endpoint.length() - 1);
+    }
+    return endpoint + "/" + catalogName + query;
   }
 
   private static Properties loadApplicationProperties() {

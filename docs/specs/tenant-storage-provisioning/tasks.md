@@ -94,7 +94,7 @@ Ref: [plan.md](./plan.md) §Provisionamento; [quickstart.md](./quickstart.md) Ce
 - [x] 3.1.1 Implementar `TenantSchemaInitializer` para criar exclusivamente `rinos_<physicalIdentifier>`, validar existência e executar `db/tenant/init/` de forma idempotente.
 - [x] 3.1.2 Confirmar cada etapa em transação global própria, revalidar efeito após perda de resposta e manter dados iniciais de identidade estável.
 - [x] 3.1.3 Classificar falhas transitórias, repetir no máximo o limite configurado e colocar em `ATTENTION`/quarentena ao esgotar, sem excluir schema parcial.
-- [ ] 3.1.4 Executar testes de integração para sucesso, espaço/DDL indisponível simulado, reinício, replay e nenhuma duplicidade de dados iniciais.
+- [x] 3.1.4 Executar testes de integração para sucesso, espaço/DDL indisponível simulado, reinício, replay e nenhuma duplicidade de dados iniciais.
 
 ### 3.2 Atualização automática no deploy `[C]`
 
