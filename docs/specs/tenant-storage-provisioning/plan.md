@@ -84,6 +84,11 @@ Provisionamento transitório retoma até o limite; estados definitivos exigem in
 global autorizada e idempotente, posterior às políticas de retenção: ela impede acesso e preserva o identificador; não
 há comando de backup, restauração, rollback ou repetição de migration na UI.
 
+Antes de qualquer reconciliação autorizada, uma inspeção somente de leitura compara o inventário físico filtrado pelo
+formato interno com o registro global e consulta leases vencidos. Ela informa registros sem schema, a quantidade de
+schemas sem registro e operações sem progresso, mas não expõe localização física, não adota nem remove schema e não
+altera estado, versão, operação ou prontidão.
+
 ### Máquina de estados e projeções
 
 A máquina de estados é validada antes de persistir cada transição e a transição/auditoria serão gravadas pela mesma

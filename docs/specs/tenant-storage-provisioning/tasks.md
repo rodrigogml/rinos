@@ -109,7 +109,7 @@ Ref: [plan.md](./plan.md) §Migration no deploy; [research.md](./research.md) De
 
 Ref: [plan.md](./plan.md) §Retomada e desativação; Spec FR-TSP-REC-007..010, LIFE-001..006 e SEC-001..008.
 
-- [ ] 3.3.1 Detectar registro sem schema, schema sem registro e falta de progresso sem adotar, remover ou marcar pronto automaticamente.
+- [x] 3.3.1 Detectar registro sem schema, schema sem registro e falta de progresso sem adotar, remover ou marcar pronto automaticamente.
 - [ ] 3.3.2 Implementar comando interno auditável de reconciliação e desativação idempotente, protegido por autorização global, reautenticação e 2FA quando `access-control` estiver disponível.
 - [ ] 3.3.3 Negar por padrão qualquer ação administrativa sensível enquanto a integração de autorização canônica não existir; não usar papel como substituto.
 - [ ] 3.3.4 Testar divergência, retenção/cancelamento sem delete automático, não reutilização e negação de ação sem garantia forte.

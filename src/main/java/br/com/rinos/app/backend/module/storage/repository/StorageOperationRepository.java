@@ -48,4 +48,17 @@ public interface StorageOperationRepository extends JpaRepository<StorageOperati
       FOR UPDATE SKIP LOCKED
       """, nativeQuery = true)
   List<StorageOperationEntity> findNextEligibleForUpdate(@Param("now") Instant now);
+
+  /**
+   * Identifica operações que mantiveram lease vencido, sem tentar reclamá-las, corrigí-las ou alterar seu estado.
+   *
+   * @param now instante UTC usado para comparar a validade do lease
+   * @return operações ativas sem progresso comprovado
+   */
+  @Query("SELECT operation FROM StorageOperationEntity operation "
+      + "WHERE operation.operationState IN "
+      + "(br.com.rinos.app.backend.module.storage.enums.StorageOperationState.CLAIMED, "
+      + "br.com.rinos.app.backend.module.storage.enums.StorageOperationState.RUNNING) "
+      + "AND (operation.leaseUntil IS NULL OR operation.leaseUntil <= :now)")
+  List<StorageOperationEntity> findAllStalledForReconciliation(@Param("now") Instant now);
 }
