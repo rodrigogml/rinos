@@ -38,10 +38,10 @@ Ref: [plan.md](./plan.md) §Contexto Técnico e §Segurança; [research.md](./re
 
 Ref: [data-model.md](./data-model.md) §`storage_*`; Spec FR-TSP-ID-001..008, STATE-001..005, OPS-001..006.
 
-- [ ] 1.2.1 Criar migration em `db/global/update/` para `storage_tenantRegistry`, operações, etapas, histórico de migration, transições e auditoria, com FKs e índices somente no schema global.
-- [ ] 1.2.2 Implementar entidades, enums, value objects, repositórios e mapeamentos JPA no contexto `storage`, preservando convenções de UUID e `snake_case`.
-- [ ] 1.2.3 Materializar as restrições de uma localização por tenant, não reutilização do identificador físico, uma operação estrutural ativa por tenant e idempotência por intenção.
-- [ ] 1.2.4 Testar a migration e invariantes contra MySQL controlado, incluindo conflito de reserva, transição inválida e auditoria sem segredo.
+- [x] 1.2.1 Criar migration em `db/global/update/` para `storage_tenantRegistry`, operações, etapas, histórico de migration, transições e auditoria, com FKs e índices somente no schema global.
+- [x] 1.2.2 Implementar entidades, enums, value objects, repositórios e mapeamentos JPA no contexto `storage`, preservando convenções de UUID e `snake_case`.
+- [x] 1.2.3 Materializar as restrições de uma localização por tenant, não reutilização do identificador físico, uma operação estrutural ativa por tenant e idempotência por intenção.
+- [x] 1.2.4 Testar a migration e invariantes contra MySQL controlado, incluindo conflito de reserva, transição inválida e auditoria sem segredo.
 
 ### 1.3 Scripts de tenant e versão estrutural `[C]`
 

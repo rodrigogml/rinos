@@ -65,8 +65,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260815_003_update.sql",
       "classpath:db/global/update/20260816_001_update.sql",
       "classpath:db/global/update/20260816_002_update.sql",
-      "classpath:db/global/update/20260816_003_update.sql");
-  private static final String TARGET_VERSION = "20260816003";
+      "classpath:db/global/update/20260816_003_update.sql",
+      "classpath:db/global/update/20260829_001_update.sql");
+  private static final String TARGET_VERSION = "20260829001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -141,6 +142,7 @@ class GlobalDatabaseMigrationIT {
     assertMembershipTables();
     assertAccessControlTables();
     assertPlansTables();
+    assertStorageTables();
     assertThat(tableExists("testGlobalMigrationMarker")).isFalse();
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -192,6 +194,7 @@ class GlobalDatabaseMigrationIT {
     assertMembershipTables();
     assertAccessControlTables();
     assertPlansTables();
+    assertStorageTables();
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -219,7 +222,7 @@ class GlobalDatabaseMigrationIT {
           RFWDatabaseUpdateErrorCategoryEnum.EXECUTION);
     });
 
-    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(readVersion()).isEqualTo("20260816003");
     assertThat(tableExists("testFailedUpdateMarker")).isTrue();
     assertThat(tableExists("testUnexpectedUpdateContinuation")).isFalse();
   }
@@ -858,6 +861,24 @@ class GlobalDatabaseMigrationIT {
         "plans_tenantUserCapacityReservation",
         "plans_auditEvent",
         "plans_outboxEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /** Confirma o registro global, a fila e os históricos sanitizados do armazenamento de tenants. */
+  private void assertStorageTables() {
+    assertThat(List.of(
+        "storage_tenantRegistry",
+        "storage_operation",
+        "storage_operationStep",
+        "storage_migrationExecution",
+        "storage_stateTransition",
+        "storage_auditEvent"))
         .allMatch(tableName -> {
           try {
             return tableExists(tableName);
