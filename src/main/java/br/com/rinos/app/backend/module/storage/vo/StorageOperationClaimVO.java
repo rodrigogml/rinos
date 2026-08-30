@@ -12,5 +12,5 @@ import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
  * @since 2026-08-30
  */
 public record StorageOperationClaimVO(UUID operationPublicId, Long registryId,
-    StorageOperationType operationType, Instant leaseUntil) {
+    StorageOperationType operationType, String leaseOwner, Instant leaseUntil) {
 }

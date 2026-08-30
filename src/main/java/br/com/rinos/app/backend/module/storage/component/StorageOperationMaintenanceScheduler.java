@@ -1,6 +1,6 @@
 package br.com.rinos.app.backend.module.storage.component;
 
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -44,9 +44,11 @@ public class StorageOperationMaintenanceScheduler {
     if (executor == null || !coordinator.canStartJob()) {
       return;
     }
-    coordinator.executeBatch(() -> {
-      Optional<StorageOperationClaimVO> claim = claims.claimNext(instanceId);
-      claim.ifPresent(executor::execute);
-    });
+    AtomicReference<StorageOperationClaimVO> claimedOperation = new AtomicReference<>();
+    coordinator.executeBatch(() -> claims.claimNext(instanceId).ifPresent(claimedOperation::set));
+    StorageOperationClaimVO claim = claimedOperation.get();
+    if (claim != null && coordinator.canStartJob()) {
+      executor.execute(claim);
+    }
   }
 }

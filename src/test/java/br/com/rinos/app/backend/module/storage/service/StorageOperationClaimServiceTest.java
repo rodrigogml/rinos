@@ -41,6 +41,7 @@ class StorageOperationClaimServiceTest {
     assertThat(claim).isPresent();
     assertThat(claim.orElseThrow().registryId()).isEqualTo(7L);
     assertThat(claim.orElseThrow().operationType()).isEqualTo(StorageOperationType.MIGRATE);
+    assertThat(claim.orElseThrow().leaseOwner()).isEqualTo("instance-a");
     assertThat(claim.orElseThrow().leaseUntil()).isEqualTo(now.plus(Duration.ofMinutes(10)));
     assertThat(operation.getLeaseOwner()).isEqualTo("instance-a");
     verify(repository).findNextEligibleForUpdate(any());

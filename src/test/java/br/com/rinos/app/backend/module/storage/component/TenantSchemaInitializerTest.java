@@ -21,6 +21,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
 import br.com.rinos.app.backend.module.storage.vo.TenantSchemaInitializationResultVO;
+import br.eng.rodrigogml.rfw.database.config.DatabaseUpdatePropertiesConfig;
 
 class TenantSchemaInitializerTest {
 
@@ -35,6 +36,8 @@ class TenantSchemaInitializerTest {
     HikariDataSource tenantDataSource = mock(HikariDataSource.class);
     TenantSchemaInitScriptComponent scripts = mock(TenantSchemaInitScriptComponent.class);
     TenantDatabaseStructureVerifier verifier = mock(TenantDatabaseStructureVerifier.class);
+    TenantStorageNamedLockComponent namedLock = mock(TenantStorageNamedLockComponent.class);
+    DatabaseUpdatePropertiesConfig properties = new DatabaseUpdatePropertiesConfig();
     TenantPhysicalIdentifier identifier = new TenantPhysicalIdentifier("0123456789abcdef0123456789abcdef");
     when(globalDataSource.getConnection()).thenReturn(globalConnection);
     when(globalConnection.prepareStatement(any())).thenReturn(existenceQuery);
@@ -42,7 +45,12 @@ class TenantSchemaInitializerTest {
     when(absent.next()).thenReturn(false);
     when(globalConnection.createStatement()).thenReturn(statement);
     when(factory.create(identifier)).thenReturn(tenantDataSource);
-    TenantSchemaInitializer initializer = new TenantSchemaInitializer(globalDataSource, factory, scripts, verifier);
+    org.mockito.Mockito.doAnswer(invocation -> {
+      invocation.<Runnable>getArgument(2).run();
+      return null;
+    }).when(namedLock).executeExclusive(eq(tenantDataSource), eq(properties.getLockTimeout()), any(Runnable.class));
+    TenantSchemaInitializer initializer = new TenantSchemaInitializer(globalDataSource, factory, scripts, verifier,
+        namedLock, properties);
 
     TenantSchemaInitializationResultVO result = initializer.initialize(identifier, "20260829001");
 
@@ -51,6 +59,7 @@ class TenantSchemaInitializerTest {
         + " COLLATE utf8mb4_unicode_ci");
     verify(scripts).execute(tenantDataSource);
     verify(verifier).verify(eq(tenantDataSource), eq("20260829001"), eq(java.util.List.of()));
+    verify(namedLock).executeExclusive(eq(tenantDataSource), eq(properties.getLockTimeout()), any(Runnable.class));
     verify(tenantDataSource).close();
   }
 
@@ -64,13 +73,20 @@ class TenantSchemaInitializerTest {
     HikariDataSource tenantDataSource = mock(HikariDataSource.class);
     TenantSchemaInitScriptComponent scripts = mock(TenantSchemaInitScriptComponent.class);
     TenantDatabaseStructureVerifier verifier = mock(TenantDatabaseStructureVerifier.class);
+    TenantStorageNamedLockComponent namedLock = mock(TenantStorageNamedLockComponent.class);
+    DatabaseUpdatePropertiesConfig properties = new DatabaseUpdatePropertiesConfig();
     TenantPhysicalIdentifier identifier = new TenantPhysicalIdentifier("fedcba9876543210fedcba9876543210");
     when(globalDataSource.getConnection()).thenReturn(globalConnection);
     when(globalConnection.prepareStatement(any())).thenReturn(existenceQuery);
     when(existenceQuery.executeQuery()).thenReturn(present);
     when(present.next()).thenReturn(true);
     when(factory.create(identifier)).thenReturn(tenantDataSource);
-    TenantSchemaInitializer initializer = new TenantSchemaInitializer(globalDataSource, factory, scripts, verifier);
+    org.mockito.Mockito.doAnswer(invocation -> {
+      invocation.<Runnable>getArgument(2).run();
+      return null;
+    }).when(namedLock).executeExclusive(eq(tenantDataSource), eq(properties.getLockTimeout()), any(Runnable.class));
+    TenantSchemaInitializer initializer = new TenantSchemaInitializer(globalDataSource, factory, scripts, verifier,
+        namedLock, properties);
 
     TenantSchemaInitializationResultVO result = initializer.initialize(identifier, "20260829001");
 

@@ -61,9 +61,9 @@ class StorageOperationMaintenanceSchedulerTest {
     ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
     StorageOperationExecutionPort executor = mock(StorageOperationExecutionPort.class);
     StorageOperationClaimVO claim = new StorageOperationClaimVO(UUID.randomUUID(), 8L,
-        StorageOperationType.PROVISION, Instant.parse("2026-08-30T13:00:00Z"));
+        StorageOperationType.PROVISION, "instance-a", Instant.parse("2026-08-30T13:00:00Z"));
     when(executorProvider.getIfAvailable()).thenReturn(executor);
-    when(coordinator.canStartJob()).thenReturn(true);
+    when(coordinator.canStartJob()).thenReturn(true, true);
     when(coordinator.executeBatch(any(Runnable.class))).thenAnswer(invocation -> {
       Runnable batch = invocation.getArgument(0);
       batch.run();
@@ -76,6 +76,30 @@ class StorageOperationMaintenanceSchedulerTest {
 
     verify(claims).claimNext("instance-a");
     verify(executor).execute(claim);
+  }
+
+  @Test
+  void dispatch_shouldNotExecutePhysicalOperation_whenLeadershipIsLostAfterClaim() {
+    MaintenanceCoordinatorService coordinator = mock(MaintenanceCoordinatorService.class);
+    StorageOperationClaimService claims = mock(StorageOperationClaimService.class);
+    ObjectProvider<StorageOperationExecutionPort> executorProvider = mock(ObjectProvider.class);
+    StorageOperationExecutionPort executor = mock(StorageOperationExecutionPort.class);
+    StorageOperationClaimVO claim = new StorageOperationClaimVO(UUID.randomUUID(), 8L,
+        StorageOperationType.PROVISION, "instance-a", Instant.parse("2026-08-30T13:00:00Z"));
+    when(executorProvider.getIfAvailable()).thenReturn(executor);
+    when(coordinator.canStartJob()).thenReturn(true, false);
+    when(coordinator.executeBatch(any(Runnable.class))).thenAnswer(invocation -> {
+      Runnable batch = invocation.getArgument(0);
+      batch.run();
+      return true;
+    });
+    when(claims.claimNext("instance-a")).thenReturn(Optional.of(claim));
+    StorageOperationMaintenanceScheduler scheduler = scheduler(coordinator, claims, executorProvider);
+
+    scheduler.dispatch();
+
+    verify(claims).claimNext("instance-a");
+    verify(executor, never()).execute(claim);
   }
 
   private static StorageOperationMaintenanceScheduler scheduler(MaintenanceCoordinatorService coordinator,

@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.storage.entity;
 
 import java.time.Instant;
+import java.util.Objects;
 
 import br.com.rinos.app.backend.module.storage.component.TenantPhysicalIdentifierConverter;
 import br.com.rinos.app.backend.module.storage.enums.TenantStorageState;
@@ -81,4 +82,28 @@ public class TenantStorageRegistryEntity {
   public long getVersion() { return version; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  /**
+   * Atualiza o estado estrutural após validação da máquina de estados pelo serviço coordenador.
+   *
+   * @param state novo estado estrutural válido
+   */
+  public void changeState(TenantStorageState state) {
+    this.storageState = Objects.requireNonNull(state, "state must not be null");
+  }
+
+  /**
+   * Registra a única versão que foi comprovada no schema antes de o tenant ficar pronto.
+   *
+   * @param version versão estrutural observada
+   * @param validatedAt instante UTC da validação
+   */
+  public void confirmValidatedVersion(String version, Instant validatedAt) {
+    if (version == null || version.isBlank()) {
+      throw new IllegalArgumentException("version must not be blank");
+    }
+    this.observedVersion = version;
+    this.lastValidatedAt = Objects.requireNonNull(validatedAt, "validatedAt must not be null");
+    this.quarantineReasonCode = null;
+  }
 }

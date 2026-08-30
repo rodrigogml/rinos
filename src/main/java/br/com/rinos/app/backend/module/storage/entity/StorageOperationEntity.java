@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.storage.entity;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -128,5 +129,44 @@ public class StorageOperationEntity {
     this.leaseOwner = owner;
     this.leaseUntil = until;
     this.attemptCount++;
+  }
+
+  /**
+   * Informa se a posse ainda pertence à instância e não expirou no instante avaliado.
+   *
+   * @param owner identidade da instância que pretende confirmar uma etapa
+   * @param now instante UTC da confirmação
+   * @return {@code true} quando a operação ainda está sob a posse informada
+   */
+  public boolean hasActiveLease(String owner, Instant now) {
+    return owner != null && owner.equals(leaseOwner) && leaseUntil != null && leaseUntil.isAfter(now);
+  }
+
+  /**
+   * Marca o começo observável da execução física já reclamada.
+   *
+   * @param now instante UTC do início
+   */
+  public void start(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
+    this.operationState = StorageOperationState.RUNNING;
+    if (startedAt == null) {
+      this.startedAt = now;
+    }
+  }
+
+  /**
+   * Encerra a operação depois da comprovação estrutural e libera sua exclusividade no tenant.
+   *
+   * @param now instante UTC da conclusão
+   */
+  public void complete(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
+    this.operationState = StorageOperationState.COMPLETED;
+    this.activeMarker = null;
+    this.leaseOwner = null;
+    this.leaseUntil = null;
+    this.nextAttemptAt = null;
+    this.finishedAt = now;
   }
 }

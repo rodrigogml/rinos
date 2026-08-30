@@ -1,6 +1,7 @@
 package br.com.rinos.app.backend.module.storage.entity;
 
 import java.time.Instant;
+import java.util.Objects;
 
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationStepState;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationStepType;
@@ -81,4 +82,30 @@ public class StorageOperationStepEntity {
   public long getVersion() { return version; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  /**
+   * Registra o início de uma tentativa observável da etapa.
+   *
+   * @param now instante UTC do início
+   */
+  public void start(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
+    this.stepState = StorageOperationStepState.RUNNING;
+    this.attemptNumber++;
+    this.startedAt = now;
+    this.completedAt = null;
+    this.safeFailureCode = null;
+  }
+
+  /**
+   * Confirma que o efeito físico da etapa foi observado com sucesso.
+   *
+   * @param now instante UTC da confirmação
+   */
+  public void complete(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
+    this.stepState = StorageOperationStepState.COMPLETED;
+    this.completedAt = now;
+    this.safeFailureCode = null;
+  }
 }

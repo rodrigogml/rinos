@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,16 @@ import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
 
 /** Acessa a fila de operações estruturais preservando a chave de idempotência de origem. */
 public interface StorageOperationRepository extends JpaRepository<StorageOperationEntity, Long> {
+
+  /**
+   * Reabre a operação sob lock do global antes de confirmar qualquer etapa de efeito físico.
+   *
+   * @param publicId protocolo público da operação
+   * @return operação bloqueada até o fim da transação chamadora, quando existente
+   */
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT operation FROM StorageOperationEntity operation WHERE operation.publicId = :publicId")
+  Optional<StorageOperationEntity> findByPublicIdForUpdate(@Param("publicId") UUID publicId);
 
   Optional<StorageOperationEntity> findByTenantStorageRegistryIdAndOperationTypeAndIdempotencyReference(
       Long tenantStorageRegistryId, StorageOperationType operationType, UUID idempotencyReference);

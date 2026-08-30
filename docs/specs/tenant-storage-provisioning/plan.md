@@ -115,6 +115,13 @@ o datasource funcional. A projeção do criador reduz a resposta interna aos qua
 - Reserva de registry/operação/etapas, transições e auditoria usam transações do global e optimistic locking.
 - `CREATE DATABASE`, DDL do init e updates não fazem parte de transação distribuída. Cada efeito recebe etapa
   durável antes/depois e é observado antes de nova tentativa.
+- O worker confirma separadamente `RESERVE`, preparação de `CREATE_SCHEMA`/`INITIALIZE`/`VERIFY_VERSION`, a
+  observação física e `VALIDATE_READINESS`. O claim é confirmado antes de qualquer DDL; o efeito físico executa fora
+  da transação global e somente é promovido quando uma nova transação relê a operação sob lock e comprova o mesmo
+  `leaseOwner` ainda vigente.
+- Após perda de resposta, a retomada nunca deriva outro identificador nem reaplica o catálogo de init a um schema já
+  existente. Ela usa o lock nomeado da RFW para observar schema e versão; uma estrutura parcial não é mascarada por
+  nova execução e segue para a classificação segura de falha da fila.
 - A fila mantém `leaseOwner`/`leaseUntil`; uma instância não confirma etapa se perdeu seu claim.
 - O updater RFW acrescenta lock nomeado no `DataSource` físico. Falha ao ler registry, versão, catálogo ou lock bloqueia
   o tenant; nenhum cache amplia prontidão.

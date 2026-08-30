@@ -15,6 +15,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
 import br.com.rinos.app.backend.module.storage.vo.TenantSchemaInitializationResultVO;
+import br.eng.rodrigogml.rfw.database.config.DatabaseUpdatePropertiesConfig;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
 
@@ -37,6 +38,8 @@ public class TenantSchemaInitializer {
   private final TenantDataSourceFactory tenantDataSourceFactory;
   private final TenantSchemaInitScriptComponent initScripts;
   private final TenantDatabaseStructureVerifier structureVerifier;
+  private final TenantStorageNamedLockComponent namedLock;
+  private final DatabaseUpdatePropertiesConfig databaseUpdateProperties;
 
   /**
    * Cria o inicializador com as únicas fronteiras permitidas para criação e validação.
@@ -45,14 +48,20 @@ public class TenantSchemaInitializer {
    * @param tenantDataSourceFactory factory que deriva somente datasources de tenant válidos
    * @param initScripts executor exclusivo do catálogo {@code db/tenant/init}
    * @param structureVerifier validador da versão e baseline após o init ou uma retomada
+   * @param namedLock serializador cross-instance do schema físico do tenant
+   * @param databaseUpdateProperties propriedade RFW que define o prazo de espera do lock
    */
   public TenantSchemaInitializer(DataSource globalDataSource, TenantDataSourceFactory tenantDataSourceFactory,
-      TenantSchemaInitScriptComponent initScripts, TenantDatabaseStructureVerifier structureVerifier) {
+      TenantSchemaInitScriptComponent initScripts, TenantDatabaseStructureVerifier structureVerifier,
+      TenantStorageNamedLockComponent namedLock, DatabaseUpdatePropertiesConfig databaseUpdateProperties) {
     this.globalDataSource = Objects.requireNonNull(globalDataSource, "globalDataSource must not be null");
     this.tenantDataSourceFactory = Objects.requireNonNull(tenantDataSourceFactory,
         "tenantDataSourceFactory must not be null");
     this.initScripts = Objects.requireNonNull(initScripts, "initScripts must not be null");
     this.structureVerifier = Objects.requireNonNull(structureVerifier, "structureVerifier must not be null");
+    this.namedLock = Objects.requireNonNull(namedLock, "namedLock must not be null");
+    this.databaseUpdateProperties = Objects.requireNonNull(databaseUpdateProperties,
+        "databaseUpdateProperties must not be null");
   }
 
   /**
@@ -71,10 +80,12 @@ public class TenantSchemaInitializer {
     }
     boolean createdNow = createSchemaIfAbsent(physicalIdentifier);
     try (HikariDataSource tenantDataSource = tenantDataSourceFactory.create(physicalIdentifier)) {
-      if (createdNow) {
-        initScripts.execute(tenantDataSource);
-      }
-      structureVerifier.verify(tenantDataSource, expectedVersion, List.of());
+      namedLock.executeExclusive(tenantDataSource, databaseUpdateProperties.getLockTimeout(), () -> {
+        if (createdNow) {
+          initScripts.execute(tenantDataSource);
+        }
+        structureVerifier.verify(tenantDataSource, expectedVersion, List.of());
+      });
       return new TenantSchemaInitializationResultVO(createdNow);
     }
   }

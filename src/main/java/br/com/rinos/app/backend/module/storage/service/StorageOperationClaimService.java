@@ -55,7 +55,7 @@ public class StorageOperationClaimService {
       Instant leaseUntil = now.plus(properties.operationLease());
       operation.claim(instanceId, leaseUntil);
       return new StorageOperationClaimVO(operation.getPublicId(), operation.getTenantStorageRegistryId(),
-          operation.getOperationType(), leaseUntil);
+          operation.getOperationType(), instanceId, leaseUntil);
     });
   }
 }
