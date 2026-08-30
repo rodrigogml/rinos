@@ -139,6 +139,24 @@ class AuthorizationGateProviderTest {
         });
   }
 
+  @Test
+  void assurance_shouldDenySensitiveProvisioningAdministrationWithoutStrongFactor() {
+    DefaultAuthorizationAssuranceGateProvider provider =
+        new DefaultAuthorizationAssuranceGateProvider();
+    AuthorizationRequest request = new AuthorizationRequest(
+        AuthorizationActor.human(11L), null, AuthorizationContext.global(),
+        "global.platform.provisioning.deactivate",
+        Set.of(InitialModuleAccessKeys.GLOBAL_PLATFORM_PROVISIONING_MANAGE),
+        new AuthenticationAssurance(AuthenticationAssuranceEnum.SINGLE_FACTOR,
+            Set.of(AuthenticationMethodEnum.PASSWORD), Instant.now(), Instant.now()),
+        true, AuthorizationExplanationMode.NONE);
+
+    assertThat(provider.evaluate(request)).singleElement().satisfies(gate -> {
+      assertThat(gate.allowed()).isFalse();
+      assertThat(gate.safeReasonCode()).isEqualTo("ACL_ASSURANCE_REQUIRED");
+    });
+  }
+
   private static AuthorizationRequest tenantRequest(AccessKeyDescriptor key) {
     Instant now = Instant.now();
     return new AuthorizationRequest(

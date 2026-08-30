@@ -77,12 +77,16 @@ account outbox dispatcher
 4. Sucesso atualiza `observedVersion` e retorna a `READY`; falha não é repetida e coloca somente aquele tenant em
    `QUARANTINED`.
 
-### Retomada e desativação
+### Retomada, reconciliação e desativação
 
 Após queda, lease vencido permite claim novo; o worker observa primeiro schema, versão e evidências persistidas.
-Provisionamento transitório retoma até o limite; estados definitivos exigem infraestrutura. Desativação é uma operação
-global autorizada e idempotente, posterior às políticas de retenção: ela impede acesso e preserva o identificador; não
-há comando de backup, restauração, rollback ou repetição de migration na UI.
+Provisionamento transitório retoma até o limite; estados definitivos exigem infraestrutura. A reconciliação
+administrativa é uma leitura autorizada e auditada: compara o registro e o inventário filtrado, mas não adota,
+remove ou promove estrutura. A solicitação de desativação é global, idempotente e exige a chave canônica
+`global.platform.provisioning.manage`, reautenticação recente e TOTP ou passkey. Ela move o registro para
+`DEACTIVATING`, bloqueando seu uso e preservando o identificador; não cria backup, não exclui schema ou dados e não
+declara o tenant `INACTIVE`. A liberação física posterior depende das políticas de retenção e da execução externa de
+`tenant-data-governance`.
 
 Antes de qualquer reconciliação autorizada, uma inspeção somente de leitura compara o inventário físico filtrado pelo
 formato interno com o registro global e consulta leases vencidos. Ela informa registros sem schema, a quantidade de
@@ -143,8 +147,9 @@ o datasource funcional. A projeção do criador reduz a resposta interna aos qua
 - O nome físico deriva somente de valor interno allowlisted; jamais de rota, formulário, evento ou payload.
 - O `DataSource` de tenant usa a única credencial declarada no properties; logs e VOs censuram senha, URL, host, SQL e
   identificador físico.
-- Ações automáticas usam origem sistêmica explícita. Consulta, reconciliação e desativação exigem contexto global,
-  chave canônica e, quando sensível, reautenticação e 2FA.
+- Ações automáticas usam origem sistêmica explícita. Reconciliação e desativação administrativas usam contexto
+  humano global, chave canônica, reautenticação recente e TOTP ou passkey; falha da decisão canônica nega antes de
+  alcançar serviços de armazenamento.
 - Prontidão não é autorização: identidade, associação, regra/bloqueio e entitlement continuam obrigatórios.
 
 ## Observabilidade

@@ -11,15 +11,15 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.rinos.app.api.module.storage.enums.TenantStorageDivergenceTypeEnum;
+import br.com.rinos.app.api.module.storage.vo.TenantStorageDivergenceVO;
+import br.com.rinos.app.api.module.storage.vo.TenantStorageReconciliationSnapshotVO;
 import br.com.rinos.app.backend.module.storage.component.TenantPhysicalSchemaInventoryService;
 import br.com.rinos.app.backend.module.storage.entity.StorageOperationEntity;
 import br.com.rinos.app.backend.module.storage.entity.TenantStorageRegistryEntity;
-import br.com.rinos.app.backend.module.storage.enums.TenantStorageDivergenceType;
 import br.com.rinos.app.backend.module.storage.repository.StorageOperationRepository;
 import br.com.rinos.app.backend.module.storage.repository.TenantStorageRegistryRepository;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
-import br.com.rinos.app.backend.module.storage.vo.TenantStorageDivergenceVO;
-import br.com.rinos.app.backend.module.storage.vo.TenantStorageReconciliationSnapshotVO;
 
 /**
  * Detecta divergências físicas sem alterar registry, operações, schemas ou estados de tenant.
@@ -77,12 +77,12 @@ public class TenantStorageReconciliationInspectionService {
       registeredIdentifiers.add(registry.getPhysicalIdentifier());
       if (!physicalIdentifiers.contains(registry.getPhysicalIdentifier())) {
         divergences.add(new TenantStorageDivergenceVO(registry.getId(),
-            TenantStorageDivergenceType.REGISTRY_SCHEMA_MISSING));
+            TenantStorageDivergenceTypeEnum.REGISTRY_SCHEMA_MISSING));
       }
     }
     for (StorageOperationEntity operation : operationRepository.findAllStalledForReconciliation(now)) {
       divergences.add(new TenantStorageDivergenceVO(operation.getTenantStorageRegistryId(),
-          TenantStorageDivergenceType.OPERATION_WITHOUT_PROGRESS));
+          TenantStorageDivergenceTypeEnum.OPERATION_WITHOUT_PROGRESS));
     }
     int unregisteredSchemaCount = (int) physicalIdentifiers.stream()
         .filter(identifier -> !registeredIdentifiers.contains(identifier))

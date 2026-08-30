@@ -1,4 +1,4 @@
-package br.com.rinos.app.backend.module.storage.vo;
+package br.com.rinos.app.api.module.storage.vo;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,7 +8,7 @@ import java.util.Objects;
  * Fotografia exclusivamente diagnóstica da reconciliação física de tenants.
  *
  * @param divergences registros globais com divergência detectada
- * @param unregisteredSchemaCount quantidade de schemas do padrão interno sem registro global correspondente
+ * @param unregisteredSchemaCount quantidade de schemas internos sem registro global correspondente
  * @param observedAt instante UTC da leitura
  * @author Rodrigo Leitão
  * @since 2026-08-30

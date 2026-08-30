@@ -110,6 +110,8 @@ storage_tenantRegistry 1 -- N storage_stateTransition
    classificação permite.
 3. `READY` exige versão esperada observada, validação concluída e nenhuma operação ativa.
 4. `FAILED`/`QUARANTINED` impedem contextos e ativação; não são alterados manualmente para `READY`.
-5. Cancelamento da conta não altera estado físico automaticamente; desativação depende de operação própria,
-   autorização global e confirmação das políticas externas.
+5. Cancelamento da conta não altera estado físico automaticamente. A solicitação administrativa autorizada move o
+   registro para `DEACTIVATING` de forma idempotente e auditada, sem apagar ou reutilizar o identificador; a
+   transição posterior para `INACTIVE` e qualquer destinação física dependem de política de retenção e execução
+   externa.
 6. Nenhuma tabela global referencia tabelas do schema tenant.

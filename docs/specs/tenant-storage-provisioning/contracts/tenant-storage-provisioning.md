@@ -87,3 +87,29 @@ tenant pronto.
 `TENANT_STORAGE_OPERATION_CONFLICT`, `TENANT_STORAGE_REQUIRES_INFRASTRUCTURE`,
 `TENANT_STORAGE_ACCESS_DENIED` e `TENANT_STORAGE_INPUT_INVALID` são códigos iniciais. Erros RFW/MySQL são convertidos
 e registrados internamente; não são propagados como conteúdo da resposta.
+
+## Administração global de reconciliação e desativação
+
+```java
+interface TenantStorageAdministrationFacade {
+  TenantStorageReconciliationSnapshotVO reconcile(
+      TenantStorageAdministrationInvocationContext context);
+  TenantStorageDeactivationResultVO requestDeactivation(
+      TenantStorageAdministrationInvocationContext context, UUID tenantPublicId);
+}
+```
+
+`TenantStorageAdministrationInvocationContext` é derivado pelo adaptador autenticado, contém somente o contexto
+global humano, a garantia atual da sessão, correlação e instante. A fachada usa a operação canônica
+`global.platform.provisioning.manage` com `sensitive=true`; por isso uma regra/bloqueio, a ausência de permissão, uma
+sessão inválida, uma reautenticação vencida ou a ausência de TOTP/passkey negam a ação antes de qualquer leitura ou
+mudança de storage. O papel do ator não participa dessa decisão.
+
+`reconcile` executa exclusivamente a inspeção já descrita e grava `TENANT_STORAGE_RECONCILIATION_INSPECTED`. Não há
+adoção de schema órfão, correção de registry, retry, DDL ou promoção manual para pronto.
+
+`requestDeactivation` é idempotente pelo estado: a primeira solicitação válida muda o registro para
+`DEACTIVATING`; repetições retornam `ALREADY_DEACTIVATING` e um registro já inativo retorna `ALREADY_INACTIVE`.
+Enquanto a governança de retenção não concluir uma destinação autorizada, não existe exclusão de dados, schema ou
+identificador físico. Cada tentativa autorizada produz auditoria sanitizada, sem revelar schema, host, URL,
+credenciais, SQL ou detalhes de retenção.

@@ -20,11 +20,11 @@ import br.com.rinos.app.backend.module.storage.component.TenantPhysicalSchemaInv
 import br.com.rinos.app.backend.module.storage.entity.StorageOperationEntity;
 import br.com.rinos.app.backend.module.storage.entity.TenantStorageRegistryEntity;
 import br.com.rinos.app.backend.module.storage.enums.StorageOperationType;
-import br.com.rinos.app.backend.module.storage.enums.TenantStorageDivergenceType;
+import br.com.rinos.app.api.module.storage.enums.TenantStorageDivergenceTypeEnum;
+import br.com.rinos.app.api.module.storage.vo.TenantStorageReconciliationSnapshotVO;
 import br.com.rinos.app.backend.module.storage.repository.StorageOperationRepository;
 import br.com.rinos.app.backend.module.storage.repository.TenantStorageRegistryRepository;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
-import br.com.rinos.app.backend.module.storage.vo.TenantStorageReconciliationSnapshotVO;
 
 class TenantStorageReconciliationInspectionServiceTest {
 
@@ -52,8 +52,8 @@ class TenantStorageReconciliationInspectionServiceTest {
     assertThat(result.divergences()).extracting(divergence -> divergence.tenantStorageRegistryId())
         .containsExactlyInAnyOrder(7L, 8L);
     assertThat(result.divergences()).extracting(divergence -> divergence.type())
-        .containsExactlyInAnyOrder(TenantStorageDivergenceType.REGISTRY_SCHEMA_MISSING,
-            TenantStorageDivergenceType.OPERATION_WITHOUT_PROGRESS);
+        .containsExactlyInAnyOrder(TenantStorageDivergenceTypeEnum.REGISTRY_SCHEMA_MISSING,
+            TenantStorageDivergenceTypeEnum.OPERATION_WITHOUT_PROGRESS);
     verify(registries, never()).save(any());
     verify(operations, never()).save(any());
   }

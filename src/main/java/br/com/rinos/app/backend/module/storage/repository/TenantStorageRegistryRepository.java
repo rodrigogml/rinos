@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import br.com.rinos.app.backend.module.storage.entity.TenantStorageRegistryEntity;
 import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
@@ -14,6 +15,16 @@ public interface TenantStorageRegistryRepository
     extends JpaRepository<TenantStorageRegistryEntity, Long> {
 
   Optional<TenantStorageRegistryEntity> findByTenantId(Long tenantId);
+
+  /**
+   * Obtém o registro do tenant sob lock para uma única decisão de desativação lógica.
+   *
+   * @param tenantId chave interna do tenant global
+   * @return registro bloqueado até o encerramento da transação, quando existente
+   */
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT registry FROM TenantStorageRegistryEntity registry WHERE registry.tenantId = :tenantId")
+  Optional<TenantStorageRegistryEntity> findByTenantIdForUpdate(@Param("tenantId") Long tenantId);
 
   Optional<TenantStorageRegistryEntity> findByPhysicalIdentifier(
       TenantPhysicalIdentifier physicalIdentifier);
