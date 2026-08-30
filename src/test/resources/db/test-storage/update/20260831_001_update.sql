@@ -1,0 +1,9 @@
+CREATE TABLE testStorageSecond (
+  id BIGINT NOT NULL,
+  CONSTRAINT pk_test_storage_second PRIMARY KEY (id)
+) ENGINE = InnoDB;
+
+CREATE OR REPLACE
+SQL SECURITY INVOKER
+VIEW databaseVersion AS
+SELECT '20260831001' AS version;

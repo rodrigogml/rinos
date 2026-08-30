@@ -98,6 +98,18 @@ lease de manutenção da plataforma e não constitui bloqueio geral das operaç�
 O global e o modelo de tenant possuem marcos `databaseVersion` independentes. Todos os tenants devem convergir para a
 mesma versão estrutural esperada pelo código, mas cada banco mantém seu próprio histórico de aplicação.
 
+O `init` de cada tenant também cria `core_tenantBootstrap` com a chave técnica imutável
+`tenant.schema.baseline`. Seu valor registra a versão do catálogo que originou o schema e não é uma configuração de
+negócio ou de instalação. Na validação de prontidão, o Rinos compara esse baseline, a view `databaseVersion`, o
+catálogo distribuído e as evidências de migrations posteriores. Script desconhecido, hash divergente, lacuna posterior
+ao baseline, versão ausente ou versão diferente da esperada bloqueiam somente o tenant afetado.
+
+> [!IMPORTANT]
+> O hash de cada update é calculado sobre o conteúdo UTF-8 distribuído e confrontado com a evidência histórica global.
+> O baseline representa um init completo, portanto não simula que os updates anteriores foram executados um a um.
+> Migrations posteriores ao baseline devem possuir evidência contínua e íntegra para que o tenant possa voltar a
+> `READY`.
+
 Os nomes de updates são ordenáveis e imutáveis depois de distribuídos. Um ajuste estrutural deve:
 
 1. atualizar o catálogo `init` correspondente para que novos bancos já nasçam no estado final;

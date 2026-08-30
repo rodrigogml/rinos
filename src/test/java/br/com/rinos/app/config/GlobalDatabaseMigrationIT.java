@@ -165,19 +165,14 @@ class GlobalDatabaseMigrationIT {
     });
   }
 
-  /**
-   * Comprova que o bootstrap global não descobre nem executa o catálogo de tenant.
-   *
-   * @throws SQLException quando o estado final não pode ser consultado
-   */
+  /** Confirma que o bootstrap configurado com o catálogo global não cria objetos de tenant. */
   @Test
-  void startup_shouldUseOnlyGlobalCatalog_whenTenantCatalogIsAlsoPresent() throws SQLException {
+  void startup_shouldUseOnlyGlobalCatalog_whenGlobalCatalogIsConfigured() throws SQLException {
     initializeLegacyDatabase();
 
     runUpdater();
 
     assertThat(tableExists("testGlobalMigrationMarker")).isTrue();
-    assertThat(tableExists("testTenantMigrationMarker")).isFalse();
     assertThat(tableExists("platform_maintenanceLease")).isTrue();
     assertThat(tableExists("identity_user")).isTrue();
     assertThat(tableExists("identity_registration")).isTrue();

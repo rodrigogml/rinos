@@ -47,10 +47,10 @@ Ref: [data-model.md](./data-model.md) §`storage_*`; Spec FR-TSP-ID-001..008, ST
 
 Ref: [docs/architecture/database-scripts.md](../../architecture/database-scripts.md); [plan.md](./plan.md) §Fluxos Estruturais; Spec FR-TSP-PROV-003..005 e MIG-001..005.
 
-- [ ] 1.3.1 Criar a estrutura inicial mínima em `db/tenant/init/`, com marcador de versão e dados técnicos estáveis requeridos para um tenant vazio.
-- [ ] 1.3.2 Configurar o resolvedor de locations de tenant para entregar exclusivamente `db/tenant/update/` ao RFW, nunca locations global ou init durante update.
-- [ ] 1.3.3 Implementar a verificação de versão, checksum e lacunas para bloquear tenant ausente, adulterado, desconhecido ou incompatível.
-- [ ] 1.3.4 Validar criação do zero e caminho equivalente de updates contra MySQL controlado, sem modificar schema de produção.
+- [x] 1.3.1 Criar a estrutura inicial mínima em `db/tenant/init/`, com marcador de versão e dados técnicos estáveis requeridos para um tenant vazio.
+- [x] 1.3.2 Configurar o resolvedor de locations de tenant para entregar exclusivamente `db/tenant/update/` ao RFW, nunca locations global ou init durante update.
+- [x] 1.3.3 Implementar a verificação de versão, checksum e lacunas para bloquear tenant ausente, adulterado, desconhecido ou incompatível.
+- [x] 1.3.4 Validar criação do zero e caminho equivalente de updates contra MySQL controlado, sem modificar schema de produção.
 
 ---
 
