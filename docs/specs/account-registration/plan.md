@@ -20,7 +20,10 @@ UI/API adapter
   -> AccountCreationStatusFacade
 
 AccountProvisioningOutboxDispatcher
+  -> reclama lease FIFO sob liderança de manutenção comprovada
+  -> reconstrói conta + tenant + intenção pelo global, sem confiar no JSON da outbox
   -> TenantProvisioningRequestPort
+  -> confirma somente o checkpoint STORAGE como PENDING/PROCESSING/FAILED
   -> confirmações posteriores da saga
 ```
 
@@ -49,7 +52,14 @@ AccountProvisioningOutboxDispatcher
 
 - Nenhum registro é criado antes da prova obrigatória e das validações.
 - Conta, tenant, intenção, auditoria e outbox confirmam ou revertem juntos.
-- Falha de publicação não remove a outbox; backoff e retomada são persistidos.
+- Falha de publicação não remove a outbox; backoff e retomada são persistidos. O despachante
+  reclama a linha em transação curta, chama o port fora do lock e relê o mesmo lease antes de
+  confirmar o resultado. Resposta perdida é repetida com o mesmo protocolo.
+- A aceitação de `TenantProvisioningRequestPort` publica a outbox e deixa `STORAGE` em
+  `PROCESSING`, com referência opaca da operação. Não prova schema pronto, não marca checkpoint
+  como `COMPLETED` e não altera conta `CREATING` nem tenant `RESERVED`.
+- `REJECTED` encerra a outbox e marca apenas o checkpoint `STORAGE` como `FAILED`; `UNAVAILABLE`,
+  referência inválida ou falha de chamada devolvem ambos à nova tentativa exponencial limitada.
 - Payload conflitante nunca revela outra conta além da associada ao próprio criador.
 - Indisponibilidade interna resulta em status seguro e nenhum sucesso artificial.
 
@@ -64,6 +74,8 @@ AccountProvisioningOutboxDispatcher
 
 Métricas separadas: aceitação, idempotent replay, conflito, rejeição antiabuso, outbox pendente, tentativas, idade do
 evento mais antigo e tempo até cada etapa. Correlação usa protocolo público; payload e prova permanecem redigidos.
+O payload da outbox é deliberadamente vazio e não autoritativo; o agregado interno e a intenção
+persistida são a única fonte para a reconstrução do pedido.
 
 ## Entrega incremental
 

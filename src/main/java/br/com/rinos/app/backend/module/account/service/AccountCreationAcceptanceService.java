@@ -195,10 +195,9 @@ public class AccountCreationAcceptanceService {
         correlationId,
         "ACCEPTED",
         occurredAt));
-    String payload = "{\"accountId\":" + account.getId() + ",\"tenantId\":" + tenant.getId()
-        + ",\"protocolId\":\"" + protocol + "\"}";
     outbox.saveAndFlush(new AccountOutboxEventEntity(
-        UUID.randomUUID(), account.getId(), "ACCOUNT_PROVISIONING_REQUESTED", payload));
+        UUID.randomUUID(), account.getId(),
+        AccountOutboxEventEntity.PROVISIONING_REQUESTED_EVENT_TYPE, "{}"));
     return new AccountCreationResult(
         AccountCreationResultStatus.ACCEPTED,
         protocol,

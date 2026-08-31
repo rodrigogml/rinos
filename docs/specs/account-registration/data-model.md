@@ -59,6 +59,10 @@ próximo instante, versão e timestamps. Unique `(idAccount, stepType)`.
 |---|---|
 | UUID do evento | único, imutável |
 | aggregate type/id | somente conta/intento interno |
+| payload | JSON válido não autoritativo; o dispatcher nunca o usa para reconstruir IDs, protocolo ou fundador |
+| lease | `leaseOwner` e `leaseUntil` são gravados juntos; a confirmação exige o mesmo owner e lease ainda vigente |
+| confirmação | `PUBLISHED` somente após `TenantProvisioningRequestPort` aceitar a intenção durável; não significa storage pronto |
+| indisponibilidade | volta a `PENDING` com `nextAttemptAt` exponencialmente limitado; `FAILED` é reservado para rejeição terminal |
 | event type | enum fechado |
 | payload JSON | identificadores e versão; sem token/IP/prova |
 | status | `PENDING`, `PROCESSING`, `PUBLISHED`, `FAILED` |
@@ -86,6 +90,8 @@ cópia desse endereço. A limpeza coordenada pela plataforma remove janelas expi
 4. A criação inicial confirma conta, tenant, intenção, auditoria e outbox conjuntamente.
 5. Apenas transições declaradas no serviço são aceitas; checks de banco protegem o vocabulário.
 6. Foreign keys globais usam `RESTRICT`; limpeza e retenção são processos explícitos.
+7. O primeiro dispatch de storage apenas move seu checkpoint para `PROCESSING`; somente a fase de
+   ativação poderá concluir os quatro checkpoints e promover conta/tenant.
 
 ## Índices
 

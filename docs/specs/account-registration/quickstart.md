@@ -34,10 +34,14 @@ confirmação da existência.
 Token Turnstile ausente/inválido, identidade inativa, garantia antiga ou entrada inválida não criam tenant, conta,
 intenção, auditoria de sucesso nem outbox.
 
-## 6. Consumidor indisponível
+## 6. Entrega de storage e consumidor indisponível
 
-Se `tenant-storage-provisioning` ainda não estiver conectado, a conta permanece `CREATING` e a outbox `PENDING`. O
-sistema não marca a conta ativa e pode retomar o evento quando o adapter existir.
+Depois do commit, somente a instância eleita para manutenção reclama a outbox e reconstrói o pedido
+pelo global. Se `tenant-storage-provisioning` aceitar a intenção, a outbox fica `PUBLISHED` e o
+checkpoint `STORAGE` fica `PROCESSING` com a referência opaca da operação; conta continua
+`CREATING` e tenant continua `RESERVED`. Se o consumidor estiver indisponível, outbox e checkpoint
+voltam a `PENDING` no próximo instante de backoff. Em ambos os casos, nenhum payload JSON da outbox
+é usado como fonte de identidades.
 
 ## 7. Verificação MySQL
 

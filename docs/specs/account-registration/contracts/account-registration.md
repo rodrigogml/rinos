@@ -80,6 +80,13 @@ fundador e correlação — e devolvem `AccountBootstrapResult`. Os estados `ACC
 `UNAVAILABLE` carregam referência opaca e preservam a idempotência da saga. Cada módulo traduz internamente o estado
 genérico para o seu checkpoint, sem expor tipos de transporte incompatíveis entre account e storage.
 
+O despachante durável de conta reclama sua outbox por lease sob a liderança global de manutenção,
+reconstrói esse request pelas entidades globais de conta, tenant e intenção e chama a porta fora do
+lock. O JSON da outbox não é fonte de identidades nem do protocolo. `ACCEPTED` e
+`ALREADY_COMPLETED` somente deixam `STORAGE` em `PROCESSING` e publicam o evento; `REJECTED` marca
+a etapa como `FAILED`; `UNAVAILABLE` mantém nova tentativa. Nenhum desses resultados ativa a conta
+ou anuncia prontidão de storage.
+
 ## Porta publicada
 
 ```java
