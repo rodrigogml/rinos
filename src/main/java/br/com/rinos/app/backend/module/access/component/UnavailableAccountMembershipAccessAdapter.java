@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessPort;
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessSnapshot;
+import br.com.rinos.app.backend.module.access.service.FoundingMembershipAccessSnapshot;
 
 /** Adapter fail-safe removido automaticamente quando membership publicar a implementação real. */
 @Component
@@ -14,5 +15,10 @@ public class UnavailableAccountMembershipAccessAdapter implements AccountMembers
   @Override
   public AccountMembershipAccessSnapshot inspect(long membershipId) {
     return AccountMembershipAccessSnapshot.unavailable();
+  }
+
+  @Override
+  public FoundingMembershipAccessSnapshot inspectFounder(long accountId, long founderUserId) {
+    return FoundingMembershipAccessSnapshot.unavailable();
   }
 }

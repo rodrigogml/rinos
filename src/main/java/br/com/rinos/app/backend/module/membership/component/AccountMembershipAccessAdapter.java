@@ -19,4 +19,13 @@ public class AccountMembershipAccessAdapter implements AccountMembershipAccessPo
       tenants.findById(account.getTenantId()).map(t->t.getStatus()==TenantStatus.OPERATIONAL).orElse(false)))
     .orElseGet(AccountMembershipAccessSnapshot::absent)).orElseGet(AccountMembershipAccessSnapshot::absent);
  }
+ public FoundingMembershipAccessSnapshot inspectFounder(long accountId,long founderUserId){
+  if(accountId<=0||founderUserId<=0)return FoundingMembershipAccessSnapshot.absent();
+  return memberships.findByAccountIdAndUserIdAndCurrentMarker(accountId,founderUserId,1)
+    .map(membership->accounts.findById(membership.getAccountId())
+      .map(account->FoundingMembershipAccessSnapshot.found(membership.getId(),account.getTenantId(),
+        membership.getStatus()==MembershipStatus.ACTIVE))
+      .orElseGet(FoundingMembershipAccessSnapshot::absent))
+    .orElseGet(FoundingMembershipAccessSnapshot::absent);
+ }
 }

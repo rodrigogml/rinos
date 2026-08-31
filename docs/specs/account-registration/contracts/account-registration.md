@@ -60,20 +60,20 @@ interface TenantProvisioningRequestPort {
 }
 
 interface FoundingMembershipBootstrapPort {
-  FoundingMembershipOutcome ensure(FoundingMembershipRequest request);
+  AccountBootstrapResult bootstrapMembership(AccountBootstrapRequest request);
 }
 
 interface TenantAccessBootstrapPort {
-  TenantAccessBootstrapOutcome ensure(TenantAccessBootstrapRequest request);
+  AccountBootstrapResult bootstrapAccess(AccountBootstrapRequest request);
 }
 
-interface TenantContractBootstrapPort {
-  ContractBootstrapResult ensure(TenantContractBootstrapRequest request);
+interface DefaultPlanAssignmentPort {
+  AccountBootstrapResult assignDefaultPlan(AccountBootstrapRequest request);
 }
 ```
 
-`DefaultPlanAssignmentPort` permanece como adapter transitório para `TenantContractBootstrapPort`. O resultado somente
-é concluído depois de criar/confirmar contrato `TENANT`, atribuição `TENANT/FREE` e ocupação do fundador.
+`DefaultPlanAssignmentPort` adapta internamente o contrato tenant canônico. O resultado somente é concluído depois de
+criar/confirmar contrato `TENANT`, atribuição `TENANT/FREE` e ocupação do fundador.
 
 Todas as portas de bootstrap recebem o mesmo `AccountBootstrapRequest` — protocolo, UUIDs públicos de conta e tenant,
 fundador e correlação — e devolvem `AccountBootstrapResult`. Os estados `ACCEPTED`, `ALREADY_COMPLETED`, `REJECTED` e
@@ -86,6 +86,11 @@ lock. O JSON da outbox não é fonte de identidades nem do protocolo. `ACCEPTED`
 `ALREADY_COMPLETED` somente deixam `STORAGE` em `PROCESSING` e publicam o evento; `REJECTED` marca
 a etapa como `FAILED`; `UNAVAILABLE` mantém nova tentativa. Nenhum desses resultados ativa a conta
 ou anuncia prontidão de storage.
+
+O bootstrap ACL consulta apenas a referência estrutural da associação fundadora, cria ou relê o grupo protegido do
+tenant na versão publicada de baseline e atribui a membership a esse grupo. As permissões continuam sendo regras de
+grupo explícitas e imutáveis para as chaves mínimas da baseline; o papel de administrador da associação não concede
+acesso por si só.
 
 ## Porta publicada
 
