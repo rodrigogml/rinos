@@ -87,6 +87,14 @@ lock. O JSON da outbox não é fonte de identidades nem do protocolo. `ACCEPTED`
 a etapa como `FAILED`; `UNAVAILABLE` mantém nova tentativa. Nenhum desses resultados ativa a conta
 ou anuncia prontidão de storage.
 
+Um coordenador separado, também executado somente sob liderança comprovada, seleciona uma conta
+`CREATING` com a primeira etapa elegível sob lock pessimista e `SKIP LOCKED`. Ele consulta
+`TenantStorageReadinessPort` até que `STORAGE` seja `READY`, depois chama as três portas restantes
+na ordem documentada. `ACCEPTED` e `ALREADY_COMPLETED` somente concluem a etapa quando trazem uma
+referência opaca válida; `UNAVAILABLE` agenda backoff e `REJECTED` registra falha terminal segura.
+O coordenador não altera o estado operacional de conta ou tenant e não anuncia ativação; essa
+transição continua condicionada à validação final dos quatro checkpoints.
+
 O bootstrap ACL consulta apenas a referência estrutural da associação fundadora, cria ou relê o grupo protegido do
 tenant na versão publicada de baseline e atribui a membership a esse grupo. As permissões continuam sendo regras de
 grupo explícitas e imutáveis para as chaves mínimas da baseline; o papel de administrador da associação não concede

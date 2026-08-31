@@ -1,5 +1,6 @@
 package br.com.rinos.app.backend.module.account.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,4 +28,16 @@ public interface AccountProvisioningCheckpointRepository
   Optional<AccountProvisioningCheckpointEntity> findByAccountIdAndStepTypeForUpdate(
       @Param("accountId") Long accountId,
       @Param("stepType") ProvisioningStepType stepType);
+
+  /**
+   * Obtém todas as etapas de uma conta sob lock para avaliar sua ordem sem observar estado parcial.
+   *
+   * @param accountId identificador interno da conta
+   * @return etapas bloqueadas até o final da transação chamadora
+   */
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT checkpoint FROM AccountProvisioningCheckpointEntity checkpoint "
+      + "WHERE checkpoint.accountId = :accountId")
+  List<AccountProvisioningCheckpointEntity> findByAccountIdForUpdate(
+      @Param("accountId") Long accountId);
 }

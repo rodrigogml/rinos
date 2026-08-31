@@ -123,7 +123,7 @@ Ref: [plan.md](./plan.md) §Retomada e desativação; Spec FR-TSP-REC-007..010, 
 Ref: [docs/specs/account-registration/plan.md](../account-registration/plan.md); Spec FR-TSP-STATE-006, PROV-015..017 e BOUND-001..004.
 
 - [x] 4.1.1 Conectar a intenção já persistida de `account-registration` ao provisionamento sem ativar a conta no mesmo passo.
-- [ ] 4.1.2 Coordenar confirmação de storage, associação fundadora, grupo/concessões mínimos e plano padrão, ativando a conta somente depois dos gates respectivos.
+- [~] 4.1.2 Coordenar confirmação de storage, associação fundadora, grupo/concessões mínimos e plano padrão, ativando a conta somente depois dos gates respectivos. <!-- checkpoints coordenados; ativação final permanece em account-registration 4.4 -->
 - [ ] 4.1.3 Integrar seleção/contexto de tenant para negar uso quando readiness não for `READY` e compatível, preservando a separação entre storage, ACL e entitlement.
 - [ ] 4.1.4 Validar saga interrompida, fundador bloqueado, cancelamento em criação e que prontidão física não anuncia ativação prematura.
 

@@ -25,8 +25,8 @@ Legenda: `[ ]` pendente, `[~]` em andamento, `[x]` concluído, `[!]` bloqueado.
 ## FASE 4 — Saga de ativação
 
 - [x] 4.1 Publicar outbox e integrar `tenant-storage-provisioning`.
-- [ ] 4.2 Integrar founding membership e grupo protegido/baseline ACL.
-- [ ] 4.3 Integrar contrato tenant e atribuição do `TENANT/FREE`, confirmando ocupação do fundador como uma de dez.
+- [x] 4.2 Integrar founding membership e grupo protegido/baseline ACL.
+- [x] 4.3 Integrar contrato tenant e atribuição do `TENANT/FREE`, confirmando ocupação do fundador como uma de dez.
 - [ ] 4.4 Ativar somente com quatro checkpoints completos; testar retomada e ordem concorrente.
 
 ## FASE 5 — Manutenção e lifecycle

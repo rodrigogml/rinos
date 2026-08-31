@@ -43,7 +43,15 @@ checkpoint `STORAGE` fica `PROCESSING` com a referência opaca da operação; co
 voltam a `PENDING` no próximo instante de backoff. Em ambos os casos, nenhum payload JSON da outbox
 é usado como fonte de identidades.
 
-## 7. Verificação MySQL
+## 7. Avançar os checkpoints posteriores
+
+Quando o gate de storage observar o tenant em `READY`, a instância de manutenção eleita conclui
+`STORAGE` e chama, uma por vez, a associação fundadora, a baseline ACL protegida e o plano padrão.
+Cada chamada recebe o mesmo protocolo e precisa devolver referência opaca válida. Indisponibilidade
+agenda backoff; rejeição mantém a conta não operacional. Mesmo com as quatro etapas concluídas,
+conta continua `CREATING` e tenant continua `RESERVED` até a tarefa específica de ativação.
+
+## 8. Verificação MySQL
 
 O gate de integração deve comprovar:
 

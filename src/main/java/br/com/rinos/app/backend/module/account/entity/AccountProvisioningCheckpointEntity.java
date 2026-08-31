@@ -145,6 +145,36 @@ public class AccountProvisioningCheckpointEntity {
   }
 
   /**
+   * Mantém uma etapa já aceita em processamento até sua próxima observação segura.
+   *
+   * @param nextAttempt instante UTC da próxima verificação
+   */
+  public void deferProcessing(Instant nextAttempt) {
+    status = ProvisioningCheckpointStatus.PROCESSING;
+    nextAttemptAt = Objects.requireNonNull(nextAttempt, "nextAttempt must not be null");
+  }
+
+  /**
+   * Confirma que a etapa foi integralmente observada como concluída.
+   *
+   * <p>A referência opaca previamente recebida é preservada; uma referência nova somente pode
+   * substituí-la quando for válida para a coluna persistida.
+   *
+   * @param reference referência opaca atualizada, ou {@code null} para manter a existente
+   */
+  public void complete(String reference) {
+    if (reference != null && (reference.isBlank() || reference.length() > 200)) {
+      throw new IllegalArgumentException("checkpoint external reference is invalid");
+    }
+    if (reference != null) {
+      externalReference = reference;
+    }
+    status = ProvisioningCheckpointStatus.COMPLETED;
+    nextAttemptAt = null;
+    failureCode = null;
+  }
+
+  /**
    * Reabre a etapa para a próxima tentativa sem anunciar conclusão.
    *
    * @param nextAttempt instante UTC de elegibilidade futura

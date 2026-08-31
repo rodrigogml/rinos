@@ -51,7 +51,10 @@ Unique: `(creatorUserId, idempotencyKey)`. Mesmo par com hash diferente é confl
 
 Uma linha por conta e etapa conhecida: `STORAGE`, `FOUNDING_MEMBERSHIP`, `ACCESS_BOOTSTRAP`, `DEFAULT_PLAN`.
 Campos: conta, etapa, estado (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), referência externa opaca, tentativa,
-próximo instante, versão e timestamps. Unique `(idAccount, stepType)`.
+próximo instante, versão e timestamps. Unique `(idAccount, stepType)`. A ordem material é fixa:
+`STORAGE`, `FOUNDING_MEMBERSHIP`, `ACCESS_BOOTSTRAP`, `DEFAULT_PLAN`; uma etapa posterior nunca é elegível antes
+da anterior concluir. `STORAGE` é concluída somente pela observação de `TenantStorageReadinessPort` em `READY`,
+depois que a outbox já aceitou a intenção.
 
 ## `account_outboxEvent`
 
@@ -90,8 +93,9 @@ cópia desse endereço. A limpeza coordenada pela plataforma remove janelas expi
 4. A criação inicial confirma conta, tenant, intenção, auditoria e outbox conjuntamente.
 5. Apenas transições declaradas no serviço são aceitas; checks de banco protegem o vocabulário.
 6. Foreign keys globais usam `RESTRICT`; limpeza e retenção são processos explícitos.
-7. O primeiro dispatch de storage apenas move seu checkpoint para `PROCESSING`; somente a fase de
-   ativação poderá concluir os quatro checkpoints e promover conta/tenant.
+7. O primeiro dispatch de storage apenas move seu checkpoint para `PROCESSING`. O coordenador de
+   pré-ativação pode concluir cada um dos quatro checkpoints, mas não altera conta ou tenant;
+   somente a fase de ativação pode promover ambos depois da verificação conjunta.
 
 ## Índices
 
