@@ -8,8 +8,11 @@ Implementar a primeira identidade global do Rinos, independente de tenant, com c
 
 Este plano não inclui autenticação geral de sessões, recuperação de acesso, conteúdo do Painel de Usuário, associação
 a tenants ou permissões. A ativação também consome `PersonalContractBootstrapPort` e somente publica a autenticação
-resultante pelo serviço de sessão do RFW depois de confirmar contrato e atribuição `PERSONAL/FREE`; o cadastro não
-administra catálogo nem direitos. A conclusão redireciona para a rota global autenticada reservada `/user`. A classe
+resultante pelo serviço de sessão do RFW depois de confirmar contrato e atribuição `PERSONAL/FREE`; para a
+identidade fundadora indicada exclusivamente pela política de bootstrap, a jornada fica restrita ao enrollment TOTP
+até sua confirmação. O cadastro não administra catálogo nem direitos, e nunca cria tenant. A conclusão ordinária
+redireciona para a rota global autenticada reservada `/user`; a conclusão fundadora redireciona somente para o
+enrollment TOTP. A classe
 de entrada permanece sem conteúdo, dados ou operações até ser composta pela feature `user-dashboard`.
 
 ## Technical Context

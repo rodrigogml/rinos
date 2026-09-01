@@ -657,3 +657,5 @@ flowchart TD
 - [ ] 8.3 Manter a pendência não ativa quando catálogo ou contrato pessoal estiver indisponível.
 - [ ] 8.4 Executar backfill dos usuários ativos antes de habilitar a invariável obrigatória.
 - [ ] 8.5 Atualizar testes, checklist e evidências sem apagar a evidência histórica de ausência de tenant.
+- [ ] 8.6 Integrar a política exclusiva do fundador ao fluxo de ativação, exigindo confirmação TOTP antes do Painel de Usuário e sem criar tenant, grupo ou privilégio.
+- [ ] 8.7 Validar cadastro local e Google do fundador, falha/abandono de enrollment, sigilo do e-mail configurado e impossibilidade de acessar jornadas autenticadas antes do TOTP.

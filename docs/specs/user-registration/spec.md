@@ -18,6 +18,10 @@ Não inclui autenticação de sessões, implementação da recuperação de aces
 
 - Q: A ativação cria plano pessoal? -> A: Sim. Toda identidade ativa deve possuir exatamente um contrato pessoal e uma atribuição `PERSONAL/FREE`; falha ou indisponibilidade mantém o cadastro não ativado. Isso não cria tenant, conta empresarial, associação, grupo, chave ou permissão.
 
+### Session 2026-09-01
+
+- Q: Como tratar o fator forte do fundador administrativo inicial sem confundir identidade global e tenant? -> A: O usuário cujo e-mail normalizado corresponde ao fundador configurado em `application.properties` deve concluir enrollment e confirmação de TOTP durante o fluxo de criação da sua identidade global. A criação da identidade não cria nem pressupõe tenant; criar tenant é fluxo posterior, separado e opcional.
+
 ### Session 2026-07-17
 
 - Q: Como reconhecer solicitações pertencentes ao mesmo cadastro pendente? -> A: Todas as solicitações com o mesmo e-mail normalizado convergem para o mesmo cadastro enquanto ele estiver pendente.
@@ -178,6 +182,8 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **FR-REG-019**: A ativação DEVE ser segura contra repetições: apresentar a mesma comprovação novamente não pode criar outro usuário nem repetir efeitos posteriores.
 - **FR-REG-020**: A ativação DEVE encerrar com identidade ativa, contrato pessoal único e atribuição `PERSONAL/FREE`, sem criar tenant, empresa, associação, grupo, chave ou permissão; o plano pessoal não concede acesso por si próprio.
 - **FR-REG-053**: Falha ao criar ou confirmar contrato e atribuição pessoal DEVE impedir a conclusão da ativação, e repetição DEVE reutilizar a mesma intenção sem duplicidade.
+- **FR-REG-054**: Quando o e-mail normalizado da identidade corresponder ao fundador administrativo configurado exclusivamente em `application.properties`, o fluxo de ativação DEVE exigir enrollment e confirmação de TOTP antes de liberar o Painel de Usuário ou qualquer jornada autenticada além da própria confirmação do fator. A regra não cria tenant, grupo, chave, papel nem privilégio administrativo.
+- **FR-REG-055**: A obrigatoriedade de TOTP do fundador DEVE ser determinada por uma porta de política segura, sem expor o e-mail configurado à interface, à auditoria ou a pessoas que tentem cadastrar outro e-mail. Indisponibilidade da política ou do enrollment deve manter somente a jornada restrita de confirmação, sem ativação administrativa implícita.
 
 ### Retomada, Expiração e Cancelamento
 

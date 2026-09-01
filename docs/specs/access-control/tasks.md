@@ -92,7 +92,7 @@ Ref: FR-ACL-CONT-*; SC-ACL-010
 
 Ref: FR-ACL-BOOT-* e AUTHZ-011
 
-- [x] 4.3.1 Implementar bootstrap único pelo e-mail configurado e fator forte.
+- [~] 4.3.1 Implementar bootstrap único pelo e-mail configurado e TOTP confirmado. <!-- bootstrap persistido; falta integrar a obrigatoriedade de enrollment ao cadastro da identidade fundadora -->
 - [x] 4.3.2 Implementar principal sistêmico tipado e auditoria de finalidade.
 - [x] 4.3.3 Testar concorrência, alteração posterior da propriedade e repetição idempotente.
 

@@ -2,7 +2,7 @@
 
 **Feature**: `access-control`
 **Created**: 2026-07-19
-**Last Clarified**: 2026-08-15
+**Last Clarified**: 2026-09-01
 **Status**: ciclo documental consolidado; backlog criado; schema e código não iniciados
 
 ## Escopo
@@ -24,6 +24,10 @@ exatamente a ele.
 
 - Q: Chave global condicionada a plano sempre consulta o plano pessoal? -> A: Não. O requisito declara `PERSONAL` ou `TENANT`; operações administrativas globais sem requisito não consultam o contrato pessoal do ator.
 
+### Session 2026-09-01
+
+- Q: Qual fator forte deve preparar o fundador administrativo inicial? -> A: O usuário definido pelo e-mail exclusivo de bootstrap em `application.properties` conclui TOTP obrigatório ainda no fluxo de criação da sua identidade global. A conclusão desse cadastro não cria tenant; o bootstrap global continua sendo uma etapa posterior, idempotente e separada.
+
 ### Session 2026-07-19
 
 - Q: Usuários podem receber chaves diretamente além de participar de grupos? -> A: Sim; o acesso efetivo combina
@@ -35,7 +39,7 @@ exatamente a ele.
 
 ### Session 2026-07-24
 
-- Q: Como criar o primeiro administrador global sem transformar o primeiro usuário cadastrado em superusuário nem exigir intervenção direta no banco? -> A: Uma definição exclusiva de origem `PROPERTY_FILE` no `application.properties` indicará o e-mail autorizado ao bootstrap, com `admin@rinos.com.br` como padrão de código. O usuário deverá concluir o cadastro normal, confirmar o e-mail e configurar TOTP ou passkey compatível. Somente enquanto o bootstrap nunca tiver sido concluído, o sistema atribuirá atomicamente a identificação de ator e o grupo global protegido, registrará auditoria e gravará marcador permanente; alterações posteriores da propriedade nunca concederão acesso.
+- Q: Como criar o primeiro administrador global sem transformar o primeiro usuário cadastrado em superusuário nem exigir intervenção direta no banco? -> A: Uma definição exclusiva de origem `PROPERTY_FILE` no `application.properties` indicará o e-mail autorizado ao bootstrap, com `admin@rinos.com.br` como padrão de código. O usuário deverá concluir o cadastro normal, confirmar o e-mail e configurar TOTP obrigatório. Somente enquanto o bootstrap nunca tiver sido concluído, o sistema atribuirá atomicamente a identificação de ator e o grupo global protegido, registrará auditoria e gravará marcador permanente; alterações posteriores da propriedade nunca concederão acesso.
 
 ### Session 2026-08-14
 
@@ -354,8 +358,9 @@ rejeição integral da alteração.
   já existir por falha ou evento externo, nunca para contornar uma rejeição comum.
 - **FR-ACL-BOOT-001**: O bootstrap global DEVE usar exclusivamente o e-mail configurado no `application.properties`,
   com `admin@rinos.com.br` como padrão documental, sem tornar o primeiro cadastrado administrador.
-- **FR-ACL-BOOT-002**: O bootstrap somente DEVE ocorrer para identidade ativa, e-mail confirmado e TOTP ou passkey
-  compatível, enquanto o marcador permanente indicar que nunca foi concluído.
+- **FR-ACL-BOOT-002**: O bootstrap somente DEVE ocorrer para identidade ativa, e-mail confirmado e TOTP confirmado,
+  enquanto o marcador permanente indicar que nunca foi concluído. O enrollment obrigatório pertence ao fluxo de
+  criação da identidade fundadora e não cria tenant nem antecipa a concessão administrativa.
 - **FR-ACL-BOOT-003**: Conclusão do bootstrap DEVE atribuir atomicamente identificação de ator, associação ao grupo
   global protegido, auditoria e marcador permanente, com proteção contra concorrência entre instâncias.
 - **FR-ACL-BOOT-004**: Alterar o e-mail configurado após a conclusão NÃO DEVE conceder, transferir nem remover acesso.
