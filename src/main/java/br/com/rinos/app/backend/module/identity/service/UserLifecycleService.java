@@ -19,6 +19,7 @@ import br.com.rinos.app.backend.module.identity.repository.UserRepository;
 import br.com.rinos.app.backend.module.identity.vo.IdentityTransitionVO;
 import br.com.rinos.app.api.module.plans.dto.PersonalContractBootstrapRequest;
 import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
 import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
 
 /**
@@ -212,15 +213,17 @@ public class UserLifecycleService {
 
   private void ensurePersonalContract(UserEntity user, UUID correlationId) {
     if (personalContracts == null) {
-      return;
+      throw new IllegalStateException("personal plan contract service is unavailable");
     }
     if (user.getId() == null) {
       throw new IllegalStateException("personal plan contract context unavailable");
     }
     var result = personalContracts.ensure(new PersonalContractBootstrapRequest(
         correlationId, user.getId(), correlationId.toString()));
-    if (result.status() != ContractBootstrapStatus.COMPLETED
-        && result.status() != ContractBootstrapStatus.ALREADY_COMPLETED) {
+    if (result == null
+        || result.scope() != ContractScope.PERSONAL
+        || (result.status() != ContractBootstrapStatus.COMPLETED
+        && result.status() != ContractBootstrapStatus.ALREADY_COMPLETED)) {
       throw new IllegalStateException("personal plan contract could not be ensured");
     }
   }

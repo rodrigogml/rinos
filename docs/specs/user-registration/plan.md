@@ -142,8 +142,10 @@ acessam repositories nem controlam transações.
    idempotentemente `PERSONAL/FREE` pela porta de `plans-entitlements` e só então ativa a identidade. Se faltarem
    versões legais atuais, a prova original permanece aberta e funciona como referência opaca da continuação; ela só
    é consumida ao registrar os aceites e ativar. Repetição antes ou depois da conclusão retorna o mesmo estágio
-   lógico sem recriar efeitos. Se o fluxo local vencer uma corrida contra uma continuação Google ainda pendente, as
-   provas e vínculos externos não ativados são removidos dentro da ativação local.
+   lógico sem recriar efeitos. A ausência da porta, resposta nula, escopo diferente de `PERSONAL` ou resultado que
+   não confirme o contrato abortam a transação antes da ativação: usuário e cadastro permanecem pendentes. Se o fluxo
+   local vencer uma corrida contra uma continuação Google ainda pendente, as provas e vínculos externos não ativados
+   são removidos dentro da ativação local.
 5. O fluxo Google valida integralmente a resposta no RFW antes de escrever. O Rinos reduz o resultado a
    `providerId`, `issuer`, `subject`, e-mail verificado e correlation ID; cria ou reutiliza uma pendência com vínculo
    externo `PENDING`; substitui qualquer candidata externa anterior desse usuário; e emite uma continuação opaca cujo

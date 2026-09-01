@@ -652,9 +652,9 @@ flowchart TD
 
 ## FASE 8 — Integração superveniente com contrato pessoal
 
-- [ ] 8.1 Publicar/consumir `PersonalContractBootstrapPort` sem expor entities de planos.
-- [ ] 8.2 Tornar `PERSONAL/FREE` condição idempotente da ativação local e Google.
-- [ ] 8.3 Manter a pendência não ativa quando catálogo ou contrato pessoal estiver indisponível.
+- [x] 8.1 Publicar/consumir `PersonalContractBootstrapPort` sem expor entities de planos.
+- [x] 8.2 Tornar `PERSONAL/FREE` condição idempotente da ativação local e Google.
+- [x] 8.3 Manter a pendência não ativa quando catálogo ou contrato pessoal estiver indisponível.
 - [ ] 8.4 Executar backfill dos usuários ativos antes de habilitar a invariável obrigatória.
 - [ ] 8.5 Atualizar testes, checklist e evidências sem apagar a evidência histórica de ausência de tenant.
 - [ ] 8.6 Integrar a política exclusiva do fundador ao fluxo de ativação, exigindo confirmação TOTP antes do Painel de Usuário e sem criar tenant, grupo ou privilégio.

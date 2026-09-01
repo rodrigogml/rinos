@@ -23,6 +23,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
+import br.com.rinos.app.api.module.plans.vo.ContractBootstrapResult;
 import br.com.rinos.app.backend.module.identity.entity.ExternalIdentityEntity;
 import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -62,9 +66,18 @@ class ExternalRegistrationCompletionServiceTest {
         legalConsentService,
         credentialService,
         externalIdentityService,
-        new UserLifecycleService(),
+        lifecycleWithPersonalContract(),
         new RegistrationLifecycleService(),
         auditService);
+  }
+
+  private static UserLifecycleService lifecycleWithPersonalContract() {
+    PersonalContractBootstrapPort contracts = request -> new ContractBootstrapResult(
+        ContractBootstrapStatus.ALREADY_COMPLETED,
+        ContractScope.PERSONAL,
+        UUID.randomUUID(),
+        null);
+    return new UserLifecycleService(mock(AuthSessionService.class), contracts);
   }
 
   @Test
