@@ -27,7 +27,10 @@ Legenda: `[ ]` pendente, `[~]` em andamento, `[x]` concluído, `[!]` bloqueado.
 - [x] 4.1 Publicar outbox e integrar `tenant-storage-provisioning`.
 - [x] 4.2 Integrar founding membership e grupo protegido/baseline ACL.
 - [x] 4.3 Integrar contrato tenant e atribuição do `TENANT/FREE`, confirmando ocupação do fundador como uma de dez.
-- [ ] 4.4 Ativar somente com quatro checkpoints completos; testar retomada e ordem concorrente.
+- [x] 4.4 Ativar somente com quatro checkpoints completos; testar retomada e ordem concorrente.
+  - [x] 4.4.1 Promover conta, tenant e protocolo somente após os quatro checkpoints e gates vivos.
+  - [x] 4.4.2 Cobrir promoção, checkpoint pendente e perda de prontidão antes da promoção.
+  - [x] 4.4.3 Executar o gate MySQL de retomada interrompida e competição entre duas instâncias.
 
 ## FASE 5 — Manutenção e lifecycle
 

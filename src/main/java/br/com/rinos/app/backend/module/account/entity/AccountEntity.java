@@ -25,6 +25,17 @@ public class AccountEntity {
     this.publicId=publicId; this.tenantId=tenantId; this.founderUserId=founderUserId; this.displayName=displayName;
     this.baseCurrency=baseCurrency; this.timeZoneId=timeZoneId; this.status=AccountStatus.CREATING;
   }
+  /**
+   * Torna a conta operacional depois que a saga confirmou todos os seus pré-requisitos.
+   *
+   * @throws IllegalStateException quando a conta não está no estado {@code CREATING}
+   */
+  public void activate() {
+    if (status != AccountStatus.CREATING) {
+      throw new IllegalStateException("account is not creating");
+    }
+    status = AccountStatus.ACTIVE;
+  }
   public Long getId(){return id;} public UUID getPublicId(){return publicId;} public Long getTenantId(){return tenantId;}
   public Long getFounderUserId(){return founderUserId;} public String getDisplayName(){return displayName;}
   public String getBaseCurrency(){return baseCurrency;} public String getTimeZoneId(){return timeZoneId;}

@@ -51,7 +51,16 @@ Cada chamada recebe o mesmo protocolo e precisa devolver referência opaca váli
 agenda backoff; rejeição mantém a conta não operacional. Mesmo com as quatro etapas concluídas,
 conta continua `CREATING` e tenant continua `RESERVED` até a tarefa específica de ativação.
 
-## 8. Verificação MySQL
+## 8. Ativar a conta
+
+Depois dos quatro checkpoints completos, o ativador da instância de manutenção eleita reconsulta
+o storage e confirma novamente a associação fundadora/baseline ACL e o contrato padrão pelas
+portas canônicas. Somente então a mesma transação muda a conta para `ACTIVE`, o tenant para
+`OPERATIONAL` e o protocolo para `READY`/`AVAILABLE`, registrando a auditoria sistêmica. Uma
+dependência indisponível ou inconsistente não cria sucesso parcial: os três estados permanecem
+não operacionais até a nova observação ou correção externa.
+
+## 9. Verificação MySQL
 
 O gate de integração deve comprovar:
 

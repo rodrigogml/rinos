@@ -88,14 +88,16 @@ cópia desse endereço. A limpeza coordenada pela plataforma remove janelas expi
 ## Invariantes
 
 1. Cada conta referencia exatamente um tenant e cada tenant no máximo uma conta.
-2. Conta `ACTIVE` exige tenant `OPERATIONAL` e quatro checkpoints `COMPLETED`.
+2. Conta `ACTIVE` exige tenant `OPERATIONAL`, quatro checkpoints `COMPLETED` e uma revalidação
+   transacional atual de storage `READY`, associação/baseline ACL fundadora e contrato padrão.
 3. `CANCELLED` nunca volta a `ACTIVE`; IDs nunca são reutilizados.
 4. A criação inicial confirma conta, tenant, intenção, auditoria e outbox conjuntamente.
 5. Apenas transições declaradas no serviço são aceitas; checks de banco protegem o vocabulário.
 6. Foreign keys globais usam `RESTRICT`; limpeza e retenção são processos explícitos.
 7. O primeiro dispatch de storage apenas move seu checkpoint para `PROCESSING`. O coordenador de
    pré-ativação pode concluir cada um dos quatro checkpoints, mas não altera conta ou tenant;
-   somente a fase de ativação pode promover ambos depois da verificação conjunta.
+   somente a fase de ativação pode promover ambos depois da verificação conjunta. A mesma
+   transação marca a intenção `READY` e o estágio público `AVAILABLE`.
 
 ## Índices
 

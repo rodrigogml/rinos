@@ -36,10 +36,20 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import br.com.rinos.app.api.module.account.dto.AccountCreationRequest;
+import br.com.rinos.app.api.module.account.enums.AccountBootstrapResultStatus;
 import br.com.rinos.app.api.module.account.enums.AccountCreationResultStatus;
+import br.com.rinos.app.api.module.account.port.DefaultPlanAssignmentPort;
+import br.com.rinos.app.api.module.account.port.TenantAccessBootstrapPort;
+import br.com.rinos.app.api.module.account.vo.AccountBootstrapResult;
 import br.com.rinos.app.api.module.account.vo.AccountCreationResult;
+import br.com.rinos.app.api.module.storage.enums.TenantStorageAvailabilityEnum;
+import br.com.rinos.app.api.module.storage.port.TenantStorageReadinessPort;
+import br.com.rinos.app.api.module.storage.vo.TenantStorageReadinessSnapshotVO;
 import br.com.rinos.app.backend.module.account.entity.AccountEntity;
+import br.com.rinos.app.backend.module.account.entity.TenantEntity;
+import br.com.rinos.app.backend.module.account.repository.TenantRepository;
 import br.com.rinos.app.backend.module.account.service.AccountCreationAcceptanceService;
+import br.com.rinos.app.backend.module.account.service.AccountCreationActivationService;
 import br.com.rinos.app.backend.module.account.service.AccountCreationAdmissionService;
 import br.com.rinos.app.backend.module.account.service.AccountCreationStatusService;
 import br.com.rinos.app.backend.module.identity.entity.OriginWindowEntity;
@@ -226,6 +236,60 @@ class AccountPersistenceIT {
     });
   }
 
+  @Test
+  void activation_shouldResumeAndPromoteOnlyOnceWhenTwoInstancesCompete() {
+    contextRunner().run(context -> {
+      AccountCreationAcceptanceService acceptance =
+          context.getBean(AccountCreationAcceptanceService.class);
+      AccountCreationActivationService activation =
+          context.getBean(AccountCreationActivationService.class);
+      AccountCreationResult accepted = acceptance.accept(
+          1L, request(UUID.randomUUID(), "Conta concorrente"), "activation", NOW, ORIGIN, true);
+      AccountEntity account = context.getBean(AccountRepository.class)
+          .findByPublicId(accepted.accountPublicId()).orElseThrow();
+      TenantEntity tenant = context.getBean(TenantRepository.class)
+          .findById(account.getTenantId()).orElseThrow();
+      completeAllCheckpoints();
+      TenantStorageReadinessPort storage = context.getBean(TenantStorageReadinessPort.class);
+      TenantAccessBootstrapPort access = context.getBean(TenantAccessBootstrapPort.class);
+      DefaultPlanAssignmentPort plans = context.getBean(DefaultPlanAssignmentPort.class);
+      org.mockito.Mockito.when(storage.inspect(tenant.getPublicId())).thenReturn(
+          new TenantStorageReadinessSnapshotVO(
+              true, true, true, TenantStorageAvailabilityEnum.READY, null, NOW));
+      AccountBootstrapResult confirmed = new AccountBootstrapResult(
+          AccountBootstrapResultStatus.ALREADY_COMPLETED, "confirmed", null);
+      org.mockito.Mockito.when(access.bootstrapAccess(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(confirmed);
+      org.mockito.Mockito.when(plans.assignDefaultPlan(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(confirmed);
+
+      java.util.concurrent.ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+        Callable<Boolean> promote = activation::activateNext;
+        List<Boolean> results = executor.invokeAll(List.of(promote, promote), 15, TimeUnit.SECONDS)
+            .stream().map(future -> {
+              try {
+                return future.get();
+              } catch (Exception exception) {
+                throw new IllegalStateException(exception);
+              }
+            }).toList();
+
+        assertThat(results).containsExactlyInAnyOrder(true, false);
+        assertThat(scalar("SELECT status FROM account_account")).isEqualTo("ACTIVE");
+        assertThat(scalar("SELECT status FROM account_tenant")).isEqualTo("OPERATIONAL");
+        assertThat(scalar("SELECT status FROM account_creationIntent")).isEqualTo("READY");
+        assertThat(scalar("SELECT publicStage FROM account_creationIntent")).isEqualTo("AVAILABLE");
+        assertThat(count("account_auditEvent WHERE eventType='ACCOUNT_ACTIVATED'")).isOne();
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(exception);
+      } finally {
+        executor.shutdownNow();
+      }
+    });
+  }
+
   private ApplicationContextRunner contextRunner() {
     return new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(
@@ -238,6 +302,12 @@ class AccountPersistenceIT {
             "spring.jpa.hibernate.naming.physical-strategy="
                 + "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl",
             "spring.jpa.properties.hibernate.jdbc.time_zone=UTC")
+        .withBean(TenantStorageReadinessPort.class,
+            () -> org.mockito.Mockito.mock(TenantStorageReadinessPort.class))
+        .withBean(TenantAccessBootstrapPort.class,
+            () -> org.mockito.Mockito.mock(TenantAccessBootstrapPort.class))
+        .withBean(DefaultPlanAssignmentPort.class,
+            () -> org.mockito.Mockito.mock(DefaultPlanAssignmentPort.class))
         .withBean(DataSource.class, () -> dataSource);
   }
 
@@ -262,12 +332,31 @@ class AccountPersistenceIT {
     }
   }
 
+  private void completeAllCheckpoints() {
+    try {
+      execute("UPDATE account_provisioningCheckpoint SET status='COMPLETED', nextAttemptAt=NULL");
+    } catch (SQLException exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
   private long count(String table) {
     try (Connection connection = dataSource.getConnection();
         Statement statement = connection.createStatement();
         ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM " + table)) {
       assertThat(result.next()).isTrue();
       return result.getLong(1);
+    } catch (SQLException exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
+  private String scalar(String query) {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery(query)) {
+      assertThat(result.next()).isTrue();
+      return result.getString(1);
     } catch (SQLException exception) {
       throw new IllegalStateException(exception);
     }
@@ -281,7 +370,8 @@ class AccountPersistenceIT {
       OriginLimitService.class,
       AccountCreationAdmissionService.class,
       AccountCreationAcceptanceService.class,
-      AccountCreationStatusService.class})
+      AccountCreationStatusService.class,
+      AccountCreationActivationService.class})
   static class RepositoryTestConfig {
 
     @org.springframework.context.annotation.Bean

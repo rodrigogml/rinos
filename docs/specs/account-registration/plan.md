@@ -1,6 +1,6 @@
 # Plano Técnico — Cadastro de Contas
 
-**Status**: quality gate documental concluído; saga de pré-ativação implementada
+**Status**: quality gate documental concluído; saga de ativação implementada
 **Escopo inicial implementável**: aceite durável, storage, bootstrap fundador, baseline ACL e plano padrão
 
 ## Objetivo do primeiro slice
@@ -31,6 +31,11 @@ AccountCreationSagaMaintenanceScheduler
   -> TenantStorageReadinessPort confirma STORAGE somente quando READY
   -> FoundingMembershipBootstrapPort -> TenantAccessBootstrapPort -> DefaultPlanAssignmentPort
   -> registra checkpoint COMPLETED/FAILED ou nova tentativa, sem ativar conta/tenant
+
+AccountCreationActivationMaintenanceScheduler
+  -> reclama uma conta CREATING com exatamente os quatro checkpoints COMPLETED sob FOR UPDATE SKIP LOCKED
+  -> revalida TenantStorageReadinessPort em READY, associação/baseline ACL e contrato FREE pelas portas idempotentes
+  -> promove account ACTIVE + tenant OPERATIONAL + intent READY/AVAILABLE na mesma transação global
 ```
 
 ## Fronteiras
@@ -74,8 +79,10 @@ AccountCreationSagaMaintenanceScheduler
   `ACCESS_BOOTSTRAP` e `DEFAULT_PLAN`. Cada porta deve devolver referência opaca válida para
   concluir sua etapa; rejeição é terminal e indisponibilidade volta a `PENDING` com backoff.
 - O coordenador possui lock pessimista por conta e `SKIP LOCKED` na seleção, logo instâncias de
-  manutenção não avançam a mesma saga concorrentemente. A promoção de conta e tenant permanece
-  deliberadamente fora desse coordenador e exige a validação final da tarefa 4.4.
+  manutenção não avançam a mesma saga concorrentemente. Um ativador separado reclama somente uma
+  conta com os quatro checkpoints completos e repete as verificações vivas de storage, baseline
+  ACL e plano. Conta, tenant e intenção são promovidos no mesmo commit; qualquer indisponibilidade,
+  associação inativa, baseline inválida ou plano inconsistente mantém todos não operacionais.
 - Payload conflitante nunca revela outra conta além da associada ao próprio criador.
 - Indisponibilidade interna resulta em status seguro e nenhum sucesso artificial.
 

@@ -17,6 +17,17 @@ public class TenantEntity {
   @Column(name = "updatedAt", insertable = false, updatable = false) private Instant updatedAt;
   protected TenantEntity() {}
   public TenantEntity(UUID publicId) { this.publicId = publicId; this.status = TenantStatus.RESERVED; }
+  /**
+   * Libera o tenant depois que sua conta correspondente foi validada para ativação.
+   *
+   * @throws IllegalStateException quando o tenant não está reservado
+   */
+  public void makeOperational() {
+    if (status != TenantStatus.RESERVED) {
+      throw new IllegalStateException("tenant is not reserved");
+    }
+    status = TenantStatus.OPERATIONAL;
+  }
   public Long getId(){return id;} public UUID getPublicId(){return publicId;} public TenantStatus getStatus(){return status;}
   public long getVersion(){return version;} public Instant getCreatedAt(){return createdAt;} public Instant getUpdatedAt(){return updatedAt;}
 }

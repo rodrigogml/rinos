@@ -28,6 +28,20 @@ public class AccountCreationIntentEntity {
     this.publicId=publicId;this.protocolId=protocolId;this.creatorUserId=creatorUserId;this.idempotencyKey=idempotencyKey;
     this.payloadHash=payloadHash.clone();this.accountId=accountId;this.status=AccountCreationIntentStatus.ACCEPTED;this.publicStage=AccountPublicStage.ACCEPTED;
   }
+  /**
+   * Expõe o protocolo como disponível somente após a ativação atômica da conta e do tenant.
+   *
+   * @throws IllegalStateException quando a intenção já terminou em um estado incompatível
+   */
+  public void markReady() {
+    if (status != AccountCreationIntentStatus.ACCEPTED
+        && status != AccountCreationIntentStatus.PROCESSING) {
+      throw new IllegalStateException("account creation intent is not activatable");
+    }
+    status = AccountCreationIntentStatus.READY;
+    publicStage = AccountPublicStage.AVAILABLE;
+    failureCode = null;
+  }
   public Long getId(){return id;} public UUID getPublicId(){return publicId;} public UUID getProtocolId(){return protocolId;}
   public Long getCreatorUserId(){return creatorUserId;} public UUID getIdempotencyKey(){return idempotencyKey;}
   public byte[] getPayloadHash(){return payloadHash.clone();} public Long getAccountId(){return accountId;}

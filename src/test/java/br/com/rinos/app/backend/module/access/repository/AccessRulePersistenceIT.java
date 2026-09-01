@@ -58,6 +58,7 @@ import br.com.rinos.app.backend.module.access.service.AdministrativeContinuityEv
 import br.com.rinos.app.backend.module.access.service.AdministrativeContinuityEvaluator;
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessPort;
 import br.com.rinos.app.backend.module.access.service.AccountMembershipAccessSnapshot;
+import br.com.rinos.app.backend.module.access.service.FoundingMembershipAccessSnapshot;
 import br.com.rinos.app.backend.module.access.service.AuthorizationSnapshotCache;
 import br.com.rinos.app.backend.module.access.service.GlobalAccessBootstrapService;
 import br.com.rinos.app.backend.module.access.enums.GlobalAccessBootstrapStatus;
@@ -436,7 +437,19 @@ class AccessRulePersistenceIT {
         .withBean(AuthorizationSnapshotCache.class, () -> new AuthorizationSnapshotCache(
             new AccessCachePropertiesConfig(10_000, Duration.ofMinutes(30))))
         .withBean(AccountMembershipAccessPort.class,
-            () -> membershipId -> AccountMembershipAccessSnapshot.unavailable())
+            () -> new AccountMembershipAccessPort() {
+              @Override
+              public AccountMembershipAccessSnapshot inspect(long membershipId) {
+                return AccountMembershipAccessSnapshot.unavailable();
+              }
+
+              @Override
+              public FoundingMembershipAccessSnapshot inspectFounder(
+                  long accountId,
+                  long founderUserId) {
+                return FoundingMembershipAccessSnapshot.unavailable();
+              }
+            })
         .withBean(AccessBootstrapPropertiesConfig.class,
             () -> new AccessBootstrapPropertiesConfig(bootstrapEmail))
         .withBean(AuthenticationMethodInventoryService.class, () ->

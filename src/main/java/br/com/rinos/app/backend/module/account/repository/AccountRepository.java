@@ -105,4 +105,29 @@ public interface AccountRepository extends JpaRepository<AccountEntity, Long> {
       FOR UPDATE SKIP LOCKED
       """, nativeQuery = true)
   List<AccountEntity> findNextCreatingWithEligibleCheckpointForUpdate(@Param("now") Instant now);
+
+  /**
+   * Reclama uma conta cujo conjunto integral de checkpoints já foi concluído.
+   *
+   * <p>O lock protege a promoção final contra instâncias concorrentes e mantém a ativação
+   * separada do avanço de cada checkpoint.
+   *
+   * @return no máximo uma conta em criação bloqueada até o fim da transação chamadora
+   */
+  @Query(value = """
+      SELECT accountRow.*
+      FROM account_account accountRow
+      WHERE accountRow.status = 'CREATING'
+        AND (SELECT COUNT(*)
+               FROM account_provisioningCheckpoint checkpoint
+              WHERE checkpoint.idAccount = accountRow.idAccount
+                AND checkpoint.status = 'COMPLETED') = 4
+        AND (SELECT COUNT(*)
+               FROM account_provisioningCheckpoint checkpoint
+              WHERE checkpoint.idAccount = accountRow.idAccount) = 4
+      ORDER BY accountRow.idAccount
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+      """, nativeQuery = true)
+  List<AccountEntity> findNextReadyForActivationForUpdate();
 }
