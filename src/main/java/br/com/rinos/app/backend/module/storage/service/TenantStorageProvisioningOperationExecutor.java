@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,7 @@ import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
  * @since 2026-08-30
  */
 @Service
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantStorageProvisioningOperationExecutor implements StorageOperationExecutionPort {
   private static final String SYSTEM_ORIGIN = "tenant-storage-worker";
 

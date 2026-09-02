@@ -2,6 +2,7 @@ package br.com.rinos.app.backend.module.plans.service;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -74,6 +75,7 @@ public class PlansCatalogReadinessService {
 
   private final JdbcOperations jdbc;
 
+  @Autowired
   public PlansCatalogReadinessService(DataSource dataSource) {
     this(new JdbcTemplate(dataSource));
   }

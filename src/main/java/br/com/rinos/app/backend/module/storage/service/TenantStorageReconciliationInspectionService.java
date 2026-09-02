@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class TenantStorageReconciliationInspectionService {
    * @param operationRepository fila global, consultada somente para leases vencidos
    * @param schemaInventoryService leitor fechado de schemas físicos internos
    */
+  @Autowired
   public TenantStorageReconciliationInspectionService(TenantStorageRegistryRepository registryRepository,
       StorageOperationRepository operationRepository, TenantPhysicalSchemaInventoryService schemaInventoryService) {
     this(registryRepository, operationRepository, schemaInventoryService, Clock.systemUTC());

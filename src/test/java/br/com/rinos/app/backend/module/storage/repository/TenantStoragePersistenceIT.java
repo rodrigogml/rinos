@@ -411,6 +411,7 @@ class TenantStoragePersistenceIT {
             DataJpaRepositoriesAutoConfiguration.class))
         .withUserConfiguration(RepositoryTestConfig.class)
         .withPropertyValues(
+            "rfw.database.update.enabled=true",
             "spring.jpa.hibernate.ddl-auto=validate",
             "spring.jpa.hibernate.naming.physical-strategy="
                 + "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl",

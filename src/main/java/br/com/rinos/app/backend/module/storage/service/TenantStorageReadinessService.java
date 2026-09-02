@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class TenantStorageReadinessService implements TenantStorageReadinessPort
    * @param tenantRepository consulta de tenant no catálogo global
    * @param registryRepository consulta do registro de armazenamento no catálogo global
    */
+  @Autowired
   public TenantStorageReadinessService(TenantRepository tenantRepository,
       TenantStorageRegistryRepository registryRepository) {
     this(tenantRepository, registryRepository, Clock.systemUTC());

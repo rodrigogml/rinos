@@ -9,6 +9,7 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.zaxxer.hikari.HikariDataSource;
@@ -30,6 +31,7 @@ import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
  * @since 2026-08-30
  */
 @Component
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantSchemaInitializer {
   private static final String UTF8MB4 = "utf8mb4";
   private static final String UTF8MB4_UNICODE_CI = "utf8mb4_unicode_ci";

@@ -87,6 +87,12 @@ primário, o Rinos usa uma requisição explícita do RFW com o `DataSource`, as
 lock. O modo automático do RFW permanece reservado ao banco global primário.
 
 > [!IMPORTANT]
+> `rfw.database.update.enabled` deve permanecer em `true` em uma instalação que provisiona ou atualiza tenants. Ao
+> desativá-la, o RFW não registra os serviços que descobrem e validam scripts; por consequência, o Rinos também não
+> inicia os trabalhadores de provisionamento e migração de tenants. Essa opção é apropriada apenas para diagnósticos
+> controlados nos quais nenhuma operação estrutural de tenant deva ocorrer.
+
+> [!IMPORTANT]
 > O `DataSource` deve selecionar previamente o banco correto. Scripts não devem escolher dinamicamente outro banco
 > com `USE`, nem depender do nome físico de um tenant.
 

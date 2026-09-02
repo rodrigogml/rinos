@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ import br.eng.rodrigogml.rfw.database.strategy.DatabaseUpdateStrategy;
  * @since 2026-08-30
  */
 @Component
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantStorageNamedLockComponent {
   private final DatabaseUpdateStrategyResolverService strategyResolver;
 

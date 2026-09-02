@@ -2,7 +2,11 @@ package br.com.rinos.app.backend.module.storage.component;
 
 import java.util.Objects;
 
+import javax.sql.DataSource;
+
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +24,8 @@ import br.com.rinos.app.backend.module.storage.service.TenantMigrationScheduling
  */
 @Component
 @DependsOn("databaseUpdateStartupInitializer")
+@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantMigrationStartupScheduler implements SmartInitializingSingleton {
 
   private final TenantMigrationSchedulingService schedulingService;

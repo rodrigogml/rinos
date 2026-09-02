@@ -3,6 +3,7 @@ package br.com.rinos.app.backend.module.access.service;
 import java.time.Clock;
 import java.time.Instant;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class AccessAdministrationPreviewExecutor {
   private final AdministrativeContinuityEvaluator continuity;
   private final Clock clock;
 
+  @Autowired
   public AccessAdministrationPreviewExecutor(AdministrativeContinuityEvaluator continuity) {
     this(continuity, Clock.systemUTC());
   }

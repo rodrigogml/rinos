@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import javax.sql.DataSource;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,7 @@ import br.com.rinos.app.backend.module.account.repository.TenantRepository;
  * @since 2026-09-01
  */
 @Service
+@ConditionalOnBean(DataSource.class)
 public class AccountCreationActivationService {
 
   private static final String SYSTEM_ORIGIN = "account-creation-activation";

@@ -7,6 +7,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.backend.module.storage.vo.TenantDatabaseCatalogVO;
@@ -28,6 +30,7 @@ import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
  * @since 2026-08-29
  */
 @Component
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantDatabaseCatalogService {
 
   private static final String HASH_ALGORITHM = "SHA-256";
@@ -43,6 +46,7 @@ public class TenantDatabaseCatalogService {
    * @param scriptDiscoveryService descoberta de scripts fornecida pela RFW
    * @param scriptValidationService validação sintática e de marco de versão fornecida pela RFW
    */
+  @Autowired
   public TenantDatabaseCatalogService(DatabaseUpdateScriptDiscoveryService scriptDiscoveryService,
       DatabaseUpdateScriptValidationService scriptValidationService) {
     this(scriptDiscoveryService, scriptValidationService,

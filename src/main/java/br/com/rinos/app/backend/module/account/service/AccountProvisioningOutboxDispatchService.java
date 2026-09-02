@@ -6,7 +6,11 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
+import javax.sql.DataSource;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +49,8 @@ import br.com.rinos.app.config.AccountCreationPropertiesConfig;
  * @since 2026-08-31
  */
 @Service
+@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class AccountProvisioningOutboxDispatchService {
 
   private static final String SYSTEM_ORIGIN = "account-provisioning-outbox";

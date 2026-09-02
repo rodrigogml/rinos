@@ -13,6 +13,7 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import br.com.rinos.app.backend.module.storage.vo.TenantDatabaseCatalogVO;
@@ -34,6 +35,7 @@ import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
  * @since 2026-08-29
  */
 @Component
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantDatabaseStructureVerifier {
 
   private static final String BASELINE_KEY = "tenant.schema.baseline";

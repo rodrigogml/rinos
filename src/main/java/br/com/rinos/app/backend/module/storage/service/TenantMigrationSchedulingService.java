@@ -6,6 +6,11 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +39,8 @@ import br.com.rinos.app.backend.module.storage.repository.TenantStorageRegistryR
  * @since 2026-08-30
  */
 @Service
+@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantMigrationSchedulingService {
 
   private static final String SYSTEM_ORIGIN = "tenant-migration-startup";
@@ -57,6 +64,7 @@ public class TenantMigrationSchedulingService {
    * @param catalogService catálogo distribuído que informa a versão alvo do tenant
    * @param registryTransitions validador da máquina de estados do tenant
    */
+  @Autowired
   public TenantMigrationSchedulingService(TenantStorageRegistryRepository registryRepository,
       StorageOperationRepository operationRepository, StorageStateTransitionRepository transitionRepository,
       StorageAuditEventRepository auditRepository, TenantDatabaseCatalogService catalogService,

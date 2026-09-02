@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -43,6 +44,7 @@ import br.com.rinos.app.backend.module.storage.vo.TenantPhysicalIdentifier;
  * @since 2026-08-30
  */
 @Service
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantStorageProvisioningService implements TenantProvisioningRequestPort {
 
   private static final String CONTEXT_INVALID = "ACCOUNT_BOOTSTRAP_CONTEXT_INVALID";

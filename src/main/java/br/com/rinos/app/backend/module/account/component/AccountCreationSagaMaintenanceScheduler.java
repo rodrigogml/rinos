@@ -1,5 +1,9 @@
 package br.com.rinos.app.backend.module.account.component;
 
+import javax.sql.DataSource;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +22,8 @@ import br.com.rinos.app.config.AccountCreationPropertiesConfig;
  * @since 2026-08-31
  */
 @Component
+@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class AccountCreationSagaMaintenanceScheduler {
 
   private final MaintenanceCoordinatorService coordinator;

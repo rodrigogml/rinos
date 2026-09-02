@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -59,6 +60,7 @@ import br.eng.rodrigogml.rfw.database.vo.DatabaseVersionVO;
  * @since 2026-08-30
  */
 @Service
+@ConditionalOnProperty(prefix = "rfw.database.update", name = "enabled", havingValue = "true")
 public class TenantStorageMigrationOperationExecutor implements StorageOperationExecutionPort {
 
   private static final String SYSTEM_ORIGIN = "tenant-storage-worker";

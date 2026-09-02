@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +53,7 @@ public class AccountCreationFacadeImpl implements AccountCreationFacade {
   /**
    * Cria a fachada com suas fronteiras de identidade, antiabuso e persistência.
    */
+  @Autowired
   public AccountCreationFacadeImpl(
       AccountCreationContextFacade contextFacade,
       ReauthenticationFacade reauthenticationFacade,

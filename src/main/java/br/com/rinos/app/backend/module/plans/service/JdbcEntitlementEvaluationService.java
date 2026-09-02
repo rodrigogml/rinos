@@ -12,6 +12,7 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcOperations;
@@ -97,6 +98,7 @@ public class JdbcEntitlementEvaluationService
   private final JdbcOperations jdbc;
   private final PlanCompositionCache cache;
 
+  @Autowired
   public JdbcEntitlementEvaluationService(DataSource dataSource) {
     this(new JdbcTemplate(dataSource), new PlanCompositionCache());
   }
