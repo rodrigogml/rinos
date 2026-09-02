@@ -62,10 +62,11 @@
 - [x] CHK037 - Não existem placeholders de clarificação pendentes na spec, no plano ou na Interface Design aprovada? [Completude, Spec §Clarifications; Plan §Complexity Tracking; Interface §Validation Summary] {auto}
 - [x] CHK038 - O Argon2id possui piso de segurança, procedimento de calibração reproduzível, critérios mensuráveis, registro operacional e bloqueio de release quando o servidor-alvo não os atende? [Segurança e operação, Spec §SC-UR-014; Research §Decision 3; README §Preparação para produção] {humano}
 - [x] CHK039 - A limpeza em múltiplas instâncias define liderança automática, aquisição atômica, heartbeat, expiração, estabilização superior ao timeout do lote, fencing, ausência de sobreposição, relógio confiável, falha segura e revalidação transacional do cadastro? [Concorrência e operação, Spec §FR-REG-024 e SC-UR-015; Research §Decision 10; Platform Operations §Coordenação de Manutenção] {humano}
+- [x] CHK040 - A ativação local e Google exige contrato pessoal `PERSONAL/FREE` idempotente, falha fechada antes do estado ativo e o backfill anterior regulariza identidades existentes sem criar tenant, associação, grupo ou permissão? [Consistência, Spec §FR-REG-020 e FR-REG-053; Plan §Transaction and Failure Strategy; Evidence §Fase 8] {auto}
 
 ## Notes
 
-- Gate `requirements`: **PASS**, com 39 de 39 itens encerrados.
+- Gate `requirements`: **PASS**, com 40 de 40 itens encerrados.
 - Itens `{auto}` satisfeitos estão marcados com `[x]` e citam a evidência documental.
 - As ambiguidades automáticas identificadas foram resolvidas na spec e refletidas nos artefatos dependentes.
 - `CHK026` foi encerrado por decisão explícita do dono do produto: o limite temporário por IP permanece absoluto.
@@ -73,6 +74,7 @@
 - `CHK029` foi revalidado com dispatch direto pós-commit, timeout explícito, ausência de outbox e recuperação por reenvio solicitado pela pessoa.
 - `CHK038` foi encerrado com piso Argon2id, amostra mínima de 50 operações, mediana entre 500 ms e um segundo, percentil 95 de até 1,5 segundo e registro obrigatório no checklist de produção.
 - `CHK039` foi encerrado com lease operacional separado de configuração, heartbeat de 30 minutos, expiração de quatro horas, estabilização de 10 minutos, timeout transacional de cinco minutos, `sessionId`, `epoch` e ausência de sobreposição entre líderes.
+- `CHK040` foi revalidado com o bootstrap tipado consumido pelos dois fluxos de ativação, falha fechada antes da transição para ativo e migration global idempotente que regulariza identidades preexistentes sem criar contexto tenant.
 - `CHK023` foi revalidado com armazenamento direto do IP normalizado em `security_originWindow`, sem HMAC, e exclusão automática em lotes próprios do job coordenado até 30 dias depois do fim da janela.
 - `CHK009` foi revalidado com 100 operações nominais em SMTP local, mínimo de 95 aceitações em dois minutos, perfil de teste isolado dos controles antifraude e um único smoke test no SMTP real, sem compromisso de capacidade.
 - As marcações `[Ambiguity]` e `[Conflict]` identificadas nesta rodada foram resolvidas pela sessão de clarificação de 2026-07-26.
