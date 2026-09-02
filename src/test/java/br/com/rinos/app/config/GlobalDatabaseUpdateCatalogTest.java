@@ -45,7 +45,8 @@ class GlobalDatabaseUpdateCatalogTest {
         "classpath:db/global/update/20260816_001_update.sql",
         "classpath:db/global/update/20260816_002_update.sql",
         "classpath:db/global/update/20260816_003_update.sql",
-        "classpath:db/global/update/20260829_001_update.sql"));
+        "classpath:db/global/update/20260829_001_update.sql",
+        "classpath:db/global/update/20260901_001_update.sql"));
     DatabaseUpdateScriptDiscoveryService discovery = new DatabaseUpdateScriptDiscoveryService(
         new PathMatchingResourcePatternResolver(),
         new DatabaseUpdateScriptNameService());
@@ -75,7 +76,8 @@ class GlobalDatabaseUpdateCatalogTest {
         "20260816_001_update.sql",
         "20260816_002_update.sql",
         "20260816_003_update.sql",
-        "20260829_001_update.sql");
+        "20260829_001_update.sql",
+        "20260901_001_update.sql");
     assertThat(scripts).extracting(script -> script.version().value()).containsExactly(
         "20260728001",
         "20260728002",
@@ -99,6 +101,7 @@ class GlobalDatabaseUpdateCatalogTest {
         "20260816001",
         "20260816002",
         "20260816003",
-        "20260829001");
+        "20260829001",
+        "20260901001");
   }
 }

@@ -16,8 +16,11 @@ import org.springframework.security.core.Authentication;
 
 import br.com.rinos.app.api.dto.ExternalRegistrationCompletionRequestDTO;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
+import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.api.facade.ExternalRegistrationFacade;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO;
+import br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO;
 import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWExternalRegistrationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.enums.RFWAccessStatusEnum;
@@ -31,7 +34,7 @@ class RFWExternalRegistrationProviderAdapterTest {
     ExternalRegistrationFacade facade = mock(ExternalRegistrationFacade.class);
     when(facade.complete(any())).thenReturn(CompletableFuture.completedFuture(
         ExternalRegistrationCompletionResultVO.authenticated(
-            new RinosUserPrincipalVO(10L, "person@example.com"))));
+            continuation(10L, "person@example.com"))));
     RFWExternalRegistrationProviderAdapter adapter =
         new RFWExternalRegistrationProviderAdapter(facade);
 
@@ -48,6 +51,10 @@ class RFWExternalRegistrationProviderAdapterTest {
     assertThat(authentication.getPrincipal())
         .isEqualTo(new RinosUserPrincipalVO(10L, "person@example.com"));
     assertThat(authentication.getAuthorities()).isEmpty();
+    assertThat(authentication.getDetails()).isEqualTo(
+        new RinosAuthenticationCompletionVO(
+            "registration-continuation",
+            AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION));
     ArgumentCaptor<ExternalRegistrationCompletionRequestDTO> request =
         ArgumentCaptor.forClass(ExternalRegistrationCompletionRequestDTO.class);
     org.mockito.Mockito.verify(facade).complete(request.capture());
@@ -168,5 +175,13 @@ class RFWExternalRegistrationProviderAdapterTest {
             List.of("101")))
         .toCompletableFuture()
         .join();
+  }
+
+  private static RegistrationAuthenticationContinuationVO continuation(long userId, String email) {
+    return new RegistrationAuthenticationContinuationVO(
+        new RinosUserPrincipalVO(userId, email),
+        new RinosAuthenticationCompletionVO(
+            "registration-continuation",
+            AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION));
   }
 }

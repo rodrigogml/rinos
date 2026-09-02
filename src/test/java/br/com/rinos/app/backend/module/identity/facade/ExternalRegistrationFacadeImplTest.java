@@ -52,7 +52,12 @@ class ExternalRegistrationFacadeImplTest {
         List.of(101L, 102L),
         CORRELATION_ID,
         NOW)).thenReturn(ExternalRegistrationCompletionResultVO.authenticated(
-            new RinosUserPrincipalVO(10L, "person@example.com")));
+            new br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO(
+                new RinosUserPrincipalVO(10L, "person@example.com"),
+                new br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO(
+                    "registration-facade-continuation",
+                    br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum
+                        .REGISTRATION_ACTIVATION))));
     ExternalRegistrationFacadeImpl facade = facade(service);
 
     ExternalRegistrationCompletionResultVO result = facade.complete(

@@ -44,6 +44,7 @@ public class RegistrationActivationService {
   private final ExternalIdentityService externalIdentityService;
   private final IdentityAuditService auditService;
   private final EmailPrivacyService emailPrivacyService;
+  private final RegistrationAuthenticationContinuationService authenticationContinuationService;
 
   /**
    * Reúne os serviços atômicos participantes da ativação.
@@ -55,7 +56,8 @@ public class RegistrationActivationService {
       RegistrationLifecycleService registrationLifecycleService,
       ExternalIdentityService externalIdentityService,
       IdentityAuditService auditService,
-      EmailPrivacyService emailPrivacyService) {
+      EmailPrivacyService emailPrivacyService,
+      RegistrationAuthenticationContinuationService authenticationContinuationService) {
     this.verificationService = verificationService;
     this.legalConsentService = legalConsentService;
     this.userLifecycleService = userLifecycleService;
@@ -63,6 +65,7 @@ public class RegistrationActivationService {
     this.externalIdentityService = externalIdentityService;
     this.auditService = auditService;
     this.emailPrivacyService = emailPrivacyService;
+    this.authenticationContinuationService = authenticationContinuationService;
   }
 
   /**
@@ -267,8 +270,8 @@ public class RegistrationActivationService {
         IdentityTransitionOriginEnum.SELF_SERVICE,
         "LOCAL",
         occurredAt);
-    return RegistrationActivationResultVO.of(
-        RegistrationActivationStatusEnum.ACTIVATED);
+    return RegistrationActivationResultVO.activated(authenticationContinuationService.issue(
+        user, registration.getMethod(), correlationId, occurredAt));
   }
 
   private static boolean isPendingLocal(

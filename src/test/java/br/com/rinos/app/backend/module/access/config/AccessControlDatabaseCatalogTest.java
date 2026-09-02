@@ -71,7 +71,7 @@ class AccessControlDatabaseCatalogTest {
     assertThat(update.indexOf("CREATE TABLE access_auditEvent"))
         .isLessThan(update.indexOf("SELECT '20260815001' AS version"));
     assertThat(read("db/global/init/99-database-version.sql"))
-        .contains("SELECT '20260829001' AS version");
+        .contains("SELECT '20260901001' AS version");
   }
 
   private static String accessSchema(String sql) {

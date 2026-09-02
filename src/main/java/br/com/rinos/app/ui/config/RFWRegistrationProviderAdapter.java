@@ -22,6 +22,7 @@ import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.RegistrationResendResultVO;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
+import br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWActivationRequestDTO;
 import br.eng.rodrigogml.rfw.authentication.dto.RFWRegistrationRequestDTO;
@@ -192,8 +193,7 @@ public class RFWRegistrationProviderAdapter implements RFWRegistrationProvider {
   static RFWAuthenticationOutcomeVO mapActivation(
       RegistrationActivationResultVO result) {
     return switch (result.status()) {
-      case ACTIVATED -> RFWAuthenticationOutcomeVO.completed(
-          "registration.activation-completed");
+      case ACTIVATED -> authenticated(result.authenticationContinuation());
       case ALREADY_ACTIVE -> RFWAuthenticationOutcomeVO.rejected(
           RFWAccessErrorVO.of("registration.activation.used-proof"));
       case CONSENT_REQUIRED ->
@@ -217,5 +217,17 @@ public class RFWRegistrationProviderAdapter implements RFWRegistrationProvider {
               null));
       case UNAVAILABLE -> unavailable();
     };
+  }
+
+  private static RFWAuthenticationOutcomeVO authenticated(
+      RegistrationAuthenticationContinuationVO continuation) {
+    if (continuation == null) {
+      return RFWAuthenticationOutcomeVO.completed("registration.activation-completed");
+    }
+    org.springframework.security.authentication.UsernamePasswordAuthenticationToken authentication =
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+            continuation.principal(), null, List.of());
+    authentication.setDetails(continuation.completion());
+    return RFWAuthenticationOutcomeVO.authenticated(authentication);
   }
 }

@@ -10,6 +10,7 @@ import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
  *
  * @param status resultado público
  * @param principal identidade mínima quando autenticada
+ * @param authenticationContinuation fluxo opaco emitido depois da ativação externa
  * @param fieldErrors erros públicos por campo
  * @author Rodrigo Leitão
  * @since 2026-07-29
@@ -17,6 +18,7 @@ import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 public record ExternalRegistrationCompletionResultVO(
     ExternalRegistrationCompletionStatusEnum status,
     RinosUserPrincipalVO principal,
+    RegistrationAuthenticationContinuationVO authenticationContinuation,
     Map<String, String> fieldErrors) {
 
   /**
@@ -25,10 +27,14 @@ public record ExternalRegistrationCompletionResultVO(
   public ExternalRegistrationCompletionResultVO {
     status = Objects.requireNonNull(status, "status must not be null");
     fieldErrors = fieldErrors == null ? Map.of() : Map.copyOf(fieldErrors);
-    if ((status == ExternalRegistrationCompletionStatusEnum.AUTHENTICATED)
-        != (principal != null)) {
+    boolean authenticated = status == ExternalRegistrationCompletionStatusEnum.AUTHENTICATED;
+    if (authenticated != (principal != null)
+        || authenticated != (authenticationContinuation != null)) {
       throw new IllegalArgumentException(
-          "principal must be present only for authenticated result");
+          "authentication data must be present only for authenticated result");
+    }
+    if (authenticated && !principal.equals(authenticationContinuation.principal())) {
+      throw new IllegalArgumentException("authentication continuation must belong to principal");
     }
   }
 
@@ -40,7 +46,7 @@ public record ExternalRegistrationCompletionResultVO(
    */
   public static ExternalRegistrationCompletionResultVO of(
       ExternalRegistrationCompletionStatusEnum status) {
-    return new ExternalRegistrationCompletionResultVO(status, null, Map.of());
+    return new ExternalRegistrationCompletionResultVO(status, null, null, Map.of());
   }
 
   /**
@@ -54,20 +60,22 @@ public record ExternalRegistrationCompletionResultVO(
     return new ExternalRegistrationCompletionResultVO(
         ExternalRegistrationCompletionStatusEnum.VALIDATION_REJECTED,
         null,
+        null,
         fieldErrors);
   }
 
   /**
    * Publica o principal produzido pela transação concluída.
    *
-   * @param principal identidade mínima
+   * @param continuation principal e fluxo opaco persistidos
    * @return resultado autenticável
    */
   public static ExternalRegistrationCompletionResultVO authenticated(
-      RinosUserPrincipalVO principal) {
+      RegistrationAuthenticationContinuationVO continuation) {
     return new ExternalRegistrationCompletionResultVO(
         ExternalRegistrationCompletionStatusEnum.AUTHENTICATED,
-        principal,
+        continuation.principal(),
+        continuation,
         Map.of());
   }
 
@@ -80,6 +88,7 @@ public record ExternalRegistrationCompletionResultVO(
   public String toString() {
     return "ExternalRegistrationCompletionResultVO[status=" + status
         + ", principalPresent=" + (principal != null)
+        + ", authenticationContinuationPresent=" + (authenticationContinuation != null)
         + ", fieldErrorCount=" + fieldErrors.size() + "]";
   }
 }

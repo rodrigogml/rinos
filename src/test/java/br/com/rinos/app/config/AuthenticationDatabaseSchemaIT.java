@@ -96,7 +96,7 @@ class AuthenticationDatabaseSchemaIT {
     dataSource = testDatabase.recreateSchema();
     executeUpdates(dataSource);
 
-    assertThat(readVersion(dataSource)).isEqualTo("20260810001");
+    assertThat(readVersion(dataSource)).isEqualTo("20260901001");
     assertThat(readTableDefinitions(dataSource)).isEqualTo(initializedDefinitions);
   }
 
@@ -352,7 +352,8 @@ class AuthenticationDatabaseSchemaIT {
         "20260809_001_update.sql",
         "20260809_002_update.sql",
         "20260809_003_update.sql",
-        "20260810_001_update.sql")) {
+        "20260810_001_update.sql",
+        "20260901_001_update.sql")) {
       populator.addScript(new ClassPathResource("db/global/update/" + script));
     }
     populator.execute(target);

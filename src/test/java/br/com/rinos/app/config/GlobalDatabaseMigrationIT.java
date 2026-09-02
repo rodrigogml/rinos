@@ -66,8 +66,9 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260816_001_update.sql",
       "classpath:db/global/update/20260816_002_update.sql",
       "classpath:db/global/update/20260816_003_update.sql",
-      "classpath:db/global/update/20260829_001_update.sql");
-  private static final String TARGET_VERSION = "20260829001";
+      "classpath:db/global/update/20260829_001_update.sql",
+      "classpath:db/global/update/20260901_001_update.sql");
+  private static final String TARGET_VERSION = "20260901001";
 
   private static MySqlTestDatabase testDatabase;
 

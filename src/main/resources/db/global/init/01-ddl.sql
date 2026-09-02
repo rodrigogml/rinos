@@ -212,7 +212,8 @@ CREATE TABLE identity_authenticationFlow (
     ON UPDATE RESTRICT,
   CONSTRAINT uk_identity_authentication_flow_reference UNIQUE (referenceHash),
   CONSTRAINT ck_identity_authentication_flow_purpose
-    CHECK (purpose IN ('SIGN_IN', 'REAUTHENTICATION', 'FACTOR_RECOVERY', 'LEGAL_CONSENT')),
+    CHECK (purpose IN ('SIGN_IN', 'REAUTHENTICATION', 'FACTOR_RECOVERY', 'LEGAL_CONSENT',
+        'REGISTRATION_ACTIVATION')),
   CONSTRAINT ck_identity_authentication_flow_primary_method
     CHECK (primaryMethod IS NULL OR primaryMethod IN
       ('PASSWORD', 'GOOGLE', 'PASSKEY', 'TOTP', 'EMAIL_CODE', 'RECOVERY_CODE')),
