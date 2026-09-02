@@ -3,7 +3,8 @@
 **Data**: 2026-08-15
 **Escopo**: constituição, especificação, catálogo, pesquisa, plano, modelo, interface, contratos, quickstart,
 checklists, SDDs consumidores e backlog.
-**Resultado**: coerente para encerrar o ciclo documental; schema e código continuam não iniciados.
+**Resultado histórico**: coerente para encerrar o ciclo documental; àquela data, schema e código continuavam não
+iniciados.
 
 ## Invariantes e fontes
 
@@ -95,3 +96,10 @@ checklists, SDDs consumidores e backlog.
 - [x] Backlog executável criado em `tasks.md` com dependências e quality gates.
 - [x] Nenhum schema, entity, migration ou código de aplicação foi criado neste ciclo.
 - [x] `docs/briefing/humaine-outline.md` permaneceu intocado.
+
+## Follow-up de implementação — 2026-09-02
+
+O gate acima é o registro imutável do encerramento documental de 2026-08-15. Ele não descreve o estado atual do
+repositório: schema global, contratos, núcleo de decisão, administração, adapters e interface foram implementados em
+fases posteriores. A revisão final de implementação está em `../evidence/6.3.3/README.md`; `tasks.md` é a fonte de
+verdade para as integrações consumidoras, benchmark e validações manuais que ainda faltam.

@@ -158,7 +158,15 @@ Ref: checklists, quickstart e SC-ACL-*
 - [!] 6.3.1 Executar matriz unitária, integração MySQL e cenários quickstart. Bloqueada: a matriz completa depende dos consumidores ainda inexistentes em 6.1.2 e 6.2.
 - [!] 6.3.2 Medir separadamente leitura de revisão, hit/miss, resolução fria/quente, uso de memória e decisão em lote;
       documentar resultado contra as metas. Bloqueada: faltam metas e protocolo reproduzível de benchmark no SDD.
-- [ ] 6.3.3 Executar revisão de segurança, acessibilidade, build e análise cross-artifact.
+- [x] 6.3.3 Executar revisão de segurança, acessibilidade, build e análise cross-artifact.
+      Evidência: `evidence/6.3.3/README.md`; a revisão abre as pendências 6.3.4 e 6.3.5, sem declarar entrega final
+      enquanto elas permanecerem abertas.
+- [ ] 6.3.4 Executar validação manual reproduzível da central ACL e dos diálogos de explicação/prévia: teclado,
+      ordem e retorno de foco, conteúdo de `aria-live`, reflow e leitor de tela. Registrar navegador, leitor, passos,
+      resultado e defeitos encontrados na evidência da tarefa.
+- [!] 6.3.5 Corrigir a oferta de enrollment por e-mail indevida nas configurações de segurança. Bloqueada: requer
+      autorização explícita para evolução genérica da RFW, com API pública de métodos permitidos, compatibilidade,
+      testes e documentação/laboratório do showroom.
 
 ## Matriz de Dependências
 
@@ -188,8 +196,8 @@ flowchart TD
 | 3 - Núcleo de decisão | 3 | 9 | 3 C |
 | 4 - Administração e continuidade | 4 | 12 | 3 C, 1 A |
 | 5 - Adapters e interface | 3 | 9 | 1 C, 2 A |
-| 6 - Consumidores e quality gate | 3 | 9 | 3 C |
-| **Total** | **17** | **51** | **14 C, 3 A** |
+| 6 - Consumidores e quality gate | 3 | 11 | 3 C |
+| **Total** | **17** | **53** | **14 C, 3 A** |
 
 ## Escopo Coberto
 

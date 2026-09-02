@@ -34,6 +34,12 @@ porque dependem do contrato de regras e contexto; não se cria CSS estrutural pa
 ciclo. Se a implementação comprovar uma lacuna genérica, o trabalho para e apresenta previamente problema, API
 pública proposta, compatibilidade e impacto para hospedeiras, testes e atualização obrigatória do showroom.
 
+**Follow-up de implementação (2026-09-02):** a seção pública de fatores de segurança da RFW hoje oferece início de
+enrollment TOTP e por e-mail, enquanto o adapter Rinos aceita somente TOTP. A recusa do adapter falha fechada e não
+amplia acesso, mas a opção por e-mail é uma experiência incorreta. A tarefa `6.3.5` propõe uma capacidade genérica de
+configurar métodos de enrollment permitidos na instância RFW, com valor padrão compatível. Não deve ser criado renderer
+paralelo no Rinos nem alterado o submódulo sem autorização explícita, API pública, testes e showroom atualizados.
+
 ## Interaction Inventory
 
 | Interaction ID | Surface ID | Surface Type | Change Type | Actors and Permissions | Summary |

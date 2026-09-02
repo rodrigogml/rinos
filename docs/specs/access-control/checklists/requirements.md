@@ -30,4 +30,11 @@
 
 ## Resultado
 
-Checklist aprovado. A próxima etapa autorizada é o backlog de implementação; schema e código permanecem fora deste ciclo documental.
+Checklist aprovado como gate documental inicial.
+
+## Follow-up de implementação — 2026-09-02
+
+O enunciado anterior de que schema e código estavam fora do ciclo descreve o fechamento documental original. A
+implementação subsequente está rastreada em `../tasks.md`, e a revisão final em
+`../evidence/6.3.3/README.md` confirmou que os requisitos ainda mantêm cobertura canônica. Pendências de consumidores,
+benchmark e validação manual continuam abertas no backlog; elas não alteram este checklist de qualidade de requisitos.

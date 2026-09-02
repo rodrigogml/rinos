@@ -27,4 +27,11 @@
 
 ## Resultado
 
-Checklist aprovado para planejamento. A implementação converterá cada item aplicável em teste unitário, integrado ou de interface.
+Checklist aprovado para o planejamento inicial.
+
+## Follow-up de implementação — 2026-09-02
+
+A revisão de segurança da implementação está registrada em `../evidence/6.3.3/README.md` e foi executada contra a
+suíte completa de testes e integrações MySQL. O item humano de acessibilidade acima não possui ainda evidência manual
+reproduzível de teclado, foco e leitor de tela; por isso a tarefa `6.3.4` permanece aberta. Essa pendência não autoriza
+reduzir as verificações de serviço, contexto, bloqueio ou falha fechada já cobertas pelos testes automatizados.

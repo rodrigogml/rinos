@@ -3,7 +3,8 @@
 **Feature**: `access-control`
 **Created**: 2026-07-19
 **Last Clarified**: 2026-09-01
-**Status**: ciclo documental consolidado; backlog criado; schema e código não iniciados
+**Status**: núcleo, persistência, administração e interface implementados; integrações consumidoras e quality gates
+remanescentes rastreados no backlog
 
 ## Escopo
 
@@ -27,6 +28,12 @@ exatamente a ele.
 ### Session 2026-09-01
 
 - Q: Qual fator forte deve preparar o fundador administrativo inicial? -> A: O usuário definido pelo e-mail exclusivo de bootstrap em `application.properties` conclui TOTP obrigatório ainda no fluxo de criação da sua identidade global. A conclusão desse cadastro não cria tenant; o bootstrap global continua sendo uma etapa posterior, idempotente e separada.
+
+### Implementation follow-up 2026-09-02
+
+- O status documental anterior, que restringia o ciclo a requisitos e planejamento, foi superado pela implementação
+  rastreada em `tasks.md`. O núcleo ACL, schema global, administração, bootstrap e interface foram entregues; os
+  consumidores ainda inexistentes e os quality gates não automatizáveis permanecem explicitamente abertos no backlog.
 
 ### Session 2026-07-19
 
