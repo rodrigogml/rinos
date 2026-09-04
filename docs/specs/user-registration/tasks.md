@@ -645,6 +645,19 @@ flowchart TD
 | `user-authentication` | Implementação de login, sessão, recuperação, 2FA, passkeys e vínculo Google de usuário ativo | Feature própria; somente a recuperação mínima é dependência de release |
 | `user-dashboard` | Conteúdo e operações do Painel de Usuário | Feature posterior |
 | `accounts` | Contas, empresas, tenants, planos, convites, papéis, grupos e chaves | Fora do ciclo inicial da identidade |
+
 | `admin` | Administração de usuários ativos e intervenções de sistema | SDDs próprios |
 | `backup-restore` | Backup, restauração e recuperação pela interface | Responsabilidade exclusiva da infraestrutura |
 | `public-api` | API REST pública para cadastro | A superfície aprovada é Vaadin server-side com facade Java |
+
+## FASE 8 — Integração superveniente com contrato pessoal
+
+- [x] 8.1 Publicar/consumir `PersonalContractBootstrapPort` sem expor entities de planos.
+- [x] 8.2 Tornar `PERSONAL/FREE` condição idempotente da ativação local e Google.
+- [x] 8.3 Manter a pendência não ativa quando catálogo ou contrato pessoal estiver indisponível.
+- [x] 8.4 Executar backfill dos usuários ativos antes de habilitar a invariável obrigatória.
+- [x] 8.5 Atualizar testes, checklist e evidências sem apagar a evidência histórica de ausência de tenant.
+- [x] 8.6 Integrar a política exclusiva do fundador ao fluxo de ativação, exigindo confirmação TOTP antes do Painel de Usuário e sem criar tenant, grupo ou privilégio.
+  - Evidência: [continuação de ativação e restrição exclusiva ao enrollment TOTP](./evidence/8.6/README.md).
+- [x] 8.7 Validar cadastro local e Google do fundador, falha/abandono de enrollment, sigilo do e-mail configurado e impossibilidade de acessar jornadas autenticadas antes do TOTP.
+  - Evidência: [matriz dos cenários do fundador e preservação da restrição](./evidence/8.7/README.md).

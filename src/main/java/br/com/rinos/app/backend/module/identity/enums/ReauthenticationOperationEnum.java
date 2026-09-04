@@ -30,19 +30,39 @@ public enum ReauthenticationOperationEnum {
   REVOKE_SESSION("revoke-session", "ui.securitySettings.reauthentication.operation.revokeSession"),
   REVOKE_ALL_SESSIONS(
       "revoke-all-sessions",
-      "ui.securitySettings.reauthentication.operation.revokeAllSessions");
-
-  private static final Set<AuthenticationMethodEnum> INTERACTIVE_METHODS = Set.of(
-      AuthenticationMethodEnum.PASSWORD,
-      AuthenticationMethodEnum.TOTP,
-      AuthenticationMethodEnum.PASSKEY);
+      "ui.securitySettings.reauthentication.operation.revokeAllSessions"),
+  CREATE_ACCOUNT(
+      "create-account", "account.reauthentication.operation.create",
+      AuthenticationAssuranceEnum.SINGLE_FACTOR,
+      Set.of(AuthenticationMethodEnum.PASSWORD, AuthenticationMethodEnum.TOTP,
+          AuthenticationMethodEnum.PASSKEY)),
+  MANAGE_ACCESS(
+      "manage-access", "access.reauthentication.operation.manage",
+      AuthenticationAssuranceEnum.MULTI_FACTOR,
+      Set.of(AuthenticationMethodEnum.TOTP, AuthenticationMethodEnum.PASSKEY)),
+  EXPLAIN_ACCESS(
+      "explain-access", "access.reauthentication.operation.explain",
+      AuthenticationAssuranceEnum.MULTI_FACTOR,
+      Set.of(AuthenticationMethodEnum.TOTP, AuthenticationMethodEnum.PASSKEY));
 
   private final String operationId;
   private final String labelKey;
+  private final AuthenticationAssuranceEnum requiredAssurance;
+  private final Set<AuthenticationMethodEnum> allowedMethods;
 
   ReauthenticationOperationEnum(String operationId, String labelKey) {
+    this(operationId, labelKey, AuthenticationAssuranceEnum.SINGLE_FACTOR,
+        Set.of(AuthenticationMethodEnum.PASSWORD, AuthenticationMethodEnum.TOTP,
+            AuthenticationMethodEnum.PASSKEY));
+  }
+
+  ReauthenticationOperationEnum(
+      String operationId, String labelKey, AuthenticationAssuranceEnum requiredAssurance,
+      Set<AuthenticationMethodEnum> allowedMethods) {
     this.operationId = operationId;
     this.labelKey = labelKey;
+    this.requiredAssurance = requiredAssurance;
+    this.allowedMethods = Set.copyOf(allowedMethods);
   }
 
   public String operationId() {
@@ -54,11 +74,11 @@ public enum ReauthenticationOperationEnum {
   }
 
   public AuthenticationAssuranceEnum requiredAssurance() {
-    return AuthenticationAssuranceEnum.SINGLE_FACTOR;
+    return requiredAssurance;
   }
 
   public Set<AuthenticationMethodEnum> allowedMethods() {
-    return INTERACTIVE_METHODS;
+    return allowedMethods;
   }
 
   /** Resolve somente identificadores catalogados; valores livres nunca viram operação. */

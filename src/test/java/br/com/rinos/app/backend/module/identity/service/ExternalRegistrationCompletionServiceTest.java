@@ -22,7 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
+import br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO;
+import br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO;
+import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
+import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
+import br.com.rinos.app.api.module.plans.vo.ContractBootstrapResult;
 import br.com.rinos.app.backend.module.identity.entity.ExternalIdentityEntity;
 import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -48,6 +56,7 @@ class ExternalRegistrationCompletionServiceTest {
   private LocalCredentialService credentialService;
   private ExternalIdentityService externalIdentityService;
   private IdentityAuditService auditService;
+  private RegistrationAuthenticationContinuationService continuationService;
   private ExternalRegistrationCompletionService service;
 
   @BeforeEach
@@ -57,14 +66,31 @@ class ExternalRegistrationCompletionServiceTest {
     credentialService = mock(LocalCredentialService.class);
     externalIdentityService = mock(ExternalIdentityService.class);
     auditService = mock(IdentityAuditService.class);
+    continuationService = mock(RegistrationAuthenticationContinuationService.class);
+    when(continuationService.issue(any(), any(), any(), any())).thenReturn(
+        new RegistrationAuthenticationContinuationVO(
+            new RinosUserPrincipalVO(10L, "person@example.com"),
+            new RinosAuthenticationCompletionVO(
+                "registration-session-reference",
+                AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION)));
     service = new ExternalRegistrationCompletionService(
         verificationService,
         legalConsentService,
         credentialService,
         externalIdentityService,
-        new UserLifecycleService(),
+        lifecycleWithPersonalContract(),
         new RegistrationLifecycleService(),
-        auditService);
+        auditService,
+        continuationService);
+  }
+
+  private static UserLifecycleService lifecycleWithPersonalContract() {
+    PersonalContractBootstrapPort contracts = request -> new ContractBootstrapResult(
+        ContractBootstrapStatus.ALREADY_COMPLETED,
+        ContractScope.PERSONAL,
+        UUID.randomUUID(),
+        null);
+    return new UserLifecycleService(mock(AuthSessionService.class), contracts);
   }
 
   @Test
@@ -96,6 +122,7 @@ class ExternalRegistrationCompletionServiceTest {
         .isEqualTo(ExternalRegistrationCompletionStatusEnum.AUTHENTICATED);
     assertThat(result.principal().userId()).isEqualTo(10L);
     assertThat(result.principal().email()).isEqualTo("person@example.com");
+    assertThat(result.authenticationContinuation()).isNotNull();
     assertThat(registration.getUser().getStatus()).isEqualTo(UserStatusEnum.ACTIVE);
     assertThat(registration.getStatus()).isEqualTo(RegistrationStatusEnum.ACTIVE);
     assertThat(identity.getStatus()).isEqualTo(ExternalIdentityStatusEnum.ACTIVE);
@@ -110,6 +137,8 @@ class ExternalRegistrationCompletionServiceTest {
         NOW);
     verify(credentialService).invalidateAndRemoveForGoogle(10L, NOW);
     verify(verificationService).invalidateAllOpen(20L, NOW);
+    verify(continuationService).issue(
+        registration.getUser(), RegistrationMethodEnum.LOCAL, CORRELATION_ID, NOW);
   }
 
   @Test

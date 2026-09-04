@@ -56,11 +56,7 @@ public class RFWExternalRegistrationProviderAdapter
   private RFWAuthenticationOutcomeVO map(
       ExternalRegistrationCompletionResultVO result) {
     return switch (result.status()) {
-      case AUTHENTICATED -> RFWAuthenticationOutcomeVO.authenticated(
-          UsernamePasswordAuthenticationToken.authenticated(
-              result.principal(),
-              null,
-              List.of()));
+      case AUTHENTICATED -> authenticated(result);
       case INVALID_REFERENCE -> rejected(
           "registration.google.completion.invalid-reference");
       case EXPIRED_REFERENCE -> rejected(
@@ -76,6 +72,18 @@ public class RFWExternalRegistrationProviderAdapter
       case UNAVAILABLE -> rejected(
           "registration.google.unavailable");
     };
+  }
+
+  private static RFWAuthenticationOutcomeVO authenticated(
+      ExternalRegistrationCompletionResultVO result) {
+    if (result.authenticationContinuation() == null) {
+      return rejected("registration.google.unavailable");
+    }
+    UsernamePasswordAuthenticationToken authentication =
+        UsernamePasswordAuthenticationToken.authenticated(
+            result.principal(), null, List.of());
+    authentication.setDetails(result.authenticationContinuation().completion());
+    return RFWAuthenticationOutcomeVO.authenticated(authentication);
   }
 
   private static RFWAuthenticationOutcomeVO rejected(String messageKey) {

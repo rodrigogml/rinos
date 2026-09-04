@@ -37,6 +37,12 @@ class RinosConfigurationBindingTest {
           assertThat(maintenance.leaseTimeout()).isEqualTo(Duration.ofHours(4));
           assertThat(maintenance.stabilizationPeriod()).isEqualTo(Duration.ofMinutes(10));
           assertThat(maintenance.batchTransactionTimeout()).isEqualTo(Duration.ofMinutes(5));
+          StoragePropertiesConfig storage = context.getBean(StoragePropertiesConfig.class);
+          assertThat(storage.queuePollInterval()).isEqualTo(Duration.ofSeconds(30));
+          assertThat(storage.operationLease()).isEqualTo(Duration.ofMinutes(10));
+          assertThat(storage.operationHeartbeatInterval()).isEqualTo(Duration.ofSeconds(30));
+          assertThat(storage.provisioningMaximumAttempts()).isEqualTo(3);
+          assertThat(storage.maximumConcurrentOperations()).isOne();
           RegistrationPropertiesConfig registration =
               context.getBean(RegistrationPropertiesConfig.class);
           assertThat(registration.pendingRetention()).isEqualTo(Duration.ofDays(15));
@@ -46,6 +52,17 @@ class RinosConfigurationBindingTest {
           assertThat(context.getBean(VerificationPropertiesConfig.class).validity())
               .isEqualTo(Duration.ofHours(24));
           assertThat(context.getBean(OriginPropertiesConfig.class).absoluteLimit()).isEqualTo(20);
+          AccountCreationPropertiesConfig accountCreation =
+              context.getBean(AccountCreationPropertiesConfig.class);
+          assertThat(accountCreation.turnstileRequiredAfter()).isZero();
+          assertThat(accountCreation.originWindow()).isEqualTo(Duration.ofMinutes(15));
+          assertThat(accountCreation.originLimit()).isEqualTo(5);
+          assertThat(accountCreation.originBlockPeriod()).isEqualTo(Duration.ofMinutes(15));
+          assertThat(accountCreation.idempotencyRetention()).isEqualTo(Duration.ofDays(30));
+          assertThat(accountCreation.outboxBatchSize()).isEqualTo(25);
+          assertThat(accountCreation.outboxLease()).isEqualTo(Duration.ofMinutes(2));
+          assertThat(accountCreation.outboxRetryBase()).isEqualTo(Duration.ofMinutes(1));
+          assertThat(accountCreation.outboxRetryMaximum()).isEqualTo(Duration.ofHours(1));
           assertThat(context.getBean(AuthenticationSessionPropertiesConfig.class).normalAbsolute())
               .isEqualTo(Duration.ofHours(12));
           AuthenticationMfaPropertiesConfig mfa =
@@ -190,6 +207,23 @@ class RinosConfigurationBindingTest {
   }
 
   /**
+   * Comprova que o limiar de Turnstile não aceita valor que eliminaria a semântica de contagem
+   * por origem.
+   */
+  @Test
+  void bind_shouldFail_whenAccountCreationTurnstileThresholdIsNegative() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.account-creation.turnstile-required-after=-1")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("account creation properties are invalid");
+        });
+  }
+
+  /**
    * Comprova que o timeout transacional não pode ultrapassar a estabilização.
    */
   @Test
@@ -220,6 +254,35 @@ class RinosConfigurationBindingTest {
           assertThat(context).hasFailed();
           assertThat(context.getStartupFailure())
               .hasRootCauseMessage("Os tempos de manutenção devem ser maiores que zero.");
+        });
+  }
+
+  /** Comprova que o worker de storage não pode renovar um lease já expirado. */
+  @Test
+  void bind_shouldFail_whenStorageHeartbeatIsNotShorterThanOperationLease() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.storage.operation-heartbeat-interval=10m",
+            "rinos.storage.operation-lease=10m")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("storage properties are invalid");
+        });
+  }
+
+  /** Comprova que a fila estrutural exige limites positivos mesmo com defaults disponíveis. */
+  @Test
+  void bind_shouldFail_whenStorageConcurrencyIsNotPositive() {
+    contextRunner
+        .withPropertyValues(
+            "rinos.maintenance.instance-id=test-instance",
+            "rinos.storage.maximum-concurrent-operations=0")
+        .run(context -> {
+          assertThat(context).hasFailed();
+          assertThat(context.getStartupFailure())
+              .hasRootCauseMessage("storage properties are invalid");
         });
   }
 

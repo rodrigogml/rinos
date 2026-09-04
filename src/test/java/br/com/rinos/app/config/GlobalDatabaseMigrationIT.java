@@ -1,6 +1,7 @@
 package br.com.rinos.app.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -24,8 +25,10 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import br.com.rinos.app.testsupport.mysql.MySqlTestDatabase;
+import br.com.rinos.app.backend.module.plans.service.PlansCatalogReadinessService;
 import br.eng.rodrigogml.rfw.database.config.RFWDatabaseAutoConfiguration;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateErrorCategoryEnum;
 import br.eng.rodrigogml.rfw.exception.RFWDatabaseUpdateException;
@@ -54,8 +57,18 @@ class GlobalDatabaseMigrationIT {
       "classpath:db/global/update/20260809_001_update.sql",
       "classpath:db/global/update/20260809_002_update.sql",
       "classpath:db/global/update/20260809_003_update.sql",
-      "classpath:db/global/update/20260810_001_update.sql");
-  private static final String TARGET_VERSION = "20260810001";
+      "classpath:db/global/update/20260810_001_update.sql",
+      "classpath:db/global/update/20260812_001_update.sql",
+      "classpath:db/global/update/20260812_002_update.sql",
+      "classpath:db/global/update/20260815_001_update.sql",
+      "classpath:db/global/update/20260815_002_update.sql",
+      "classpath:db/global/update/20260815_003_update.sql",
+      "classpath:db/global/update/20260816_001_update.sql",
+      "classpath:db/global/update/20260816_002_update.sql",
+      "classpath:db/global/update/20260816_003_update.sql",
+      "classpath:db/global/update/20260829_001_update.sql",
+      "classpath:db/global/update/20260901_001_update.sql");
+  private static final String TARGET_VERSION = "20260901001";
 
   private static MySqlTestDatabase testDatabase;
 
@@ -126,6 +139,11 @@ class GlobalDatabaseMigrationIT {
     assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
+    assertAccountTables();
+    assertMembershipTables();
+    assertAccessControlTables();
+    assertPlansTables();
+    assertStorageTables();
     assertThat(tableExists("testGlobalMigrationMarker")).isFalse();
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -148,19 +166,14 @@ class GlobalDatabaseMigrationIT {
     });
   }
 
-  /**
-   * Comprova que o bootstrap global não descobre nem executa o catálogo de tenant.
-   *
-   * @throws SQLException quando o estado final não pode ser consultado
-   */
+  /** Confirma que o bootstrap configurado com o catálogo global não cria objetos de tenant. */
   @Test
-  void startup_shouldUseOnlyGlobalCatalog_whenTenantCatalogIsAlsoPresent() throws SQLException {
+  void startup_shouldUseOnlyGlobalCatalog_whenGlobalCatalogIsConfigured() throws SQLException {
     initializeLegacyDatabase();
 
     runUpdater();
 
     assertThat(tableExists("testGlobalMigrationMarker")).isTrue();
-    assertThat(tableExists("testTenantMigrationMarker")).isFalse();
     assertThat(tableExists("platform_maintenanceLease")).isTrue();
     assertThat(tableExists("identity_user")).isTrue();
     assertThat(tableExists("identity_registration")).isTrue();
@@ -173,6 +186,11 @@ class GlobalDatabaseMigrationIT {
     assertAuthenticationTables();
     assertThat(tableExists("security_originWindow")).isTrue();
     assertThat(tableExists("identity_event")).isTrue();
+    assertAccountTables();
+    assertMembershipTables();
+    assertAccessControlTables();
+    assertPlansTables();
+    assertStorageTables();
     assertThat(readVersion()).isEqualTo(TARGET_VERSION);
     assertIdentitySchemaHasNoTenantReferences();
     assertMaintenanceLeaseSchema();
@@ -190,8 +208,10 @@ class GlobalDatabaseMigrationIT {
   void startup_shouldStopWithoutAdvancingVersion_whenUpdateFailsPartially()
       throws SQLException {
     initializeDatabase();
+    removeStorageSchema();
+    replaceVersion("20260816003");
     String locations = GLOBAL_UPDATE_LOCATIONS
-        + ",classpath:db/global/failure/20260810_002_update.sql";
+        + ",classpath:db/global/failure/20260816_004_update.sql";
 
     contextRunner(locations).run(context -> {
       assertThat(context).hasFailed();
@@ -200,7 +220,7 @@ class GlobalDatabaseMigrationIT {
           RFWDatabaseUpdateErrorCategoryEnum.EXECUTION);
     });
 
-    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(readVersion()).isEqualTo("20260816003");
     assertThat(tableExists("testFailedUpdateMarker")).isTrue();
     assertThat(tableExists("testUnexpectedUpdateContinuation")).isFalse();
   }
@@ -239,6 +259,298 @@ class GlobalDatabaseMigrationIT {
     assertThat(readTimestamp("identity_localCredential", "compromisedAt", 1L)).isNull();
     assertThat(readTimestamp("identity_externalIdentity", "lastUsedAt", 1L)).isNull();
     assertAuthenticationTables();
+  }
+
+  /**
+   * Comprova seed, contratos, atribuições e capacidade ao evoluir o schema anterior.
+   *
+   * @throws SQLException quando o cenário legado não pode ser preparado
+   */
+  @Test
+  void startup_shouldBackfillPlansContractsAndCapacityIdempotently() throws SQLException {
+    initializePlansPreBootstrapDatabase();
+    executeUpdate("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES
+          ('backfill-one@example.com', 'backfill-one@example.com', 'ACTIVE'),
+          ('backfill-two@example.com', 'backfill-two@example.com', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO account_tenant (publicId, status)
+        VALUES (UUID_TO_BIN(UUID()), 'OPERATIONAL')
+        """);
+    executeUpdate("""
+        INSERT INTO account_account
+          (publicId, idTenant, founderUserId, displayName, baseCurrency, timeZoneId, status)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'Backfill', 'BRL', 'America/Sao_Paulo', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO membership_accountMembership
+          (publicId, idAccount, idUser, roleType, originType, status,
+           currentMarker, startedAt, endedAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'ACCOUNT_ADMINISTRATOR', 'FOUNDER',
+           'ACTIVE', 1, TIMESTAMPADD(DAY, -3, CURRENT_TIMESTAMP(6)), NULL),
+          (UUID_TO_BIN(UUID()), 1, 2, 'COLLABORATOR', 'INVITATION',
+           'REMOVED', NULL, TIMESTAMPADD(DAY, -2, CURRENT_TIMESTAMP(6)),
+           TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP(6))),
+          (UUID_TO_BIN(UUID()), 1, 2, 'COLLABORATOR', 'INVITATION',
+           'ACTIVE', 1, CURRENT_TIMESTAMP(6), NULL)
+        """);
+    executeUpdate("""
+        INSERT INTO membership_invitation
+          (publicId, idAccount, inviterMembershipId, normalizedEmail, proposedRoleType,
+           proofDigest, proofKeyId, status, pendingMarker, expiresAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'pending@example.com', 'COLLABORATOR',
+           UNHEX(REPEAT('31', 32)), 'backfill-key', 'PENDING', 1,
+           TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6))),
+          (UUID_TO_BIN(UUID()), 1, 1, 'backfill-one@example.com', 'COLLABORATOR',
+           UNHEX(REPEAT('32', 32)), 'backfill-key', 'PENDING', 1,
+           TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)))
+        """);
+    executeUpdate("""
+        INSERT INTO plans_serviceContract
+          (publicId, scopeType, status, startedAt, sourceType, correlationId)
+        VALUES
+          (UUID_TO_BIN('30000000-0000-4000-8000-000000000001'), 'PERSONAL',
+           'ACTIVE', CURRENT_TIMESTAMP(6), 'SYSTEM', 'existing-personal-contract')
+        """);
+    executeUpdate("""
+        INSERT INTO plans_personalContractHolder (idServiceContract, scopeType, idUser)
+        VALUES (1, 'PERSONAL', 1)
+        """);
+
+    runUpdater();
+    runUpdater();
+
+    assertThat(readVersion()).isEqualTo(TARGET_VERSION);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_plan WHERE defaultPlan = TRUE")).isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_personalContractHolder")).isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantContractHolder")).isOne();
+    assertThat(readLong("SELECT COUNT(*) FROM plans_serviceContract")).isEqualTo(3);
+    assertThat(readLong("""
+        SELECT COUNT(*) FROM plans_serviceContract
+        WHERE correlationId = 'existing-personal-contract'
+        """)).isOne();
+    assertThat(readLong("SELECT COUNT(*) FROM plans_planAssignment WHERE currentMarker = 1"))
+        .isEqualTo(3);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantUserCapacityOccupancy"))
+        .isEqualTo(2);
+    assertThat(readLong("SELECT COUNT(*) FROM plans_tenantUserCapacityReservation"))
+        .isOne();
+    assertThat(readLong("""
+        SELECT quantityValue FROM plans_planVersionEntitlement composition
+        JOIN plans_entitlementDefinition definition
+          ON definition.idEntitlementDefinition = composition.idEntitlementDefinition
+        WHERE definition.entitlementCode = 'membership.associated-users.limit'
+        """)).isEqualTo(10);
+    new PlansCatalogReadinessService(dataSource).validate();
+  }
+
+  /**
+   * Comprova no MySQL real os uniques e checks que fecham contexto, origem e vigência ACL.
+   *
+   * @throws SQLException quando o cenário válido não pode ser preparado
+   */
+  @Test
+  void accessSchema_shouldRejectInconsistentContextOriginAndValidity() throws SQLException {
+    initializeDatabase();
+    executeUpdate("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES ('acl@example.com', 'acl@example.com', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_keyCategory
+          (categoryCode, scopeType, nameI18nKey, descriptionI18nKey, displayOrder, status)
+        VALUES ('global.platform', 'GLOBAL', 'category.name', 'category.description', 0, 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_key
+          (accessKeyCode, scopeType, idAccessKeyCategory, ownerModule, nameI18nKey,
+           descriptionI18nKey, status, descriptorVersion)
+        VALUES ('global.platform.directory.view', 'GLOBAL', 1, 'test', 'key.name',
+                'key.description', 'ACTIVE', 1)
+        """);
+    executeUpdate("""
+        INSERT INTO access_group
+          (scopeType, idTenant, name, normalizedName, status, protectedGroup, baselineVersion)
+        VALUES ('GLOBAL', NULL, 'Operators', 'operators', 'ACTIVE', FALSE, NULL)
+        """);
+    executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, idTenant, originType, idUser, idAccessKey, effect, status)
+        VALUES ('GLOBAL', NULL, 'DIRECT_USER', 1, 1, 'PERMITIR', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO access_ruleHistory
+          (idAccessRule, changeType, newSnapshot, systemOrigin, correlationId, occurredAt)
+        VALUES (1, 'CREATE', JSON_OBJECT('effect', 'PERMITIR'), 'schema-test',
+                'acl-correlation', CURRENT_TIMESTAMP(6))
+        """);
+
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_group
+          (scopeType, idTenant, name, normalizedName, status, protectedGroup, baselineVersion)
+        VALUES ('GLOBAL', 42, 'Invalid', 'invalid', 'ACTIVE', FALSE, NULL)
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_groupSubject (idAccessGroup, status)
+        VALUES (1, 'ACTIVE')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, originType, idUser, idAccessKey, effect, status)
+        VALUES ('GLOBAL', 'DIRECT_USER', 1, 1, 'BLOQUEAR', 'ACTIVE')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_rule
+          (scopeType, originType, idAccessGroup, idAccessKey, effect, status,
+           validFrom, validUntil)
+        VALUES ('GLOBAL', 'GROUP', 1, 1, 'PERMITIR', 'ACTIVE',
+                '2026-08-16 00:00:00', '2026-08-15 00:00:00')
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO access_bootstrap (idAccessBootstrap, status, version)
+        VALUES (2, 'NEVER_COMPLETED', 0)
+        """)).isInstanceOf(SQLException.class);
+
+    assertThat(readLong("SELECT COUNT(*) FROM access_ruleHistory")).isOne();
+    assertThat(indexExists("access_rule", "idx_access_rule_context_key")).isTrue();
+    assertThat(indexExists("access_groupSubject", "idx_access_group_subject_member_resolution"))
+        .isTrue();
+  }
+
+  /**
+   * Comprova escopos compostos, titularidade, atribuição vigente e capacidade no MySQL.
+   *
+   * @throws SQLException quando o cenário válido não pode ser preparado
+   */
+  @Test
+  void plansSchema_shouldRejectCrossScopeAndDuplicateEffectiveState() throws SQLException {
+    initializeDatabase();
+    executeUpdate("""
+        INSERT INTO identity_user (email, normalizedEmail, status)
+        VALUES
+          ('plans-one@example.com', 'plans-one@example.com', 'ACTIVE'),
+          ('plans-two@example.com', 'plans-two@example.com', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO account_tenant (publicId, status)
+        VALUES (UUID_TO_BIN(UUID()), 'OPERATIONAL')
+        """);
+    executeUpdate("""
+        INSERT INTO account_account
+          (publicId, idTenant, founderUserId, displayName, baseCurrency, timeZoneId, status)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'Plans test', 'BRL', 'America/Sao_Paulo', 'ACTIVE')
+        """);
+    executeUpdate("""
+        INSERT INTO membership_accountMembership
+          (publicId, idAccount, idUser, roleType, originType, status, currentMarker, startedAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'ACCOUNT_ADMINISTRATOR', 'FOUNDER',
+           'ACTIVE', 1, CURRENT_TIMESTAMP(6))
+        """);
+    executeUpdate("""
+        INSERT INTO membership_invitation
+          (publicId, idAccount, inviterMembershipId, normalizedEmail, proposedRoleType,
+           proofDigest, proofKeyId, status, pendingMarker, expiresAt)
+        VALUES
+          (UUID_TO_BIN(UUID()), 1, 1, 'plans-two@example.com', 'COLLABORATOR',
+           UNHEX(REPEAT('11', 32)), 'test-key', 'PENDING', 1,
+           TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)))
+        """);
+    executeUpdate("""
+        INSERT INTO plans_serviceContract
+          (publicId, scopeType, status, startedAt, sourceType, idempotencyKey, correlationId)
+        VALUES
+          (UUID_TO_BIN(UUID()), 'TENANT', 'ACTIVE', CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UNHEX(REPEAT('a1', 32)),
+           'tenant-contract'),
+          (UUID_TO_BIN(UUID()), 'PERSONAL', 'ACTIVE', CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UNHEX(REPEAT('b2', 32)),
+           'personal-contract')
+        """);
+    executeUpdate("""
+        INSERT INTO plans_tenantContractHolder (idServiceContract, scopeType, idTenant)
+        VALUES (1, 'TENANT', 1)
+        """);
+    executeUpdate("""
+        INSERT INTO plans_personalContractHolder (idServiceContract, scopeType, idUser)
+        VALUES (2, 'PERSONAL', 1)
+        """);
+    executeUpdate("""
+        INSERT INTO plans_planAssignment
+          (idServiceContract, idPlanVersion, scopeType, status, currentMarker,
+           startedAt, sourceType, idempotencyKey)
+        VALUES
+          (1, 2, 'TENANT', 'ACTIVE', 1, CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UUID_TO_BIN(UUID())),
+          (2, 1, 'PERSONAL', 'ACTIVE', 1, CURRENT_TIMESTAMP(6), 'BOOTSTRAP',
+           UUID_TO_BIN(UUID()))
+        """);
+    executeUpdate("""
+        INSERT INTO plans_tenantUserCapacityOccupancy
+          (idServiceContract, idTenant, idAccount, scopeType, idUser, firstMembershipId,
+           occupiedAt, sourceType, idempotencyKey)
+        VALUES
+          (1, 1, 1, 'TENANT', 1, 1, CURRENT_TIMESTAMP(6), 'FOUNDER', UUID_TO_BIN(UUID()))
+        """);
+    executeUpdate("""
+        INSERT INTO plans_tenantUserCapacityReservation
+          (idServiceContract, idTenant, idAccount, scopeType, idMembershipInvitation,
+           recipientDigest, recipientKeyId, status, capacityMarker, expiresAt, idempotencyKey)
+        VALUES
+          (1, 1, 1, 'TENANT', 1, UNHEX(REPEAT('22', 32)), 'test-key',
+           'RESERVED', 1, TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)), UUID_TO_BIN(UUID()))
+        """);
+
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_plan
+          (publicId, scopeType, planCode, nameI18nKey, descriptionI18nKey,
+           status, freePlan, defaultPlan)
+        VALUES
+          (UUID_TO_BIN(UUID()), 'PERSONAL', 'OTHER', 'other.name', 'other.description',
+           'ACTIVE', FALSE, TRUE)
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_planVersionEntitlement
+          (idPlanVersion, idEntitlementDefinition, scopeType, quantityValue)
+        VALUES (1, 1, 'PERSONAL', 10)
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_personalContractHolder (idServiceContract, scopeType, idUser)
+        VALUES (1, 'PERSONAL', 2)
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_planAssignment
+          (idServiceContract, idPlanVersion, scopeType, status, currentMarker,
+           startedAt, sourceType, idempotencyKey)
+        VALUES
+          (1, 2, 'TENANT', 'ACTIVE', 1, CURRENT_TIMESTAMP(6), 'SYSTEM', UUID_TO_BIN(UUID()))
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_tenantUserCapacityOccupancy
+          (idServiceContract, idTenant, idAccount, scopeType, idUser,
+           occupiedAt, sourceType, idempotencyKey)
+        VALUES
+          (1, 1, 1, 'TENANT', 1, CURRENT_TIMESTAMP(6), 'BACKFILL', UUID_TO_BIN(UUID()))
+        """)).isInstanceOf(SQLException.class);
+    assertThatThrownBy(() -> executeUpdate("""
+        INSERT INTO plans_tenantUserCapacityReservation
+          (idServiceContract, idTenant, idAccount, scopeType, idMembershipInvitation,
+           recipientDigest, recipientKeyId, status, capacityMarker, expiresAt, idempotencyKey)
+        VALUES
+          (1, 1, 1, 'TENANT', 1, UNHEX(REPEAT('33', 32)), 'test-key',
+           'RELEASED', 1, TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP(6)), UUID_TO_BIN(UUID()))
+        """)).isInstanceOf(SQLException.class);
+
+    assertThat(indexExists("plans_plan", "uk_plans_plan_default")).isTrue();
+    assertThat(indexExists("plans_planAssignment", "uk_plans_assignment_current")).isTrue();
+    assertThat(indexExists(
+        "plans_tenantUserCapacityReservation", "idx_plans_capacity_reservation_count")).isTrue();
   }
 
   /**
@@ -339,6 +651,39 @@ class GlobalDatabaseMigrationIT {
     populator.execute(dataSource);
   }
 
+  /** Reproduz exatamente o marco imediatamente anterior ao bootstrap de planos. */
+  private void initializePlansPreBootstrapDatabase() throws SQLException {
+    initializeDatabase();
+    removeStorageSchema();
+    executeUpdate("DELETE FROM plans_planVersionEntitlement");
+    executeUpdate("DELETE FROM plans_entitlementDefinition");
+    executeUpdate("DELETE FROM plans_planVersion");
+    executeUpdate("DELETE FROM plans_plan");
+    executeUpdate("""
+        ALTER TABLE plans_serviceContract
+          DROP INDEX uk_plans_service_contract_key,
+          DROP COLUMN idempotencyKey
+        """);
+    replaceVersion("20260816002");
+  }
+
+  /**
+   * Remove somente as estruturas introduzidas depois do marco que os cenários legados simulam.
+   *
+   * <p>O método reproduz um banco anterior à migration de storage sem alterar artefatos publicados. A ordem inversa
+   * das dependências preserva as chaves estrangeiras reais do MySQL.</p>
+   *
+   * @throws SQLException quando o schema descartável não puder ser ajustado para o cenário histórico
+   */
+  private void removeStorageSchema() throws SQLException {
+    executeUpdate("DROP TABLE storage_auditEvent");
+    executeUpdate("DROP TABLE storage_stateTransition");
+    executeUpdate("DROP TABLE storage_migrationExecution");
+    executeUpdate("DROP TABLE storage_operationStep");
+    executeUpdate("DROP TABLE storage_operation");
+    executeUpdate("DROP TABLE storage_tenantRegistry");
+  }
+
   /**
    * Lê uma data opcional de um registro conhecido do cenário descartável.
    *
@@ -367,14 +712,24 @@ class GlobalDatabaseMigrationIT {
    * @throws SQLException quando a view de versão não pode ser substituída
    */
   private void replaceVersionWithNewerArtifact() throws SQLException {
+    replaceVersion("99999999999");
+  }
+
+  /**
+   * Substitui o marco de versão somente no schema controlado pelo teste.
+   *
+   * @param version versão compacta usada para reproduzir o estado histórico do cenário
+   * @throws SQLException quando a view não puder ser substituída
+   */
+  private void replaceVersion(String version) throws SQLException {
     try (Connection connection = dataSource.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("""
+      statement.execute(("""
             CREATE OR REPLACE
             SQL SECURITY INVOKER
             VIEW databaseVersion AS
-            SELECT '99999999999' AS version
-            """);
+            SELECT '%s' AS version
+            """).formatted(version));
     }
   }
 
@@ -443,6 +798,156 @@ class GlobalDatabaseMigrationIT {
             throw new IllegalStateException(exception);
           }
         });
+  }
+
+  /** Confirma as autoridades globais básicas de conta, tenant e provisionamento. */
+  private void assertAccountTables() {
+    assertThat(List.of(
+        "account_tenant",
+        "account_account",
+        "account_creationIntent",
+        "account_provisioningCheckpoint",
+        "account_outboxEvent",
+        "account_auditEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /** Confirma associações, convites e trilhas duráveis do membership global. */
+  private void assertMembershipTables() {
+    assertThat(List.of(
+        "membership_accountMembership",
+        "membership_invitation",
+        "membership_invitationRateWindow",
+        "membership_outboxEvent",
+        "membership_event"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /**
+   * Confirma as estruturas globais e os guardas iniciais do controle de acesso.
+   *
+   * @throws SQLException quando o schema ou os dados iniciais não podem ser consultados
+   */
+  private void assertAccessControlTables() throws SQLException {
+    assertThat(List.of(
+        "access_keyCategory",
+        "access_key",
+        "access_keyRequirement",
+        "access_contextRevision",
+        "access_group",
+        "access_protectedGroupBaseline",
+        "access_protectedGroupBaselineKey",
+        "access_groupSubject",
+        "access_rule",
+        "access_ruleHistory",
+        "access_bootstrap",
+        "access_auditEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+    assertThat(readLong("SELECT revision FROM access_contextRevision WHERE scopeType = 'GLOBAL'"))
+        .isZero();
+    assertThat(readLong("SELECT COUNT(*) FROM access_bootstrap WHERE idAccessBootstrap = 1"))
+        .isOne();
+  }
+
+  /** Confirma catálogo, contratos, capacidade e trilhas globais de planos. */
+  private void assertPlansTables() {
+    assertThat(List.of(
+        "plans_plan",
+        "plans_planVersion",
+        "plans_entitlementDefinition",
+        "plans_planVersionEntitlement",
+        "plans_serviceContract",
+        "plans_personalContractHolder",
+        "plans_tenantContractHolder",
+        "plans_planAssignment",
+        "plans_tenantUserCapacityOccupancy",
+        "plans_tenantUserCapacityReservation",
+        "plans_auditEvent",
+        "plans_outboxEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /** Confirma o registro global, a fila e os históricos sanitizados do armazenamento de tenants. */
+  private void assertStorageTables() {
+    assertThat(List.of(
+        "storage_tenantRegistry",
+        "storage_operation",
+        "storage_operationStep",
+        "storage_migrationExecution",
+        "storage_stateTransition",
+        "storage_auditEvent"))
+        .allMatch(tableName -> {
+          try {
+            return tableExists(tableName);
+          } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+          }
+        });
+  }
+
+  /**
+   * Lê um valor numérico escalar do schema descartável.
+   *
+   * @param sql consulta constante controlada pelo teste
+   * @return valor retornado
+   * @throws SQLException quando a consulta falha
+   */
+  private long readLong(String sql) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery(sql)) {
+      assertThat(result.next()).isTrue();
+      return result.getLong(1);
+    }
+  }
+
+  private void executeUpdate(String sql) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate(sql);
+    }
+  }
+
+  private boolean indexExists(String tableName, String indexName) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement("""
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = ?
+              AND index_name = ?
+            """)) {
+      statement.setString(1, tableName);
+      statement.setString(2, indexName);
+      try (ResultSet result = statement.executeQuery()) {
+        assertThat(result.next()).isTrue();
+        return result.getInt(1) > 0;
+      }
+    }
   }
 
   /**

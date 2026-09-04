@@ -1341,7 +1341,13 @@ class RFWPlatformIntegrationTest {
     ExternalRegistrationFacade completionFacade = mock(ExternalRegistrationFacade.class);
     RinosUserPrincipalVO principal = new RinosUserPrincipalVO(41L, "verified@example.com");
     when(completionFacade.complete(any())).thenReturn(CompletableFuture.completedFuture(
-        ExternalRegistrationCompletionResultVO.authenticated(principal)));
+        ExternalRegistrationCompletionResultVO.authenticated(
+            new br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO(
+                principal,
+                new br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO(
+                    "registration-platform-continuation",
+                    br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum
+                        .REGISTRATION_ACTIVATION)))));
     RFWExternalRegistrationProviderAdapter completionProvider =
         new RFWExternalRegistrationProviderAdapter(completionFacade);
     RFWAuthenticationSessionService authenticationSessionService =

@@ -2,3 +2,7 @@
 	path = modules/RFW.Platform
 	url = git@github.com:rodrigogml/RFW.Platform.git
 	branch = main
+[submodule ".agents/skills/sapient-ai-development"]
+	path = .agents/skills/sapient-ai-development
+	url = git@github.com:rodrigogml/skillSapientAIDevelopment.git
+	branch = main

@@ -30,7 +30,6 @@ public class OriginLimitService {
 
   private final OriginWindowRepository repository;
   private final OriginPropertiesConfig properties;
-  private final long windowMicroseconds;
 
   /**
    * Cria o serviço a partir das definições fixas da instalação.
@@ -43,7 +42,6 @@ public class OriginLimitService {
       OriginPropertiesConfig properties) {
     this.repository = repository;
     this.properties = properties;
-    windowMicroseconds = toMicroseconds(properties.window());
   }
 
   /**
@@ -57,9 +55,28 @@ public class OriginLimitService {
   public boolean requiresTurnstile(
       OriginAddressVO origin,
       OriginOperationEnum operation) {
+    return requiresTurnstile(origin, operation, properties.turnstileThreshold());
+  }
+
+  /**
+   * Indica se a próxima operação exige comprovação humana segundo um limiar específico.
+   *
+   * @param origin origem binária validada
+   * @param operation operação protegida
+   * @param turnstileThreshold quantidade aceita antes da exigência
+   * @return {@code true} quando o limiar foi alcançado
+   */
+  @Transactional(readOnly = true)
+  public boolean requiresTurnstile(
+      OriginAddressVO origin,
+      OriginOperationEnum operation,
+      int turnstileThreshold) {
     Objects.requireNonNull(origin, "origin must not be null");
     Objects.requireNonNull(operation, "operation must not be null");
-    if (properties.turnstileThreshold() == 0) {
+    if (turnstileThreshold < 0) {
+      throw new IllegalArgumentException("turnstileThreshold must not be negative");
+    }
+    if (turnstileThreshold == 0) {
       return true;
     }
     int currentCount = repository.findCurrent(
@@ -68,7 +85,7 @@ public class OriginLimitService {
         COUNTER_POLICY)
         .map(OriginWindowEntity::getEventCount)
         .orElse(0);
-    return currentCount >= properties.turnstileThreshold();
+    return currentCount >= turnstileThreshold;
   }
 
   /**
@@ -90,7 +107,8 @@ public class OriginLimitService {
         origin,
         operation,
         properties.absoluteLimit(),
-        windowMicroseconds);
+        properties.window(),
+        properties.window());
   }
 
   /**
@@ -112,20 +130,52 @@ public class OriginLimitService {
     if (window.isZero() || window.isNegative()) {
       throw new IllegalArgumentException("window must be positive");
     }
-    return reserve(origin, operation, limit, toMicroseconds(window));
+    return reserve(origin, operation, limit, window, window);
+  }
+
+  /**
+   * Reserva uma operação e registra bloqueio temporário independente da janela de contagem.
+   *
+   * @param origin origem binária validada
+   * @param operation operação protegida
+   * @param limit máximo de eventos aceitos na janela
+   * @param window duração da janela de contagem
+   * @param blockPeriod duração do bloqueio após alcançar o limite
+   * @return reserva confirmada ou bloqueio vigente
+   */
+  @Transactional
+  public OriginReservationResultVO reserve(
+      OriginAddressVO origin,
+      OriginOperationEnum operation,
+      int limit,
+      Duration window,
+      Duration blockPeriod) {
+    Objects.requireNonNull(window, "window must not be null");
+    Objects.requireNonNull(blockPeriod, "blockPeriod must not be null");
+    if (window.isZero() || window.isNegative() || blockPeriod.isZero() || blockPeriod.isNegative()) {
+      throw new IllegalArgumentException("window and blockPeriod must be positive");
+    }
+    return reserve(origin, operation, limit, toMicroseconds(window), toMicroseconds(blockPeriod));
   }
 
   private OriginReservationResultVO reserve(
       OriginAddressVO origin,
       OriginOperationEnum operation,
       int limit,
-      long durationMicroseconds) {
+      long durationMicroseconds,
+      long blockMicroseconds) {
     Objects.requireNonNull(origin, "origin must not be null");
     Objects.requireNonNull(operation, "operation must not be null");
     if (limit <= 0) {
       throw new IllegalArgumentException("limit must be positive");
     }
     byte[] address = origin.getAddress();
+    OriginWindowEntity blocked = repository.findCurrentBlocked(address, operation, COUNTER_POLICY)
+        .orElse(null);
+    if (blocked != null) {
+      return new OriginReservationResultVO(
+          OriginReservationStatusEnum.BLOCKED, blocked.getBlockedUntil());
+    }
     repository.createActiveIfAbsent(
         address,
         operation.name(),
@@ -144,6 +194,17 @@ public class OriginLimitService {
         limit);
     if (incremented == 1) {
       return new OriginReservationResultVO(OriginReservationStatusEnum.RESERVED, null);
+    }
+    repository.blockCurrent(
+        address,
+        operation.name(),
+        COUNTER_POLICY.name(),
+        blockMicroseconds);
+    OriginWindowEntity activeBlocked = repository.findCurrentBlocked(address, operation, COUNTER_POLICY)
+        .orElse(null);
+    if (activeBlocked != null) {
+      return new OriginReservationResultVO(
+          OriginReservationStatusEnum.BLOCKED, activeBlocked.getBlockedUntil());
     }
     OriginWindowEntity active = repository.findCurrent(address, operation, COUNTER_POLICY)
         .orElseThrow(() -> new IllegalStateException(

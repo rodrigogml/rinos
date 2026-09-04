@@ -36,7 +36,17 @@ class GlobalDatabaseUpdateCatalogTest {
         "classpath:db/global/update/20260809_001_update.sql",
         "classpath:db/global/update/20260809_002_update.sql",
         "classpath:db/global/update/20260809_003_update.sql",
-        "classpath:db/global/update/20260810_001_update.sql"));
+        "classpath:db/global/update/20260810_001_update.sql",
+        "classpath:db/global/update/20260812_001_update.sql",
+        "classpath:db/global/update/20260812_002_update.sql",
+        "classpath:db/global/update/20260815_001_update.sql",
+        "classpath:db/global/update/20260815_002_update.sql",
+        "classpath:db/global/update/20260815_003_update.sql",
+        "classpath:db/global/update/20260816_001_update.sql",
+        "classpath:db/global/update/20260816_002_update.sql",
+        "classpath:db/global/update/20260816_003_update.sql",
+        "classpath:db/global/update/20260829_001_update.sql",
+        "classpath:db/global/update/20260901_001_update.sql"));
     DatabaseUpdateScriptDiscoveryService discovery = new DatabaseUpdateScriptDiscoveryService(
         new PathMatchingResourcePatternResolver(),
         new DatabaseUpdateScriptNameService());
@@ -57,7 +67,17 @@ class GlobalDatabaseUpdateCatalogTest {
         "20260809_001_update.sql",
         "20260809_002_update.sql",
         "20260809_003_update.sql",
-        "20260810_001_update.sql");
+        "20260810_001_update.sql",
+        "20260812_001_update.sql",
+        "20260812_002_update.sql",
+        "20260815_001_update.sql",
+        "20260815_002_update.sql",
+        "20260815_003_update.sql",
+        "20260816_001_update.sql",
+        "20260816_002_update.sql",
+        "20260816_003_update.sql",
+        "20260829_001_update.sql",
+        "20260901_001_update.sql");
     assertThat(scripts).extracting(script -> script.version().value()).containsExactly(
         "20260728001",
         "20260728002",
@@ -72,6 +92,16 @@ class GlobalDatabaseUpdateCatalogTest {
         "20260809001",
         "20260809002",
         "20260809003",
-        "20260810001");
+        "20260810001",
+        "20260812001",
+        "20260812002",
+        "20260815001",
+        "20260815002",
+        "20260815003",
+        "20260816001",
+        "20260816002",
+        "20260816003",
+        "20260829001",
+        "20260901001");
   }
 }

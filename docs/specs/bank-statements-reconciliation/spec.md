@@ -498,3 +498,7 @@ Um usuário autorizado consulta o que foi importado, conciliado, parcialmente re
 - Correção destrutiva de fatos protegidos pela data de fechamento financeiro.
 - Importação de posições, cotações e eventos de investimentos.
 - Extratos, faturas externas e conciliação com operadoras de cartão de crédito, adiados para `credit-card-statements-reconciliation`.
+
+## Integração com Controle de Acesso
+
+Importação, consulta e confirmação de conciliação usam chaves distintas `tenant.financial.statement.import` e `tenant.financial.reconciliation.*` do [catálogo canônico](../access-control/contracts/access-key-catalog.md); conciliar não implica criar lançamento.

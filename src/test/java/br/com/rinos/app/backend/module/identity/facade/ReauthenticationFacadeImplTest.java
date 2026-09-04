@@ -95,4 +95,25 @@ class ReauthenticationFacadeImplTest {
     assertThat(result.status()).isEqualTo(ReauthenticationStatusEnum.ACCESS_DENIED);
     verifyNoInteractions(service);
   }
+
+  @Test
+  void isRecentlyAuthorized_shouldUseAccountCreationOperationWhenContextIsValid() {
+    when(service.isRecentlyAuthorized(
+        41L, SESSION, ReauthenticationOperationEnum.CREATE_ACCOUNT, NOW)).thenReturn(true);
+
+    boolean authorized = facade.isRecentlyAuthorized(
+        41L, SESSION.toString(), "create-account", NOW);
+
+    assertThat(authorized).isTrue();
+    verify(service).isRecentlyAuthorized(
+        41L, SESSION, ReauthenticationOperationEnum.CREATE_ACCOUNT, NOW);
+  }
+
+  @Test
+  void isRecentlyAuthorized_shouldFailClosed_whenOperationOrSessionIsInvalid() {
+    assertThat(facade.isRecentlyAuthorized(41L, "invalid", "create-account", NOW)).isFalse();
+    assertThat(facade.isRecentlyAuthorized(41L, SESSION.toString(), "unknown", NOW)).isFalse();
+
+    verifyNoInteractions(service);
+  }
 }

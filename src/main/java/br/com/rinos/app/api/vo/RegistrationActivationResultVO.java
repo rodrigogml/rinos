@@ -15,6 +15,7 @@ import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
  * @param legalDocumentIds documentos que precisam ser apresentados
  * @param expiresAt validade da referência
  * @param fieldErrors erros estruturais por campo
+ * @param authenticationContinuation sessão autenticável emitida somente após ativação completa
  * @author Rodrigo Leitão
  * @since 2026-07-29
  */
@@ -24,7 +25,8 @@ public record RegistrationActivationResultVO(
     String verifiedEmail,
     Set<String> legalDocumentIds,
     Instant expiresAt,
-    Map<String, String> fieldErrors) {
+    Map<String, String> fieldErrors,
+    RegistrationAuthenticationContinuationVO authenticationContinuation) {
 
   /**
    * Preserva coleções imutáveis e dados de continuação somente no estado correspondente.
@@ -58,7 +60,7 @@ public record RegistrationActivationResultVO(
   public static RegistrationActivationResultVO of(
       RegistrationActivationStatusEnum status) {
     return new RegistrationActivationResultVO(
-        status, null, null, Set.of(), null, Map.of());
+        status, null, null, Set.of(), null, Map.of(), null);
   }
 
   /**
@@ -81,7 +83,8 @@ public record RegistrationActivationResultVO(
         email,
         legalDocumentIds,
         expiresAt,
-        Map.of());
+        Map.of(),
+        null);
   }
 
   /**
@@ -98,7 +101,26 @@ public record RegistrationActivationResultVO(
         null,
         Set.of(),
         null,
-        fieldErrors);
+        fieldErrors,
+        null);
+  }
+
+  /**
+   * Cria a ativação concluída com a continuação efêmera necessária para abrir a sessão.
+   *
+   * @param continuation principal e fluxo opaco já persistidos
+   * @return ativação apta ao lifecycle autenticado
+   */
+  public static RegistrationActivationResultVO activated(
+      RegistrationAuthenticationContinuationVO continuation) {
+    return new RegistrationActivationResultVO(
+        RegistrationActivationStatusEnum.ACTIVATED,
+        null,
+        null,
+        Set.of(),
+        null,
+        Map.of(),
+        continuation);
   }
 
   /**
@@ -110,6 +132,7 @@ public record RegistrationActivationResultVO(
   public String toString() {
     return "RegistrationActivationResultVO[status=" + status
         + ", continuationData=REDACTED, legalDocumentCount=" + legalDocumentIds.size()
-        + ", expiresAt=" + expiresAt + ", fieldErrorCount=" + fieldErrors.size() + "]";
+        + ", expiresAt=" + expiresAt + ", fieldErrorCount=" + fieldErrors.size()
+        + ", authenticationContinuationPresent=" + (authenticationContinuation != null) + "]";
   }
 }

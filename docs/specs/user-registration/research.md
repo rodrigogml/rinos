@@ -11,7 +11,8 @@ Documento produzido no Phase 0 do plano de `user-registration`. As decisões aba
 **Alternatives considered**:
 
 - Criar um usuário por tenant: rejeitada porque viola a identidade global única.
-- Criar um tenant pessoal durante o cadastro: rejeitada porque a ativação não deve criar conta, tenant ou plano.
+- Criar um tenant pessoal durante o cadastro: rejeitada. A decisão de 2026-08-16 cria somente contrato global
+  `PERSONAL/FREE`, sem tenant, conta empresarial, associação, direito implícito ou permissão.
 
 ## Decision 2: Convergência, concorrência e idempotência
 

@@ -2,6 +2,9 @@
 
 O modelo pertence integralmente ao schema global. Nenhuma tabela desta feature possui `tenantId` ou referência para schema de tenant.
 
+O contrato pessoal também reside no global, mas pertence a `plans-entitlements`. `user-registration` não duplica
+colunas de plano em `User`: referencia a porta de bootstrap e a invariável relacional é mantida pelo módulo proprietário.
+
 Os nomes físicos seguem as regras MySQL do projeto: prefixo funcional em inglês, tabelas e colunas em `camelCase`, PK `id BIGINT AUTO_INCREMENT`, constraints nomeadas em `snake_case` e engine InnoDB.
 
 ## Entity: User

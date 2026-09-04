@@ -72,7 +72,9 @@ O deploy segue esta ordem:
 1. a infraestrutura garante que o global já foi criado pelo init e inicia o novo JAR;
 2. o bootstrap descobre exclusivamente `db/global/update`, bloqueia a disponibilidade e valida ou atualiza o global;
 3. uma falha global encerra o startup; nenhum processamento de tenant ou interface fica disponível;
-4. com o global compatível, a fila estrutural identifica tenants pendentes e processa `db/tenant/update`;
+4. com o global compatível e antes de a aplicação anunciar disponibilidade, o startup identifica tenants pendentes,
+   os marca como `MIGRATING` de forma transacional e persiste suas operações; a fila estrutural então processa
+   `db/tenant/update`;
 5. cada tenant permanece indisponível enquanto aguarda ou executa sua migration e é liberado individualmente;
 6. a falha de um tenant o mantém em quarentena, mas não deve interromper os demais tenants elegíveis.
 
@@ -83,6 +85,12 @@ O deploy segue esta ordem:
 O atualizador do RFW não cria bancos e não executa os scripts de `init`. Para atualizações adicionais ao banco
 primário, o Rinos usa uma requisição explícita do RFW com o `DataSource`, as localizações do catálogo e o timeout do
 lock. O modo automático do RFW permanece reservado ao banco global primário.
+
+> [!IMPORTANT]
+> `rfw.database.update.enabled` deve permanecer em `true` em uma instalação que provisiona ou atualiza tenants. Ao
+> desativá-la, o RFW não registra os serviços que descobrem e validam scripts; por consequência, o Rinos também não
+> inicia os trabalhadores de provisionamento e migração de tenants. Essa opção é apropriada apenas para diagnósticos
+> controlados nos quais nenhuma operação estrutural de tenant deva ocorrer.
 
 > [!IMPORTANT]
 > O `DataSource` deve selecionar previamente o banco correto. Scripts não devem escolher dinamicamente outro banco
@@ -97,6 +105,18 @@ lease de manutenção da plataforma e não constitui bloqueio geral das operaç�
 
 O global e o modelo de tenant possuem marcos `databaseVersion` independentes. Todos os tenants devem convergir para a
 mesma versão estrutural esperada pelo código, mas cada banco mantém seu próprio histórico de aplicação.
+
+O `init` de cada tenant também cria `core_tenantBootstrap` com a chave técnica imutável
+`tenant.schema.baseline`. Seu valor registra a versão do catálogo que originou o schema e não é uma configuração de
+negócio ou de instalação. Na validação de prontidão, o Rinos compara esse baseline, a view `databaseVersion`, o
+catálogo distribuído e as evidências de migrations posteriores. Script desconhecido, hash divergente, lacuna posterior
+ao baseline, versão ausente ou versão diferente da esperada bloqueiam somente o tenant afetado.
+
+> [!IMPORTANT]
+> O hash de cada update é calculado sobre o conteúdo UTF-8 distribuído e confrontado com a evidência histórica global.
+> O baseline representa um init completo, portanto não simula que os updates anteriores foram executados um a um.
+> Migrations posteriores ao baseline devem possuir evidência contínua e íntegra para que o tenant possa voltar a
+> `READY`.
 
 Os nomes de updates são ordenáveis e imutáveis depois de distribuídos. Um ajuste estrutural deve:
 

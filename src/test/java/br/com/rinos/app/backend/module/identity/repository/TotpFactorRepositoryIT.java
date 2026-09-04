@@ -101,7 +101,8 @@ class TotpFactorRepositoryIT {
           mock(IdentityAuditService.class),
           protocol,
           new AuthenticationMfaPropertiesConfig(
-              Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)));
+              Duration.ofMinutes(5), 5, Duration.ofMinutes(1), 3, Duration.ofMinutes(15)),
+          mock(br.com.rinos.app.backend.module.identity.service.AdministrativeFactorContinuityPort.class));
       UUID reference = UUID.fromString("6e89f399-c679-495c-8c42-b17f2db18996");
 
       Long userId = transaction(context).execute(status -> users.saveAndFlush(new UserEntity(

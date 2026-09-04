@@ -26,4 +26,19 @@ public interface ReauthenticationFacade {
       String sessionReference,
       String challengeReference,
       Instant occurredAt);
+
+  /**
+   * Revalida se a sessão possui garantia recente suficiente para uma operação catalogada.
+   *
+   * @param userId identidade autenticada esperada
+   * @param sessionReference referência opaca da sessão atual
+   * @param operationId identificador estável da operação de reautenticação
+   * @param occurredAt instante UTC da decisão
+   * @return {@code true} somente quando a identidade, a sessão e a garantia ainda são válidas
+   */
+  boolean isRecentlyAuthorized(
+      long userId,
+      String sessionReference,
+      String operationId,
+      Instant occurredAt);
 }

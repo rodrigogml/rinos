@@ -52,6 +52,7 @@ import br.com.rinos.app.backend.module.identity.entity.OriginWindowEntity;
 import br.com.rinos.app.backend.module.identity.entity.PasswordRecoveryEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.entity.VerificationEntity;
+import br.com.rinos.app.backend.module.identity.service.RegistrationAuthenticationContinuationService;
 import br.com.rinos.app.backend.module.identity.enums.LocalCredentialStatusEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityProviderEnum;
 import br.com.rinos.app.backend.module.identity.enums.ExternalIdentityStatusEnum;
@@ -87,6 +88,7 @@ import br.com.rinos.app.backend.module.identity.service.RegistrationLifecycleSer
 import br.com.rinos.app.backend.module.identity.service.RegistrationExpiryCleanupService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationObservabilityService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationResendService;
+import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.VerificationService;
 import br.com.rinos.app.backend.module.identity.service.VerificationEmailDispatchService;
@@ -100,6 +102,10 @@ import br.com.rinos.app.backend.module.identity.vo.VerificationEmailDispatchResu
 import br.com.rinos.app.api.enums.RegistrationCancellationConfirmationStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationActivationStatusEnum;
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
+import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
+import br.com.rinos.app.api.module.plans.vo.ContractBootstrapResult;
 import br.com.rinos.app.api.vo.RegistrationActivationResultVO;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
 import br.com.rinos.app.config.VerificationPropertiesConfig;
@@ -465,11 +471,12 @@ class IdentityRepositoryIT {
       RegistrationActivationService activationService = new RegistrationActivationService(
           verificationService,
           legalConsentService,
-          new UserLifecycleService(),
+          lifecycleWithPersonalContract(),
           new RegistrationLifecycleService(),
           new ExternalIdentityService(externalRepository),
           new IdentityAuditService(eventRepository),
-          new EmailPrivacyService());
+          new EmailPrivacyService(),
+          registrationContinuationService());
       String proof = transaction.execute(status -> {
         UserEntity user = userRepository.saveAndFlush(new UserEntity(
             "local-activation@example.com",
@@ -736,9 +743,10 @@ class IdentityRepositoryIT {
               legalConsentService,
               new LocalCredentialService(credentialRepository),
               externalIdentityService,
-              new UserLifecycleService(),
+              lifecycleWithPersonalContract(),
               new RegistrationLifecycleService(),
-              new IdentityAuditService(eventRepository));
+              new IdentityAuditService(eventRepository),
+              registrationContinuationService());
 
       ExternalRegistrationFixture fixture = transaction.execute(status -> {
         UserEntity user = userRepository.saveAndFlush(new UserEntity(
@@ -840,20 +848,22 @@ class IdentityRepositoryIT {
       RegistrationActivationService localService = new RegistrationActivationService(
           verificationService,
           legalConsentService,
-          new UserLifecycleService(),
+          lifecycleWithPersonalContract(),
           new RegistrationLifecycleService(),
           externalIdentityService,
           auditService,
-          new EmailPrivacyService());
+          new EmailPrivacyService(),
+          registrationContinuationService());
       ExternalRegistrationCompletionService googleService =
           new ExternalRegistrationCompletionService(
               verificationService,
               legalConsentService,
               new LocalCredentialService(credentialRepository),
               externalIdentityService,
-              new UserLifecycleService(),
+              lifecycleWithPersonalContract(),
               new RegistrationLifecycleService(),
-              auditService);
+              auditService,
+              registrationContinuationService());
 
       ActivationRaceFixture fixture = transaction(context).execute(status -> {
         UserEntity user = userRepository.saveAndFlush(new UserEntity(
@@ -1619,6 +1629,29 @@ class IdentityRepositoryIT {
             Duration.ofMinutes(15),
             3,
             Duration.ofMinutes(15)));
+  }
+
+  private static RegistrationAuthenticationContinuationService registrationContinuationService() {
+    RegistrationAuthenticationContinuationService service =
+        mock(RegistrationAuthenticationContinuationService.class);
+    when(service.issue(any(), any(), any(), any())).thenAnswer(invocation -> {
+      UserEntity user = invocation.getArgument(0);
+      return new br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO(
+          new br.com.rinos.app.api.vo.RinosUserPrincipalVO(user.getId(), user.getEmail()),
+          new br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO(
+              "registration-test-continuation",
+              br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION));
+    });
+    return service;
+  }
+
+  private static UserLifecycleService lifecycleWithPersonalContract() {
+    PersonalContractBootstrapPort contracts = request -> new ContractBootstrapResult(
+        ContractBootstrapStatus.ALREADY_COMPLETED,
+        ContractScope.PERSONAL,
+        java.util.UUID.randomUUID(),
+        null);
+    return new UserLifecycleService(mock(AuthSessionService.class), contracts);
   }
 
   private static UserEntity user(String email) {

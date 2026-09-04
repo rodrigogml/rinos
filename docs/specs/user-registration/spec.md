@@ -10,9 +10,17 @@ Esta feature cria a identidade global e única do usuário no Rinos e conduz o c
 
 Inclui validação dos dados cadastrais, criação de credencial local ou vínculo inicial com identidade Google, comprovação do identificador primário, aceite dos documentos legais e tratamento de cadastros pendentes.
 
-Não inclui autenticação de sessões, implementação da recuperação de acesso, detalhamento do Painel de Usuário, cadastro de contas pessoais ou empresas, associação ou convite para contas, planos, papéis, grupos, chaves de acesso ou administração de usuários ativos. Embora pertença a `user-authentication`, a recuperação mínima de senha é dependência obrigatória para liberar `user-registration` em produção.
+Não inclui autenticação de sessões, implementação da recuperação de acesso, detalhamento do Painel de Usuário, cadastro de tenants ou empresas, associação ou convite para contas, catálogo de planos, papéis, grupos, chaves de acesso ou administração de usuários ativos. Inclui a confirmação idempotente do contrato `PERSONAL/FREE` como pré-condição da ativação. Embora pertença a `user-authentication`, a recuperação mínima de senha é dependência obrigatória para liberar `user-registration` em produção.
 
 ## Clarifications
+
+### Session 2026-08-16
+
+- Q: A ativação cria plano pessoal? -> A: Sim. Toda identidade ativa deve possuir exatamente um contrato pessoal e uma atribuição `PERSONAL/FREE`; falha ou indisponibilidade mantém o cadastro não ativado. Isso não cria tenant, conta empresarial, associação, grupo, chave ou permissão.
+
+### Session 2026-09-01
+
+- Q: Como tratar o fator forte do fundador administrativo inicial sem confundir identidade global e tenant? -> A: O usuário cujo e-mail normalizado corresponde ao fundador configurado em `application.properties` deve concluir enrollment e confirmação de TOTP durante o fluxo de criação da sua identidade global. A criação da identidade não cria nem pressupõe tenant; criar tenant é fluxo posterior, separado e opcional.
 
 ### Session 2026-07-17
 
@@ -172,7 +180,10 @@ Uma pessoa que ainda não ativou sua identidade pode cancelar o cadastro iniciad
 - **FR-REG-017**: Se um documento obrigatório mudar depois da apresentação inicial e antes da ativação, o sistema DEVE preservar o aceite histórico, solicitar aceite da nova versão e impedir a ativação até a nova decisão explícita. Documento opcional novo ou atualizado NÃO DEVE ser considerado aceito automaticamente nem bloquear a ativação.
 - **FR-REG-018**: A ativação DEVE alterar exatamente uma identidade de pendente para ativa e invalidar todas as comprovações abertas.
 - **FR-REG-019**: A ativação DEVE ser segura contra repetições: apresentar a mesma comprovação novamente não pode criar outro usuário nem repetir efeitos posteriores.
-- **FR-REG-020**: A ativação DEVE encerrar com a identidade ativa e acesso restrito ao próprio Painel de Usuário, sem criar automaticamente conta pessoal, empresa, tenant, plano ou associação.
+- **FR-REG-020**: A ativação DEVE encerrar com identidade ativa, contrato pessoal único e atribuição `PERSONAL/FREE`, sem criar tenant, empresa, associação, grupo, chave ou permissão; o plano pessoal não concede acesso por si próprio.
+- **FR-REG-053**: Falha ao criar ou confirmar contrato e atribuição pessoal DEVE impedir a conclusão da ativação, e repetição DEVE reutilizar a mesma intenção sem duplicidade.
+- **FR-REG-054**: Quando o e-mail normalizado da identidade corresponder ao fundador administrativo configurado exclusivamente em `application.properties`, o fluxo de ativação DEVE exigir enrollment e confirmação de TOTP antes de liberar o Painel de Usuário ou qualquer jornada autenticada além da própria confirmação do fator. A regra não cria tenant, grupo, chave, papel nem privilégio administrativo.
+- **FR-REG-055**: A obrigatoriedade de TOTP do fundador DEVE ser determinada por uma porta de política segura, sem expor o e-mail configurado à interface, à auditoria ou a pessoas que tentem cadastrar outro e-mail. Indisponibilidade da política ou do enrollment deve manter somente a jornada restrita de confirmação, sem ativação administrativa implícita.
 
 ### Retomada, Expiração e Cancelamento
 

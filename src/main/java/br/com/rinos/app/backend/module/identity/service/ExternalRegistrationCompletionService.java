@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import br.com.rinos.app.api.enums.ExternalRegistrationCompletionStatusEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
-import br.com.rinos.app.api.vo.RinosUserPrincipalVO;
 import br.com.rinos.app.backend.module.identity.entity.ExternalIdentityEntity;
 import br.com.rinos.app.backend.module.identity.entity.RegistrationEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
@@ -49,6 +48,7 @@ public class ExternalRegistrationCompletionService {
   private final UserLifecycleService userLifecycleService;
   private final RegistrationLifecycleService registrationLifecycleService;
   private final IdentityAuditService auditService;
+  private final RegistrationAuthenticationContinuationService authenticationContinuationService;
 
   /**
    * Reúne as fronteiras que participam da ativação externa.
@@ -60,7 +60,8 @@ public class ExternalRegistrationCompletionService {
       ExternalIdentityService externalIdentityService,
       UserLifecycleService userLifecycleService,
       RegistrationLifecycleService registrationLifecycleService,
-      IdentityAuditService auditService) {
+      IdentityAuditService auditService,
+      RegistrationAuthenticationContinuationService authenticationContinuationService) {
     this.verificationService = verificationService;
     this.legalConsentService = legalConsentService;
     this.credentialService = credentialService;
@@ -68,6 +69,7 @@ public class ExternalRegistrationCompletionService {
     this.userLifecycleService = userLifecycleService;
     this.registrationLifecycleService = registrationLifecycleService;
     this.auditService = auditService;
+    this.authenticationContinuationService = authenticationContinuationService;
   }
 
   /**
@@ -156,7 +158,8 @@ public class ExternalRegistrationCompletionService {
         registrationTransition,
         occurredAt);
     return ExternalRegistrationCompletionResultVO.authenticated(
-        new RinosUserPrincipalVO(user.getId(), user.getEmail()));
+        authenticationContinuationService.issue(
+            user, registration.getMethod(), correlationId, occurredAt));
   }
 
   private static ExternalRegistrationCompletionResultVO classifyTerminal(

@@ -368,3 +368,7 @@ Um usuário autorizado registra tarifa, imposto ou outro custo econômico relaci
 - Compra, venda, aplicação, resgate ou transferência de custódia de ativos.
 - Escrituração contábil, tributação cambial e documentos fiscais.
 - Edição ou exclusão de transferências confirmadas.
+
+## Integração com Controle de Acesso
+
+Transferência composta declara cumulativamente as chaves `tenant.financial.transfer.*`, as contas e custos envolvidos conforme o [catálogo canônico](../access-control/contracts/access-key-catalog.md); uma única chave ausente ou bloqueada nega toda a operação.

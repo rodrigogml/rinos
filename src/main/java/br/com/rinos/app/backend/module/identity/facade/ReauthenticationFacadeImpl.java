@@ -86,6 +86,23 @@ public class ReauthenticationFacadeImpl implements ReauthenticationFacade {
     return map(service.cancel(userId, parsedSession, challengeReference, occurredAt));
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public boolean isRecentlyAuthorized(
+      long userId,
+      String sessionReference,
+      String operationId,
+      Instant occurredAt) {
+    ReauthenticationOperationEnum operation = ReauthenticationOperationEnum
+        .fromOperationId(operationId)
+        .orElse(null);
+    UUID parsedSession = parseUuid(sessionReference);
+    if (userId <= 0 || operation == null || parsedSession == null || occurredAt == null) {
+      return false;
+    }
+    return service.isRecentlyAuthorized(userId, parsedSession, operation, occurredAt);
+  }
+
   private static ReauthenticationResultVO map(ReauthenticationDecisionVO decision) {
     Set<br.com.rinos.app.api.enums.AuthenticationMethodEnum> methods =
         decision.allowedMethods().stream()

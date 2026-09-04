@@ -257,3 +257,7 @@ Um auditor autorizado consulta as mudanças da data de fechamento e identifica o
 - Fechamento operacional, contagem ou diferença de caixa físico.
 - Regras funcionais de edição, cancelamento, estorno e correção dos lançamentos, que pertencem a `financial-transactions`; esta feature somente decide quais datas estão abertas.
 - Avanço automático do fechamento por agenda ou passagem do tempo.
+
+## Integração com Controle de Acesso
+
+Consulta, fechamento e reabertura usam `tenant.financial.closing.*` do [catálogo canônico](../access-control/contracts/access-key-catalog.md). Reabertura conserva exigência de autenticação reforçada definida pela operação.

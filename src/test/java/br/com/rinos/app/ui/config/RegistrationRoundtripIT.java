@@ -86,6 +86,10 @@ import br.com.rinos.app.api.facade.RegistrationResendFacade;
 import br.com.rinos.app.api.facade.RegistrationStartFacade;
 import br.com.rinos.app.api.vo.LegalDocumentReferenceVO;
 import br.com.rinos.app.api.vo.RegistrationStartResultVO;
+import br.com.rinos.app.api.module.plans.enums.ContractBootstrapStatus;
+import br.com.rinos.app.api.module.plans.enums.ContractScope;
+import br.com.rinos.app.api.module.plans.port.PersonalContractBootstrapPort;
+import br.com.rinos.app.api.module.plans.vo.ContractBootstrapResult;
 import br.com.rinos.app.backend.module.identity.entity.LegalDocumentVersionEntity;
 import br.com.rinos.app.backend.module.identity.entity.UserEntity;
 import br.com.rinos.app.backend.module.identity.enums.IdentityEventTypeEnum;
@@ -132,10 +136,12 @@ import br.com.rinos.app.backend.module.identity.service.PublicApplicationUriServ
 import br.com.rinos.app.backend.module.identity.service.PwnedPasswordsService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationCreationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationActivationService;
+import br.com.rinos.app.backend.module.identity.service.RegistrationAuthenticationContinuationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationCancellationService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationObservabilityService;
 import br.com.rinos.app.backend.module.identity.service.RegistrationResendService;
+import br.com.rinos.app.backend.module.identity.service.AuthSessionService;
 import br.com.rinos.app.backend.module.identity.service.UserLifecycleService;
 import br.com.rinos.app.backend.module.identity.service.VerificationEmailDispatchService;
 import br.com.rinos.app.backend.module.identity.service.VerificationService;
@@ -597,9 +603,7 @@ class RegistrationRoundtripIT {
         component.submitActivation(new RFWActivationRequestDTO(
             "activation-states@example.com",
             reissuedProof));
-        assertThat(component.getCurrentOutcome().status())
-            .isEqualTo(RFWAccessStatusEnum.COMPLETED);
-        assertThat(component.getCurrentStep()).isEqualTo(RFWAccessStepEnum.RESULT);
+        assertThat(component.getCurrentOutcome()).isNull();
       });
 
       assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
@@ -683,8 +687,7 @@ class RegistrationRoundtripIT {
         component.submitActivationConsent(new RFWActivationConsentRequestDTO(
             component.getCurrentActivationConsent().activationReference(),
             component.getCurrentActivationConsent().legalDocumentIds().stream().toList()));
-        assertThat(component.getCurrentOutcome().status())
-            .isEqualTo(RFWAccessStatusEnum.COMPLETED);
+        assertThat(component.getCurrentOutcome()).isNull();
       });
 
       assertThat(context.getBean(UserRepository.class).findAll().getFirst().getStatus())
@@ -899,18 +902,21 @@ class RegistrationRoundtripIT {
   private static void withAttachedComponent(
       ApplicationContext context,
       Consumer<RFWAccessComponent> assertion) {
-    RinosAccessComponentFactory hostFactory = new RinosAccessComponentFactory(
-        context.getBean(RFWAccessComponentFactory.class),
-        context.getBean(LegalDocumentFacade.class));
     withAttachedComponent(
-        () -> hostFactory.create("indisponível"),
+        () -> context.getBean(RFWAccessComponentFactory.class).create(componentConfig(context)),
         assertion);
   }
 
   private static void withAttachedExternalRegistrationComponent(
       ApplicationContext context,
       Consumer<RFWAccessComponent> assertion) {
-    RFWAccessComponentConfig config = RFWAccessComponentConfig.builder()
+    withAttachedComponent(
+        () -> context.getBean(RFWAccessComponentFactory.class).create(componentConfig(context)),
+        assertion);
+  }
+
+  private static RFWAccessComponentConfig componentConfig(ApplicationContext context) {
+    return RFWAccessComponentConfig.builder()
         .legalDocumentsProvider(() -> context.getBean(LegalDocumentFacade.class)
             .findCurrentDocuments().stream()
             .map(document -> new RFWLegalDocumentVO(
@@ -920,9 +926,6 @@ class RegistrationRoundtripIT {
                 document.required()))
             .toList())
         .build();
-    withAttachedComponent(
-        () -> context.getBean(RFWAccessComponentFactory.class).create(config),
-        assertion);
   }
 
   private static void withAttachedComponent(
@@ -1120,15 +1123,17 @@ class RegistrationRoundtripIT {
         LegalConsentService consents,
         LocalCredentialService credentials,
         ExternalIdentityService externalIdentities,
-        IdentityAuditService audit) {
+        IdentityAuditService audit,
+        RegistrationAuthenticationContinuationService continuations) {
       return new ExternalRegistrationCompletionService(
           verifications,
           consents,
           credentials,
           externalIdentities,
-          new UserLifecycleService(),
+          lifecycleWithPersonalContract(),
           new RegistrationLifecycleService(),
-          audit);
+          audit,
+          continuations);
     }
 
     @Bean
@@ -1136,15 +1141,41 @@ class RegistrationRoundtripIT {
         VerificationService verifications,
         LegalConsentService consents,
         ExternalIdentityService externalIdentities,
-        IdentityAuditService audit) {
+        IdentityAuditService audit,
+        RegistrationAuthenticationContinuationService continuations) {
       return new RegistrationActivationService(
           verifications,
           consents,
-          new UserLifecycleService(),
+          lifecycleWithPersonalContract(),
           new RegistrationLifecycleService(),
           externalIdentities,
           audit,
-          new EmailPrivacyService());
+          new EmailPrivacyService(),
+          continuations);
+    }
+
+    @Bean
+    RegistrationAuthenticationContinuationService registrationAuthenticationContinuationService() {
+      RegistrationAuthenticationContinuationService continuation =
+          mock(RegistrationAuthenticationContinuationService.class);
+      when(continuation.issue(any(), any(), any(), any())).thenAnswer(invocation -> {
+        UserEntity user = invocation.getArgument(0);
+        return new br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO(
+            new br.com.rinos.app.api.vo.RinosUserPrincipalVO(user.getId(), user.getEmail()),
+            new br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO(
+                "registration-test-continuation",
+                br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION));
+      });
+      return continuation;
+    }
+
+    private static UserLifecycleService lifecycleWithPersonalContract() {
+      PersonalContractBootstrapPort contracts = request -> new ContractBootstrapResult(
+          ContractBootstrapStatus.ALREADY_COMPLETED,
+          ContractScope.PERSONAL,
+          UUID.randomUUID(),
+          null);
+      return new UserLifecycleService(mock(AuthSessionService.class), contracts);
     }
 
     @Bean

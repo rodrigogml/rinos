@@ -9,6 +9,7 @@ package br.com.rinos.app.backend.module.identity.enums;
 public enum OriginOperationEnum {
 
   USER_REGISTRATION,
+  ACCOUNT_CREATION,
   PASSWORD_RECOVERY_REQUEST,
   PASSWORD_RECOVERY_ATTEMPT
 }

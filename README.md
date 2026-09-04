@@ -80,6 +80,20 @@ CREATE USER 'rinos_test'@'localhost' IDENTIFIED BY 'substitua-por-uma-senha-loca
 GRANT ALL PRIVILEGES ON `rinos\_test\_%`.* TO 'rinos_test'@'localhost';
 ```
 
+O teste físico de provisionamento `TenantSchemaInitializerIT` precisa ainda criar um schema cujo nome corresponde ao
+formato real de tenant. Como `CREATE DATABASE` é um privilégio global no MySQL, conceda-o somente a esse usuário local
+de testes e complete a autorização com o único schema descartável reservado pelo teste:
+
+```sql
+GRANT CREATE ON *.* TO 'rinos_test'@'localhost';
+GRANT ALL PRIVILEGES ON `rinos_0f7c22fb0eaa4ea8ad9a5e1f0b730001`.* TO 'rinos_test'@'localhost';
+```
+
+> [!IMPORTANT]
+> O privilégio `CREATE` permite criar catálogos, mas não concede leitura, escrita ou administração de
+> `rinos_global` nem de qualquer tenant existente. O segundo `GRANT` é literal — não use `rinos\_%`, pois esse padrão
+> incluiria também o schema global. O teste cria e remove somente o schema físico explicitamente listado.
+
 No `application.properties` não versionado, habilite o provedor e informe somente a URL do servidor:
 
 ```properties

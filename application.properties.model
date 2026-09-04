@@ -11,6 +11,9 @@ server.port=7070
 # Origem pública canônica usada em links absolutos enviados para fora da aplicação
 rinos.application.public-base-url=http://localhost:7070
 
+# Candidato exclusivo ao primeiro bootstrap administrativo global; não concede acesso após a conclusão.
+rinos.access.bootstrap.administrator-email=admin@rinos.com.br
+
 # Internacionalização, tema e componente público de acesso da RFW Platform
 rfw.i18n.enabled=true
 rfw.i18n.supported-language-locales=pt-BR,en,es,fr,it,zh-CN
@@ -58,6 +61,13 @@ rinos.maintenance.lease-timeout=4h
 rinos.maintenance.stabilization-period=10m
 rinos.maintenance.batch-transaction-timeout=5m
 
+# Fila estrutural de armazenamento dos tenants; configurações fixas da instalação.
+rinos.storage.queue-poll-interval=30s
+rinos.storage.operation-lease=10m
+rinos.storage.operation-heartbeat-interval=30s
+rinos.storage.provisioning-maximum-attempts=3
+rinos.storage.maximum-concurrent-operations=1
+
 # Cadastro e comprovação
 rinos.registration.pending-retention=15d
 rinos.registration.resend-limit=3
@@ -66,6 +76,18 @@ rinos.registration.resend-window=15m
 rinos.registration.cancellation-request-limit=3
 rinos.registration.cancellation-request-window=15m
 rinos.verification.validity=24h
+
+# Cadastro de contas: o limiar zero mantém Turnstile obrigatório para toda origem.
+rinos.account-creation.turnstile-required-after=0
+rinos.account-creation.origin-window=15m
+rinos.account-creation.origin-limit=5
+rinos.account-creation.origin-block-period=15m
+# Chaves de repetição e a outbox são dados operacionais duráveis do cadastro.
+rinos.account-creation.idempotency-retention=30d
+rinos.account-creation.outbox-batch-size=25
+rinos.account-creation.outbox-lease=2m
+rinos.account-creation.outbox-retry-base=1m
+rinos.account-creation.outbox-retry-maximum=1h
 # Recuperação de senha local: provas, limites por usuário/origem e retenção técnica.
 rinos.password-recovery.validity=1h
 rinos.password-recovery.request-limit=3

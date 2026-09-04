@@ -14,13 +14,20 @@ Não inclui representação de usuário, login como terceiro, acesso temporário
 
 ## Clarifications
 
+### Session 2026-08-16
+
+- Q: Diretório apresenta um único plano por usuário? -> A: Não. Resumo pessoal autorizado e contratos tenant são relações distintas; a interface nunca agrega os direitos ou billing desses contratos.
+
 ### Session 2026-07-20
 
 - Q: Quem deve autorizar a recuperação administrativa de uma conta sem participante apto? → A: Um único administrador do sistema com chave exclusiva pode autorizá-la, após autenticação recente por TOTP ou passkey, justificativa e evidências; a recuperação ainda depende do aceite do responsável-alvo, auditoria e notificações. Não há segundo aprovador obrigatório nesta etapa.
 - Q: Quem pode ser indicado como responsável na recuperação administrativa excepcional? → A: Qualquer usuário Rinos já ativo, com e-mail confirmado e 2FA compatível, ainda que não participe da conta; nesse caso, associação e concessões mínimas somente são criadas depois de seu aceite explícito e da revalidação final.
 - Q: Qual deve ser a validade da solicitação de recuperação administrativa excepcional? → A: O prazo máximo deve ser configurável, com padrão inicial de 7 dias contado da criação. Não existe espera mínima: o administrador pode analisar, autorizar, negar ou cancelar antes do vencimento; depois dele, qualquer etapa ainda pendente perde validade e exige nova solicitação.
 - Q: Quais intervenções globais sobre a identidade estarão disponíveis inicialmente? → A: Bloquear ou desbloquear a identidade, invalidar suas sessões e exigir recuperação conduzida pelo próprio usuário. A administração global não poderá desativar, cancelar ou excluir a identidade, trocar seu e-mail, definir senha nem alterar seus fatores de autenticação.
-- Q: O que fazer quando uma intervenção deixaria a plataforma sem administrador global apto? → A: A operação deve ser recusada atomicamente. Deve permanecer ao menos um usuário com identidade ativa, concessões administrativas globais necessárias e 2FA forte compatível; outro administrador apto precisa ser preparado antes da intervenção.
+- Q: O que fazer quando uma intervenção deixaria a plataforma sem administrador global apto? → A: A operação
+  deve ser recusada atomicamente. Deve permanecer ao menos um usuário com identidade ativa, acesso efetivo a todas as
+  chaves administrativas globais mínimas depois de permissões e bloqueios, e 2FA forte compatível; outro administrador
+  apto precisa ser preparado antes da intervenção.
 
 ### Session 2026-07-24
 
@@ -159,6 +166,7 @@ Um administrador autorizado consulta ações recentes, solicitações pendentes,
 - **FR-SDA-DIR-001**: Usuários e contas DEVEM ser pesquisáveis apenas por critérios globais explicitamente permitidos e adequados à finalidade administrativa.
 - **FR-SDA-DIR-002**: Resultado de usuário DEVE limitar-se a identificador seguro, e-mail confirmado, estado, criação, última atividade de segurança conhecida e indicadores resumidos autorizados.
 - **FR-SDA-DIR-003**: Resultado de conta DEVE limitar-se a identificador seguro, nome, estado, plano, criação, tenant, versão e saúde operacional resumida autorizada.
+- **FR-SDA-DIR-013**: Resultado de identidade PODE incluir resumo autorizado do contrato pessoal, separado da lista de contratos tenant; direitos, consumo e billing NÃO DEVEM ser agregados entre eles.
 - **FR-SDA-DIR-004**: Relação resumida entre usuário e contas DEVE apresentar somente identidade da conta, estado da associação e papel de ator, sem grupos, chaves ou conteúdo do tenant quando não houver chave específica adicional.
 - **FR-SDA-DIR-005**: Consulta de grupos e concessões globais ou de conta DEVE obedecer integralmente a `access-control` e suas chaves de explicação.
 - **FR-SDA-DIR-006**: Resultado NÃO DEVE exibir senha, hash, segredo TOTP, código, token, prova, chave privada, localização física do tenant nem dado funcional de módulo.
@@ -187,8 +195,12 @@ Um administrador autorizado consulta ações recentes, solicitações pendentes,
 - **FR-SDA-USER-014**: Esta feature NÃO DEVE desativar, cancelar, excluir ou executar solicitação de privacidade sobre a identidade.
 - **FR-SDA-USER-015**: Esta feature NÃO DEVE trocar o e-mail, definir ou redefinir senha, ativar ou desativar 2FA, nem cadastrar, remover ou substituir fator de autenticação do usuário.
 - **FR-SDA-USER-016**: Exigir recuperação DEVE apenas marcar a condição de segurança, invalidar as provas abrangidas e encaminhar o usuário ao fluxo de `user-authentication`; o administrador NÃO DEVE receber código, link, token ou outro segredo desse processo.
-- **FR-SDA-USER-017**: Administrador global apto DEVE significar usuário com identidade ativa, concessões globais administrativas necessárias em vigor e TOTP ou passkey compatível disponível para o exercício administrativo.
-- **FR-SDA-USER-018**: A proteção do último administrador apto DEVE abranger bloqueio, revogação ou expiração de concessões, retirada de grupo, perda de fator forte e qualquer outra transição administrada pelo sistema que elimine sua aptidão.
+- **FR-SDA-USER-017**: Administrador global apto DEVE significar usuário com identidade ativa, ao menos uma permissão
+  e nenhum bloqueio vigentes para cada chave administrativa global mínima, e TOTP ou passkey compatível disponível
+  para o exercício administrativo.
+- **FR-SDA-USER-018**: A proteção do último administrador apto DEVE abranger bloqueio de chave, revogação ou
+  expiração de permissão, retirada de grupo, perda de fator forte e qualquer outra transição administrada pelo sistema
+  que elimine sua aptidão.
 - **FR-SDA-USER-019**: Verificações concorrentes DEVEM preservar o invariante de ao menos um administrador global apto; duas operações individualmente válidas não poderão ser concluídas se o resultado combinado violar esse invariante.
 - **FR-SDA-USER-020**: Tentativa recusada pela proteção do último administrador DEVE preservar integralmente o estado anterior, ser auditada e orientar a preparação prévia de outro administrador apto.
 - **FR-SDA-USER-021**: A ausência de administrador global apto depois de o bootstrap ter sido concluído NÃO DEVE reativar a propriedade inicial nem criar concessão automática; a condição DEVE exigir recuperação operacional específica, externa a esta feature.
@@ -303,3 +315,7 @@ Um administrador autorizado consulta ações recentes, solicitações pendentes,
 - **SC-SDA-016**: Em 100% dos testes, a solicitação pode ser decidida antes de 7 dias e nenhuma etapa pendente produz efeito depois do prazo máximo configurado, sem reinício indevido do prazo.
 - **SC-SDA-017**: Em 100% dos testes de administração de identidade, somente bloqueio, desbloqueio, invalidação de sessões e exigência de autorrecuperação estão disponíveis; nenhuma credencial, fator, e-mail, cancelamento ou exclusão pode ser executado pelo administrador global.
 - **SC-SDA-018**: Em 100% dos testes isolados e concorrentes, nenhuma intervenção deixa a plataforma com zero administradores globais aptos e toda recusa preserva o estado anterior com auditoria.
+
+## Integração com Controle de Acesso
+
+Intervenção e recuperação usam as chaves globais canônicas. Recuperação administrativa excepcional só é iniciada quando a falta de administrador efetivo já ocorreu por falha ou evento externo; ela não contorna validação preventiva comum.

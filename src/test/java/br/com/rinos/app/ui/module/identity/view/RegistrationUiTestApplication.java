@@ -298,7 +298,12 @@ public class RegistrationUiTestApplication implements AppShellConfigurator {
         }
         return CompletableFuture.completedFuture(
             ExternalRegistrationCompletionResultVO.authenticated(
-                new RinosUserPrincipalVO(41L, "verified@example.com")));
+                new br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO(
+                    new RinosUserPrincipalVO(41L, "verified@example.com"),
+                    new br.com.rinos.app.api.vo.RinosAuthenticationCompletionVO(
+                        "registration-ui-continuation",
+                        br.com.rinos.app.api.enums.AuthenticationFlowPurposeEnum
+                            .REGISTRATION_ACTIVATION))));
       };
     }
 

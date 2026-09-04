@@ -314,3 +314,7 @@ Um módulo consumidor poderá futuramente distribuir um lançamento entre vária
 - Orçamentos, metas, previsões e alertas de consumo.
 - Relatórios financeiros finais e demonstrativos contábeis.
 - Importação ou sincronização externa de categorias nesta primeira versão.
+
+## Integração com Controle de Acesso
+
+As operações desta feature usam `tenant.financial.category.view` e `tenant.financial.category.manage` do [catálogo canônico](../access-control/contracts/access-key-catalog.md); plano e autorização continuam gates independentes.

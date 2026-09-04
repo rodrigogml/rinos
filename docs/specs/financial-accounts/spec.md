@@ -351,3 +351,7 @@ Um usuário autorizado retira temporariamente uma conta das novas operações ou
 - Fluxo de caixa, projeções e relatórios financeiros avançados.
 - Dados de pagamento de pessoas e execução de pagamentos.
 - Plano de contas contábil, diários, mapeamentos contábeis, escrituração, fiscal e patrimônio não financeiro.
+
+## Integração com Controle de Acesso
+
+As operações desta feature declaram as chaves `tenant.financial.account.*` do [catálogo canônico](../access-control/contracts/access-key-catalog.md). A feature não redefine precedência de grupos, regras, bloqueios ou vigência.

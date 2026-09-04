@@ -53,6 +53,7 @@ import br.com.rinos.app.api.enums.RegistrationCancellationRequestStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationResendStatusEnum;
 import br.com.rinos.app.api.enums.RegistrationStartStatusEnum;
 import br.com.rinos.app.api.vo.ExternalRegistrationCompletionResultVO;
+import br.com.rinos.app.api.vo.RegistrationAuthenticationContinuationVO;
 import br.com.rinos.app.api.vo.AuthenticationFlowResultVO;
 import br.com.rinos.app.api.vo.AuthenticationProofResultVO;
 import br.com.rinos.app.api.vo.AuthenticationSessionLifecycleResultVO;
@@ -172,7 +173,8 @@ class PublicContractSecurityTest {
         "p***@example.test",
         documentIds,
         EXPIRES_AT,
-        fieldErrors);
+        fieldErrors,
+        null);
     documentIds.add("terms-v2");
     fieldErrors.put("other", "error.other");
 
@@ -332,7 +334,11 @@ class PublicContractSecurityTest {
             EXPIRES_AT,
             Map.of()),
         ExternalRegistrationCompletionResultVO.authenticated(
-            new RinosUserPrincipalVO(42L, email)),
+            new RegistrationAuthenticationContinuationVO(
+                new RinosUserPrincipalVO(42L, email),
+                new RinosAuthenticationCompletionVO(
+                    "registration-continuation",
+                    AuthenticationFlowPurposeEnum.REGISTRATION_ACTIVATION))),
         new RemoteOriginRequestVO(address, forwarded, "198.51.100.20"),
         new RinosUserPrincipalVO(42L, email));
 

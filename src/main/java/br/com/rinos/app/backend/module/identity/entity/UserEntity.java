@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 import br.com.rinos.app.backend.module.identity.enums.UserStatusEnum;
+import br.com.rinos.app.backend.module.identity.enums.GlobalActorRoleType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,6 +52,10 @@ public class UserEntity {
   @Column(name = "status", nullable = false, length = 32)
   private UserStatusEnum status;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "globalActorRole", nullable = false, length = 32)
+  private GlobalActorRoleType globalActorRole;
+
   @Column(name = "activatedAt")
   private Instant activatedAt;
 
@@ -89,6 +94,7 @@ public class UserEntity {
     this.normalizedEmail =
         Objects.requireNonNull(normalizedEmail, "normalizedEmail must not be null");
     this.status = Objects.requireNonNull(status, "status must not be null");
+    this.globalActorRole = GlobalActorRoleType.USER;
   }
 
   /**
@@ -125,6 +131,15 @@ public class UserEntity {
    */
   public UserStatusEnum getStatus() {
     return status;
+  }
+
+  public GlobalActorRoleType getGlobalActorRole() {
+    return globalActorRole;
+  }
+
+  /** Identifica o ator para apresentação e auditoria, sem efeito autorizativo. */
+  public void identifyAsSystemAdministrator() {
+    globalActorRole = GlobalActorRoleType.SYSTEM_ADMINISTRATOR;
   }
 
   /**

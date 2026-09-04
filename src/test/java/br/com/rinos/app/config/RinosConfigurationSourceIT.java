@@ -287,6 +287,7 @@ class RinosConfigurationSourceIT {
   private static String validProperties() {
     return """
         spring.main.web-application-type=none
+        spring.main.lazy-initialization=true
         spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,com.vaadin.flow.spring.SpringBootAutoConfiguration,com.vaadin.flow.spring.SpringSecurityAutoConfiguration
         rinos.maintenance.instance-id=file-instance
         spring.mail.host=localhost

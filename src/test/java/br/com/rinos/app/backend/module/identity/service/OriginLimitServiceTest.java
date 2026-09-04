@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -58,6 +59,9 @@ class OriginLimitServiceTest {
   @Test
   void reserveNewRegistration_shouldReturnReservedOrBlockedWithoutExposingCount() {
     OriginWindowRepository repository = mock(OriginWindowRepository.class);
+    when(repository.findCurrentBlocked(
+        origin.getAddress(), OriginOperationEnum.USER_REGISTRATION, OriginPolicyEnum.ABSOLUTE_LIMIT))
+        .thenReturn(Optional.empty());
     when(repository.incrementBelowLimit(
         origin.getAddress(),
         "USER_REGISTRATION",
@@ -86,6 +90,9 @@ class OriginLimitServiceTest {
   @Test
   void reserveNewRegistration_shouldCreateBeforeClosingExpiredWindow_whenWindowMayNotExist() {
     OriginWindowRepository repository = mock(OriginWindowRepository.class);
+    when(repository.findCurrentBlocked(
+        origin.getAddress(), OriginOperationEnum.USER_REGISTRATION, OriginPolicyEnum.ABSOLUTE_LIMIT))
+        .thenReturn(Optional.empty());
     when(repository.incrementBelowLimit(
         origin.getAddress(),
         "USER_REGISTRATION",
@@ -111,6 +118,36 @@ class OriginLimitServiceTest {
         "USER_REGISTRATION",
         "ABSOLUTE_LIMIT",
         Duration.ofHours(24).toSeconds() * 1_000_000L);
+  }
+
+  @Test
+  void reserve_shouldPersistConfiguredBlockPeriod_whenLimitIsReached() {
+    OriginWindowRepository repository = mock(OriginWindowRepository.class);
+    OriginWindowEntity blockedWindow = window();
+    Instant blockedUntil = Instant.parse("2026-07-29T19:00:00Z");
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        blockedWindow, "blockedUntil", blockedUntil);
+    when(repository.findCurrentBlocked(
+        origin.getAddress(), OriginOperationEnum.ACCOUNT_CREATION, OriginPolicyEnum.ABSOLUTE_LIMIT))
+        .thenReturn(Optional.empty(), Optional.of(blockedWindow));
+    when(repository.incrementBelowLimit(
+        origin.getAddress(), "ACCOUNT_CREATION", "ABSOLUTE_LIMIT", 5)).thenReturn(0);
+    OriginLimitService service = service(repository, 0, 20);
+
+    OriginReservationResultVO result = service.reserve(
+        origin,
+        OriginOperationEnum.ACCOUNT_CREATION,
+        5,
+        Duration.ofMinutes(15),
+        Duration.ofHours(1));
+
+    assertThat(result.status()).isEqualTo(OriginReservationStatusEnum.BLOCKED);
+    assertThat(result.blockedUntil()).isEqualTo(blockedUntil);
+    verify(repository).blockCurrent(
+        origin.getAddress(),
+        "ACCOUNT_CREATION",
+        "ABSOLUTE_LIMIT",
+        Duration.ofHours(1).toSeconds() * 1_000_000L);
   }
 
   private static OriginLimitService service(

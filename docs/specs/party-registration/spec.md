@@ -238,3 +238,7 @@ Um usuário autorizado retira do uso corrente um cadastro que não deve mais ser
 - Fusão e desmembramento de cadastros duplicados.
 - CRM, folha de pagamento, compras, vendas, fiscal ou financeiro específicos.
 - Consultas automáticas a Receita Federal, SEFAZ ou provedores externos.
+
+## Integração com Controle de Acesso
+
+Consultar, criar, alterar, desativar e reativar pessoas usam as chaves `tenant.party.*`; revelar identificador completo exige `tenant.party.identifier.reveal`, separada da consulta, conforme o [catálogo canônico](../access-control/contracts/access-key-catalog.md).
