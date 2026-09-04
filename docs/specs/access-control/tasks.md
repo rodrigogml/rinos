@@ -162,9 +162,9 @@ Ref: checklists, quickstart e SC-ACL-*
       Evidência: `evidence/6.3.3/README.md`; a revisão abre as pendências 6.3.4 e 6.3.5, sem declarar entrega final
       enquanto elas permanecerem abertas.
 - [!] 6.3.4 Executar validação manual reproduzível da central ACL e dos diálogos de explicação/prévia: teclado,
-      ordem e retorno de foco, conteúdo de `aria-live`, reflow e leitor de tela. Bloqueada: em 2026-09-03 não havia
-      instância local executando, e o JAR publicado no Turing era anterior ao artefato atual; falta uma sessão
-      administrativa descartável e leitor de tela para concluir a validação real. Evidência e protocolo:
+      ordem e retorno de foco, conteúdo de `aria-live`, reflow e leitor de tela. Bloqueada: em 2026-09-04 o artefato
+      atual foi publicado e a tela pública de login foi reinspecionada; ainda falta uma sessão administrativa
+      descartável e leitor de tela para concluir a validação real. Evidência e protocolo:
       `evidence/6.3.4/README.md`.
 - [!] 6.3.5 Corrigir a oferta de enrollment por e-mail indevida nas configurações de segurança. Bloqueada: requer
       autorização explícita para evolução genérica da RFW, com API pública de métodos permitidos, compatibilidade,

@@ -1,7 +1,7 @@
 # Evidências da fase 6.3.4 — validação manual de acessibilidade
 
 - **Status:** bloqueada, sem validação manual declarada.
-- **Registro inicial:** 2026-09-03.
+- **Registro inicial:** 2026-09-03; atualizado em 2026-09-04.
 
 ## Escopo que permanece pendente
 
@@ -18,25 +18,25 @@ As verificações automatizadas registradas em
 | --- | --- |
 | Porta local configurada (`localhost:7070`) | Não havia processo escutando na porta. |
 | Rota publicada `/system/access` | Redirecionou para `/login`, como esperado sem autenticação. |
-| Estado visual do login publicado | Ainda exibia os textos de recepção que foram removidos no código atual, portanto não pode ser usado como evidência da versão em revisão. |
-| Serviço `rinos` no Turing | Estava ativo, mas o JAR instalado tinha data de 2026-08-12 e hash diferente do artefato local atual. |
+| Estado visual do login publicado | Em 2026-09-04, a tela foi reinspecionada após o deploy e não apresenta mais os textos de recepção suprimidos pelo Rinos. A inspeção não substitui os cenários autenticados desta tarefa. |
+| Serviço `rinos` no Turing | Em 2026-09-04, o JAR atual foi conferido por SHA-256 antes da instalação; a unidade foi reiniciada, ficou ativa e respondeu HTTP 200 em `127.0.0.1:7070/login`. |
 | Leitor de tela | Nenhum leitor foi conectado ao navegador durante esta tentativa. |
 
-Não foram enviados formulários, criados usuários, modificadas permissões nem alterado o servidor durante as sondas.
+As sondas de 03/09 não enviaram formulários, não criaram usuários e não modificaram permissões. O deploy
+controlado de 04/09 está registrado separadamente na tabela acima.
 
 > [!IMPORTANT]
 > Esta evidência não aprova a acessibilidade manual. Ela documenta precisamente por que a tarefa não pôde ser
-> encerrada e evita que uma validação da versão publicada antiga seja atribuída ao código atual.
+> encerrada. A versão atual já está publicada, mas ainda faltam sessão administrativa descartável e leitor de
+> tela para produzir a evidência dos fluxos autenticados.
 
 ## Pré-condições para retomada
 
-1. Publicar o artefato revisado em uma instância descartável ou em uma janela de implantação aprovada e confirmar que
-   a versão exibida corresponde ao artefato testado.
-2. Criar uma identidade de teste com TOTP configurado e acesso administrativo global; criar também uma conta de teste
+1. Criar uma identidade de teste com TOTP configurado e acesso administrativo global; criar também uma conta de teste
    com associação administrativa, chaves, grupos e regras suficientes para abrir as duas rotas.
-3. Usar dados sintéticos e remover ou desativar a identidade de teste depois da validação, conforme o ciclo de dados
+2. Usar dados sintéticos e remover ou desativar a identidade de teste depois da validação, conforme o ciclo de dados
    de teste aprovado.
-4. Registrar navegador, versão, sistema operacional, largura de viewport e leitor de tela. A execução deve incluir,
+3. Registrar navegador, versão, sistema operacional, largura de viewport e leitor de tela. A execução deve incluir,
    no mínimo, um navegador suportado e um leitor de tela efetivamente ativo.
 
 ## Protocolo reproduzível
