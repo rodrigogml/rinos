@@ -166,9 +166,9 @@ Ref: checklists, quickstart e SC-ACL-*
       atual foi publicado e a tela pública de login foi reinspecionada; ainda falta uma sessão administrativa
       descartável e leitor de tela para concluir a validação real. Evidência e protocolo:
       `evidence/6.3.4/README.md`.
-- [!] 6.3.5 Corrigir a oferta de enrollment por e-mail indevida nas configurações de segurança. Bloqueada: requer
-      autorização explícita para evolução genérica da RFW, com API pública de métodos permitidos, compatibilidade,
-      testes e documentação/laboratório do showroom.
+- [x] 6.3.5 Corrigir a oferta de enrollment por e-mail indevida nas configurações de segurança. A RFW oferece a
+      API local `factorEnrollmentMethods(...)`, preservando TOTP e e-mail por padrão; o Rinos restringe sua tela a
+      TOTP. A evolução possui testes, documentação e laboratório do showroom.
 
 ## Matriz de Dependências
 

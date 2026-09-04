@@ -1,5 +1,7 @@
 package br.com.rinos.app.ui.module.user.view;
 
+import java.util.Set;
+
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -13,6 +15,7 @@ import br.com.rinos.app.ui.config.RFWAuthenticatedPrincipalAdapter;
 import br.eng.rodrigogml.rfw.ui.securitysettings.RFWSecuritySettingsSectionEnum;
 import br.eng.rodrigogml.rfw.ui.securitysettings.RFWSecuritySettingsComponentFactory;
 import br.eng.rodrigogml.rfw.ui.securitysettings.config.RFWSecuritySettingsComponentConfig;
+import br.eng.rodrigogml.rfw.authentication.enums.RFWAuthenticationMethodEnum;
 
 /**
  * Apresenta as configurações de segurança do usuário usando exclusivamente o componente RFW.
@@ -44,11 +47,14 @@ public class UserSecurityView extends Main {
 
   private static RFWSecuritySettingsComponentConfig restrictedConfiguration(
       FounderTotpEnrollmentFacade founderEnrollment) {
+    RFWSecuritySettingsComponentConfig.Builder configuration =
+        RFWSecuritySettingsComponentConfig.builder()
+            .factorEnrollmentMethods(Set.of(RFWAuthenticationMethodEnum.TOTP));
     RFWAuthenticatedPrincipalAdapter principal = currentPrincipal();
     if (principal == null || !founderEnrollment.requiresEnrollment(principal.user().userId())) {
-      return RFWSecuritySettingsComponentConfig.builder().build();
+      return configuration.build();
     }
-    return RFWSecuritySettingsComponentConfig.builder()
+    return configuration
         .disableSection(RFWSecuritySettingsSectionEnum.PASSWORD)
         .disableSection(RFWSecuritySettingsSectionEnum.PASSKEYS)
         .disableSection(RFWSecuritySettingsSectionEnum.EXTERNAL_IDENTITIES)
